@@ -4,16 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**bulk.run** is an AI-powered bulk content generation platform that processes CSV data at scale using Google Gemini AI. The application is built as a Next.js 14 SaaS with Supabase backend and Modal.com for serverless batch processing.
+**AEO Visibility Machine** is an AI-powered Answer Engine Optimization (AEO) platform that helps businesses boost their visibility in AI search engines like ChatGPT, Perplexity, Claude, and Gemini. The application is built as a Next.js 14 SaaS with Supabase backend and Modal.com for serverless AI processing.
 
 ### Core Capabilities
-- CSV batch processing through Gemini AI with template variable replacement
-- Real-time streaming results and progress tracking
-- Context file management for enhanced AI outputs
-- Saved prompts library and scheduling system
-- Analytics dashboard with usage tracking
-- Resource management system (leads, keywords, content, campaigns)
-- Agency package management for client assignments
+- Company context analysis and AEO health checks
+- AI-powered keyword research optimized for answer engines
+- Content generation with AEO optimization
+- Analytics dashboard with visibility tracking
+- Multi-language support for global reach
+- Automated content scheduling and delivery
 
 ## Tech Stack
 

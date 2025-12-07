@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
 /**
- * ABOUTME: Playwright E2E test configuration for bulk-gpt-app
+ * ABOUTME: Playwright E2E test configuration for AEO Visibility Machine
  * ABOUTME: Configures automated testing with real Supabase authentication and isolated test environment
  *
  * Key features:
@@ -54,7 +54,7 @@ export default defineConfig({
   projects: [
     /*
      * Main test project - uses real Supabase authentication
-     * Credentials: test@bulkgpt.local / Test123456!
+     * Credentials: test@aeo.local / Test123456!
      * Auth session saved to: playwright/.auth/user.json (created by auth.setup.ts)
      *
      * Dependencies:

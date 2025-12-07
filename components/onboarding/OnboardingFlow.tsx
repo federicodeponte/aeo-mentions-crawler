@@ -19,40 +19,40 @@ export function OnboardingFlow({ onDismiss, onComplete }: OnboardingFlowProps) {
 
   // Check if user has seen onboarding before
   useEffect(() => {
-    const hasSeenOnboarding = localStorage.getItem('bulk-run-onboarding-seen')
+    const hasSeenOnboarding = localStorage.getItem('aeo-visibility-onboarding-seen')
     if (hasSeenOnboarding === 'true') {
       onDismiss()
     }
   }, [onDismiss])
 
   const handleComplete = () => {
-    localStorage.setItem('bulk-run-onboarding-seen', 'true')
+    localStorage.setItem('aeo-visibility-onboarding-seen', 'true')
     onComplete()
   }
 
   const steps = [
     {
       number: 1,
-      emoji: '👟',  // Ready to run!
-      title: 'Drop your CSV',
-      description: 'Each row becomes an AI task',
-      hint: 'names, emails, companies...',
+      emoji: '🎯',  // Target!
+      title: 'Set your context',
+      description: 'Tell us about your company',
+      hint: 'industry, products, target market...',
       gradient: 'from-blue-500/20 via-cyan-500/10 to-transparent'
     },
     {
       number: 2,
-      emoji: '🏃',  // Running!
-      title: 'Write your prompt',
-      description: 'Tell AI what to generate',
-      hint: '"Write a bio for {{name}}"',
+      emoji: '🔍',  // Search!
+      title: 'Generate keywords',
+      description: 'AI creates strategic keywords',
+      hint: 'Optimized for answer engines',
       gradient: 'from-violet-500/20 via-purple-500/10 to-transparent'
     },
     {
       number: 3,
-      emoji: '🏁',  // Finish line!
-      title: 'Get enriched data',
-      description: 'Download with new AI columns',
-      hint: 'Original + AI-generated content',
+      emoji: '✨',  // Magic!
+      title: 'Create content',
+      description: 'Generate AI-optimized articles',
+      hint: 'Boost visibility in ChatGPT & Perplexity',
       gradient: 'from-green-500/20 via-green-500/10 to-transparent'
     }
   ]

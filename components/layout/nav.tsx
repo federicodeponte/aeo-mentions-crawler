@@ -51,11 +51,12 @@ export function Nav() {
     }
   }
 
-  // Clean navigation: CONTEXT → KEYWORDS → BLOGS → LOG (history)
+  // Clean navigation: CONTEXT → KEYWORDS → BLOGS → ANALYTICS → LOG (history)
   const navLinks = [
     { href: '/context', label: 'CONTEXT' },
     { href: '/go', label: 'KEYWORDS' },
     { href: '/blogs', label: 'BLOGS' },
+    { href: '/analytics', label: 'ANALYTICS' },
     { href: '/log', label: 'LOG' },
   ]
 

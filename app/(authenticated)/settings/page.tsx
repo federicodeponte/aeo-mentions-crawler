@@ -8,15 +8,20 @@ import { Save, Check, Key } from 'lucide-react'
 
 export default function SettingsPage() {
   const [geminiApiKey, setGeminiApiKey] = useState('')
+  const [openrouterApiKey, setOpenrouterApiKey] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
 
-  // Load API key on mount
+  // Load API keys on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const storedKey = localStorage.getItem('gemini-api-key')
-      if (storedKey) {
-        setGeminiApiKey(storedKey)
+      const storedGemini = localStorage.getItem('gemini-api-key')
+      const storedOpenrouter = localStorage.getItem('openrouter-api-key')
+      if (storedGemini) {
+        setGeminiApiKey(storedGemini)
+      }
+      if (storedOpenrouter) {
+        setOpenrouterApiKey(storedOpenrouter)
       }
     }
   }, [])
@@ -27,10 +32,18 @@ export default function SettingsPage() {
 
     try {
       if (typeof window !== 'undefined') {
+        // Save Gemini API key
         if (geminiApiKey.trim()) {
           localStorage.setItem('gemini-api-key', geminiApiKey.trim())
         } else {
           localStorage.removeItem('gemini-api-key')
+        }
+        
+        // Save OpenRouter API key
+        if (openrouterApiKey.trim()) {
+          localStorage.setItem('openrouter-api-key', openrouterApiKey.trim())
+        } else {
+          localStorage.removeItem('openrouter-api-key')
         }
       }
 
@@ -55,17 +68,18 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          {/* API Key Section */}
+          {/* API Keys Section */}
           <div className="rounded-lg border border-border bg-card p-6 space-y-6">
             <div className="flex items-center gap-2">
               <Key className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold">Gemini API Key</h2>
+              <h2 className="text-lg font-semibold">API Keys</h2>
             </div>
 
-            <form onSubmit={handleSave} className="space-y-4">
+            <form onSubmit={handleSave} className="space-y-6">
+              {/* Gemini API Key */}
               <div className="space-y-2">
                 <Label htmlFor="gemini-api-key" className="text-sm font-medium">
-                  API Key
+                  Gemini API Key
                 </Label>
                 <Input
                   id="gemini-api-key"
@@ -89,11 +103,38 @@ export default function SettingsPage() {
                 </p>
               </div>
 
+              {/* OpenRouter API Key */}
+              <div className="space-y-2">
+                <Label htmlFor="openrouter-api-key" className="text-sm font-medium">
+                  OpenRouter API Key
+                </Label>
+                <Input
+                  id="openrouter-api-key"
+                  type="password"
+                  placeholder="sk-or-v1-..."
+                  value={openrouterApiKey}
+                  onChange={(e) => setOpenrouterApiKey(e.target.value)}
+                  disabled={isSaving}
+                  className="font-mono"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Required for AEO Mentions check. Get your key from{' '}
+                  <a
+                    href="https://openrouter.ai/keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    openrouter.ai/keys
+                  </a>
+                </p>
+              </div>
+
               {/* Save Button */}
               <div className="flex gap-3 pt-2">
                 <Button
                   type="submit"
-                  disabled={isSaving || !geminiApiKey.trim()}
+                  disabled={isSaving || (!geminiApiKey.trim() && !openrouterApiKey.trim())}
                   className="gap-2"
                 >
                   {isSaved ? (
@@ -106,7 +147,7 @@ export default function SettingsPage() {
                   ) : (
                     <>
                       <Save className="h-4 w-4" />
-                      Save API Key
+                      Save API Keys
                     </>
                   )}
                 </Button>
@@ -118,7 +159,7 @@ export default function SettingsPage() {
               <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-3">
                 <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
                   <Check className="h-4 w-4" />
-                  API key saved successfully!
+                  API keys saved successfully!
                 </p>
               </div>
             )}
