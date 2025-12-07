@@ -415,6 +415,30 @@ export function ContextForm() {
               </div>
             )}
 
+      {/* System Instructions Section - Always visible */}
+      <div className="border border-border rounded-lg p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <Label className="text-sm font-semibold">System Instructions</Label>
+            <p className="text-xs text-muted-foreground">
+              Reusable prompts that will be applied to all blog and keyword generation
+            </p>
+          </div>
+        </div>
+        
+        <Textarea
+          placeholder="Example: Always mention sustainability. Focus on B2B audiences. Use technical language. Emphasize ROI and cost savings."
+          value={businessContext.systemInstructions || ''}
+          onChange={(e) => updateContext({ systemInstructions: e.target.value })}
+          className="text-xs min-h-[100px] font-mono"
+          rows={4}
+        />
+        
+        <p className="text-xs text-muted-foreground">
+          💡 These instructions will be automatically loaded in the Blog and Keyword generators
+        </p>
+      </div>
+
       {/* Clear Confirmation Modal */}
       {showClearConfirmation && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">

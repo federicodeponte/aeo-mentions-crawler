@@ -112,7 +112,7 @@ interface BatchResult {
 }
 
 export function BlogGenerator() {
-  const { businessContext, hasContext, updateContext } = useContextStorage()
+  const { businessContext, hasContext } = useContextStorage()
   
   // Form state
   const [batchMode, setBatchMode] = useState(false)
@@ -194,18 +194,16 @@ export function BlogGenerator() {
     }
   }, [])
   
-  // Load Gemini API key from localStorage
+  // Load Gemini API key and system instructions from localStorage/context
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedKey = localStorage.getItem('gemini-api-key')
       setGeminiApiKey(storedKey)
-    }
-  }, [])
-
-  // Load system instructions from context
-  useEffect(() => {
-    if (businessContext.systemInstructions) {
-      setSystemPrompts(businessContext.systemInstructions)
+      
+      // Load system instructions from context if available
+      if (businessContext.systemInstructions) {
+        setSystemPrompts(businessContext.systemInstructions)
+      }
     }
   }, [businessContext.systemInstructions])
 
@@ -726,27 +724,12 @@ export function BlogGenerator() {
               {showAdvanced && (
                 <div className="p-3 space-y-3 border-t border-border">
                   <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <Label htmlFor="system-prompts" className="text-xs font-medium">
-                        System Instructions (Reusable)
-                      </Label>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 text-xs"
-                        onClick={() => {
-                          updateContext({ systemInstructions: systemPrompts })
-                          toast.success('System instructions saved to context')
-                        }}
-                        disabled={isGenerating}
-                      >
-                        💾 Save
-                      </Button>
-                    </div>
+                    <Label htmlFor="system-prompts" className="text-xs font-medium">
+                      Client Knowledge Base
+                    </Label>
                     <Textarea
                       id="system-prompts"
-                      placeholder="Instructions used for every blog:&#10;- Always cite sources&#10;- Write in active voice&#10;- Use technical terminology"
+                      placeholder="Company facts (one per line):&#10;We target Fortune 500&#10;We specialize in security"
                       value={systemPrompts}
                       onChange={(e) => setSystemPrompts(e.target.value)}
                       className="text-xs resize-none font-mono"
@@ -754,7 +737,7 @@ export function BlogGenerator() {
                       disabled={isGenerating}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Saved instructions auto-load next time
+                      Facts about your company
                     </p>
                   </div>
 
