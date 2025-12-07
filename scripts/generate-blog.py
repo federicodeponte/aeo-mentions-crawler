@@ -168,7 +168,8 @@ async def generate_blog(input_data: dict) -> dict:
         word_count = 0
         
         if context.structured_data:
-            headline = context.structured_data.headline or ""
+            # Note: Pydantic fields are capitalized (Headline not headline)
+            headline = getattr(context.structured_data, 'Headline', None) or getattr(context.structured_data, 'headline', '') or ""
         
         if context.final_article:
             html_content = context.final_article.get("html_content", "")
