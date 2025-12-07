@@ -51,10 +51,10 @@ export function Nav() {
     }
   }
 
-  // Clean navigation: CONTEXT → RUN (keywords) → BLOGS → LOG (history)
+  // Clean navigation: CONTEXT → KEYWORDS → BLOGS → LOG (history)
   const navLinks = [
     { href: '/context', label: 'CONTEXT' },
-    { href: '/go', label: 'RUN' },
+    { href: '/go', label: 'KEYWORDS' },
     { href: '/blogs', label: 'BLOGS' },
     { href: '/log', label: 'LOG' },
   ]
