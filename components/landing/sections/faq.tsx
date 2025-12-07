@@ -1,4 +1,4 @@
-// ABOUTME: FAQ section for bulk.run landing page
+// ABOUTME: FAQ section for AEO Visibility Machine landing page
 // ABOUTME: Common questions and answers in accordion format
 
 "use client";
@@ -9,28 +9,28 @@ import { cn } from "@/lib/utils";
 
 const faqs = [
   {
-    question: "How many rows can I process?",
-    answer: "Currently, bulk.run supports up to 1,000 rows per batch. This limit helps ensure fast processing times and reliable results.",
+    question: "What is Answer Engine Optimization (AEO)?",
+    answer: "AEO is the process of optimizing your content to appear in AI-powered search engines like ChatGPT, Perplexity, Claude, and Gemini. It focuses on making your brand visible when users ask questions to AI assistants.",
   },
   {
-    question: "What AI model powers bulk.run?",
-    answer: "We use Google's Gemini AI models, which offer excellent performance for text generation, classification, and data enrichment tasks.",
+    question: "How does AEO differ from SEO?",
+    answer: "While SEO focuses on ranking in traditional search engines like Google, AEO optimizes for AI platforms that provide direct answers. AEO requires conversational, entity-rich content with structured data and citations.",
   },
   {
-    question: "Can AI search the web for each row?",
-    answer: "Yes! Enable the 'Web Search' tool and AI will search for real-time information to enrich your data. Perfect for lead research and competitive analysis.",
+    question: "Which AI platforms are supported?",
+    answer: "We optimize for all major AI search engines including ChatGPT (OpenAI), Perplexity AI, Claude (Anthropic), Gemini (Google), and Mistral. Our keywords and content are tailored for answer engine visibility.",
   },
   {
-    question: "What file formats are supported?",
-    answer: "Upload CSV files and export results as CSV or Excel (XLSX). We auto-detect columns and handle common encoding issues.",
+    question: "How many keywords can I generate?",
+    answer: "You can generate up to 50 strategic keywords per batch, optimized specifically for AEO. Each keyword includes AEO scoring, intent classification, and citation potential analysis.",
   },
   {
-    question: "How long does processing take?",
-    answer: "Most batches complete in 2-10 minutes depending on size and complexity. We show a time estimate before you start, and you can track progress in real-time.",
+    question: "What makes content 'AEO-optimized'?",
+    answer: "AEO-optimized content is conversational, question-focused, entity-rich, and includes structured data like FAQs. Our blog generator creates articles with AEO scores of 70-85+, perfect for AI visibility.",
   },
   {
     question: "Is my data secure?",
-    answer: "Yes. Your data is processed securely and not stored permanently. We don't use your data to train AI models.",
+    answer: "Yes. All data is stored locally in your browser (localStorage). Your API keys and business context never leave your device. We prioritize your privacy and security.",
   },
 ];
 
@@ -45,7 +45,7 @@ export function FAQSection() {
             Frequently Asked Questions
           </h2>
           <p className="mb-16 text-lg text-muted-foreground">
-            Everything you need to know about bulk.run
+            Everything you need to know about AEO Visibility Machine
           </p>
         </div>
 
