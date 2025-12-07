@@ -1,36 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { spawn } from 'child_process'
-import path from 'path'
+import { runMentionsCheck } from '@/lib/services/aeo-mentions-check-v2'
 
 /**
  * POST /api/aeo/mentions-check
- * AEO Mentions Check - Local helper script approach
+ * AEO Mentions Check - Local TypeScript implementation
+ * 
+ * Ported from mentions_service.py - same logic, runs locally
  * Checks visibility across: Perplexity, ChatGPT, Claude, Gemini
  */
 
 export const maxDuration = 300 // 5 minutes for mentions check
 
 interface CompanyInfo {
-  name: string
+  name?: string
   website?: string
   description?: string
   industry?: string
-  target_audience?: string[]
+  productCategory?: string
   products?: string[]
   services?: string[]
   pain_points?: string[]
-  use_cases?: string[]
-  key_features?: string[]
-  solution_keywords?: string[]
-  value_propositions?: string[]
-  differentiators?: string[]
-  customer_problems?: string[]
-  product_category?: string
-  primary_region?: string
+  [key: string]: any
 }
 
 interface Competitor {
   name: string
+  [key: string]: any
 }
 
 interface CompanyAnalysis {
@@ -43,6 +38,7 @@ interface MentionsCheckRequest {
   company_analysis?: CompanyAnalysis
   company_website?: string
   api_key: string
+  gemini_api_key?: string
   language?: string
   country?: string
   num_queries?: number
@@ -52,11 +48,12 @@ interface MentionsCheckRequest {
 export async function POST(request: NextRequest): Promise<Response> {
   try {
     const body: MentionsCheckRequest = await request.json()
-    const { 
+    const {
       company_name,
       company_analysis,
       company_website,
       api_key,
+      gemini_api_key,
       language,
       country,
       num_queries,
@@ -80,93 +77,27 @@ export async function POST(request: NextRequest): Promise<Response> {
     console.log('[API:MENTIONS] Running mentions check for:', company_name)
     const startTime = Date.now()
 
-    // Local dev: Direct Python script (subprocess)
-    // Production: Vercel serverless function
-    const isDev = process.env.NODE_ENV === 'development'
-    
-    if (isDev) {
-      // Local: Call Python script directly
-      return new Promise((resolve) => {
-        const scriptPath = path.join(process.cwd(), 'scripts', 'check-mentions.py')
-        const python = spawn('python3', [scriptPath])
-        let stdout = ''
-        let stderr = ''
-        
-        python.stdout.on('data', (data) => {
-          stdout += data.toString()
-        })
-        
-        python.stderr.on('data', (data) => {
-          stderr += data.toString()
-          console.error('[MENTIONS:Python]', data.toString().trim())
-        })
-        
-        python.on('close', (code) => {
-          if (code !== 0) {
-            console.error('[MENTIONS] Python error:', stderr)
-            resolve(NextResponse.json(
-              { error: 'Mentions check failed', details: stderr },
-              { status: 500 }
-            ))
-            return
-          }
-          
-          try {
-            const result = JSON.parse(stdout)
-            const duration = (Date.now() - startTime) / 1000
-            console.log('[MENTIONS] Check complete in', duration, 's')
-            resolve(NextResponse.json(result))
-          } catch (e) {
-            console.error('[MENTIONS] Failed to parse output:', e)
-            resolve(NextResponse.json(
-              { error: 'Failed to parse output' },
-              { status: 500 }
-            ))
-          }
-        })
-        
-        // Send input to Python via stdin
-        const requestData = {
-          company_name,
-          company_analysis,
-          company_website,
-          api_keys: { gemini: api_key },
-          language,
-          country,
-          num_queries,
-          mode,
-        }
-        
-        python.stdin.write(JSON.stringify(requestData))
-        python.stdin.end()
-      })
-    }
-    
-    // Production: Call Vercel serverless function
     try {
-      const response = await fetch('/api/python/check-mentions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          company_name,
-          company_analysis,
-          company_website,
-          api_key,
-          language,
-          country,
-          num_queries,
-          mode,
-        }),
+      const result = await runMentionsCheck({
+        companyName: company_name,
+        companyWebsite: company_website || '',
+        companyAnalysis: company_analysis,
+        apiKey: api_key,
+        geminiApiKey: gemini_api_key,
+        language: language || 'english',
+        country: country || 'US',
+        numQueries: num_queries || 50,
+        mode: mode || 'full',
       })
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Serverless function error: ${response.status} - ${errorText}`)
-      }
-
-      const result = await response.json()
       const duration = (Date.now() - startTime) / 1000
-      console.log('[API:MENTIONS] Mentions check complete in', duration, 's')
+      console.log(
+        '[API:MENTIONS] Mentions check complete in',
+        duration,
+        's. Visibility:',
+        result.visibility,
+        '%'
+      )
 
       return NextResponse.json(result)
     } catch (error) {
