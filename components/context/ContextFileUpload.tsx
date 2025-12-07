@@ -2,13 +2,15 @@
 
 import { useCallback, useState, useMemo } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { Upload, FileText, FileSpreadsheet, File, X, CheckCircle, Search, Tag } from 'lucide-react'
+import { Upload, FileText, FileSpreadsheet, File, X, CheckCircle, Search, Tag, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { useContextFiles } from '@/hooks/useContextFiles'
+import { useContextStorage } from '@/hooks/useContextStorage'
 import { EmptyState } from '@/components/ui/empty-state'
+import { toast } from 'sonner'
 
 const ACCEPTED_FILE_TYPES = {
   'text/csv': ['.csv'],
@@ -17,6 +19,8 @@ const ACCEPTED_FILE_TYPES = {
   'application/pdf': ['.pdf'],
   'application/msword': ['.doc'],
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+  'text/html': ['.html', '.htm'],
+  'text/markdown': ['.md', '.markdown'],
 }
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
@@ -56,11 +60,13 @@ function formatUploadTime(uploadedAt: string): string {
 
 export function ContextFileUpload() {
   const { files, isLoading, uploadFile, deleteFile, updateFileTags } = useContextFiles()
+  const { businessContext } = useContextStorage()
   const [uploading, setUploading] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [editingTags, setEditingTags] = useState<string | null>(null)
   const [newTagInput, setNewTagInput] = useState('')
+  const [refreshingFile, setRefreshingFile] = useState<string | null>(null)
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     for (const file of acceptedFiles) {
@@ -162,10 +168,127 @@ export function ContextFileUpload() {
     saveTags(fileId, updatedTags)
   }, [files, saveTags])
 
+  // Check if file is a blog file (HTML, Markdown)
+  const isBlogFile = useCallback((file: { name: string; type: string }) => {
+    const name = file.name.toLowerCase()
+    const type = file.type.toLowerCase()
+    return (
+      name.endsWith('.html') ||
+      name.endsWith('.htm') ||
+      name.endsWith('.md') ||
+      name.endsWith('.markdown') ||
+      type.includes('html') ||
+      type.includes('markdown')
+    )
+  }, [])
+
+  // Refresh blog file using system instructions
+  const refreshBlogFile = useCallback(async (file: { id: string; name: string; path: string }) => {
+    if (refreshingFile) return
+
+    setRefreshingFile(file.id)
+
+    try {
+      // Get Gemini API key
+      const geminiApiKey = typeof window !== 'undefined' 
+        ? localStorage.getItem('gemini-api-key') 
+        : null
+
+      if (!geminiApiKey) {
+        toast.error('Please set your Gemini API key in Settings')
+        return
+      }
+
+      // Get system instructions from context
+      const instructions: string[] = []
+      
+      if (businessContext.clientKnowledgeBase) {
+        instructions.push(`Client Knowledge Base: ${businessContext.clientKnowledgeBase}`)
+      }
+      
+      if (businessContext.contentInstructions) {
+        instructions.push(`Content Instructions: ${businessContext.contentInstructions}`)
+      }
+      
+      if (businessContext.systemInstructions) {
+        instructions.push(`System Instructions: ${businessContext.systemInstructions}`)
+      }
+
+      if (instructions.length === 0) {
+        toast.error('Please set Client Knowledge Base or Content Instructions in Context page')
+        return
+      }
+
+      // Download file content
+      toast.info('Downloading blog content...')
+      const downloadResponse = await fetch(`/api/context-files/download?path=${encodeURIComponent(file.path)}`)
+      
+      if (!downloadResponse.ok) {
+        throw new Error('Failed to download file')
+      }
+
+      const fileContent = await downloadResponse.text()
+      
+      // Determine content format
+      const isMarkdown = file.name.toLowerCase().endsWith('.md') || file.name.toLowerCase().endsWith('.markdown')
+      const contentFormat = isMarkdown ? 'markdown' : 'html'
+
+      // Call refresh API
+      toast.info('Refreshing blog content...')
+      const refreshResponse = await fetch('/api/refresh-blog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: fileContent,
+          content_format: contentFormat,
+          instructions: instructions,
+          output_format: contentFormat,
+          apiKey: geminiApiKey,
+        }),
+      })
+
+      if (!refreshResponse.ok) {
+        const errorData = await refreshResponse.json().catch(() => ({ error: 'Refresh failed' }))
+        throw new Error(errorData.error || 'Failed to refresh blog')
+      }
+
+      const refreshData = await refreshResponse.json()
+
+      if (!refreshData.success || !refreshData.refreshed_html) {
+        throw new Error(refreshData.error || 'Refresh returned no content')
+      }
+
+      // Download refreshed content
+      const refreshedContent = refreshData.refreshed_html || refreshData.refreshed_content
+      const blob = new Blob([refreshedContent], { 
+        type: isMarkdown ? 'text/markdown' : 'text/html' 
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().split('T')[0]
+      const baseName = file.name.replace(/\.(html|htm|md|markdown)$/i, '')
+      const ext = isMarkdown ? '.md' : '.html'
+      a.download = `${baseName}-refreshed-${timestamp}${ext}`
+      
+      a.click()
+      URL.revokeObjectURL(url)
+
+      toast.success('Blog refreshed and downloaded!')
+    } catch (error) {
+      console.error('Refresh error:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to refresh blog')
+    } finally {
+      setRefreshingFile(null)
+    }
+  }, [refreshingFile, businessContext])
+
   return (
     <div className="space-y-4">
       <div className="text-xs text-muted-foreground mb-4">
-        Upload files to use as context in your agent prompts. Supported formats: CSV, XLSX, PDF, DOCX
+        Upload files to use as context in your agent prompts. Supported formats: CSV, XLSX, PDF, DOCX, HTML, MD. Blog files (HTML/MD) can be refreshed using system instructions.
       </div>
 
       {/* Dropzone */}
@@ -187,7 +310,7 @@ export function ContextFileUpload() {
           or click to browse • Max 10MB per file
         </p>
         <p className="text-xs text-muted-foreground mt-3">
-          CSV, XLSX, PDF, DOCX
+          CSV, XLSX, PDF, DOCX, HTML, MD
         </p>
       </div>
 
@@ -386,6 +509,24 @@ export function ContextFileUpload() {
                   ) : (
                     <>
                             <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                      {/* Refresh button for blog files */}
+                      {isBlogFile(file) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => refreshBlogFile(file)}
+                          disabled={refreshingFile === file.id}
+                          className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-primary"
+                          aria-label={`Refresh ${file.name}`}
+                          title="Refresh blog using system instructions"
+                        >
+                          {refreshingFile === file.id ? (
+                            <RefreshCw className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-3 w-3" />
+                          )}
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
