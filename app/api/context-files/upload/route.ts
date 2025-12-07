@@ -13,6 +13,8 @@ const ALLOWED_FILE_TYPES = [
   'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/html',
+  'text/markdown',
 ]
 
 /**
@@ -52,10 +54,14 @@ export async function POST(request: NextRequest): Promise<Response> {
       )
     }
 
-    // Validate file type
-    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+    // Validate file type (also check by extension for HTML/MD files)
+    const fileName = file.name.toLowerCase()
+    const isHtmlOrMd = fileName.endsWith('.html') || fileName.endsWith('.htm') || 
+                       fileName.endsWith('.md') || fileName.endsWith('.markdown')
+    
+    if (!ALLOWED_FILE_TYPES.includes(file.type) && !isHtmlOrMd) {
       return NextResponse.json(
-        { error: 'File type not allowed. Supported: CSV, XLSX, PDF, DOCX' },
+        { error: 'File type not allowed. Supported: CSV, XLSX, PDF, DOCX, HTML, MD' },
         { status: 400 }
       )
     }
