@@ -353,8 +353,10 @@ async function queryPlatform(
     if (platform === 'gemini') {
       const apiKeyToUse = geminiApiKey || apiKey
       const genAI = new GoogleGenerativeAI(apiKeyToUse)
+      
+      // Use Gemini 2.5 Flash Lite which supports google_search tool
       const geminiModel = genAI.getGenerativeModel({
-        model: 'gemini-3-pro-preview',
+        model: 'gemini-2.5-flash-lite',
         tools: [{ googleSearch: {} }], // Enable native Google search
       })
 
