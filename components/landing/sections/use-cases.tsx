@@ -1,30 +1,30 @@
-// ABOUTME: Use cases section showing real-world applications
-// ABOUTME: Examples of what users can do with bulk.run
+// ABOUTME: Use cases section showing real-world AEO applications
+// ABOUTME: Examples of what users can do with AEO Visibility Machine
 
 const useCases = [
   {
-    title: "Lead Enrichment",
-    description: "Turn company names into full profiles with industry, size, and contact info.",
-    example: "Input: Company Name → Output: Industry, Employee Count, HQ Location",
+    title: "B2B SaaS Companies",
+    description: "Dominate AI search results for your product category. Get discovered when prospects ask AI about solutions.",
+    example: "Optimize for: 'best CRM for small businesses', 'AI-powered analytics tools'",
     emoji: "🎯",
   },
   {
-    title: "Content Generation",
-    description: "Generate product descriptions, social posts, or email copy at scale.",
-    example: "Input: Product Name, Features → Output: Marketing Description",
-    emoji: "✍️",
+    title: "E-commerce Brands",
+    description: "Appear in product recommendations from ChatGPT and Perplexity. Drive qualified traffic from AI searches.",
+    example: "Optimize for: 'sustainable fashion brands', 'organic skincare products'",
+    emoji: "🛍️",
   },
   {
-    title: "Data Classification",
-    description: "Categorize support tickets, reviews, or survey responses automatically.",
-    example: "Input: Customer Feedback → Output: Sentiment, Category, Priority",
-    emoji: "🏷️",
+    title: "Professional Services",
+    description: "Be the expert AI assistants recommend. Establish authority in your niche through strategic AEO.",
+    example: "Optimize for: 'fractional CFO services', 'cybersecurity consultants'",
+    emoji: "💼",
   },
   {
-    title: "Research & Analysis",
-    description: "Extract insights from URLs, summarize content, or analyze competitors.",
-    example: "Input: Website URL → Output: Summary, Key Products, Pricing",
-    emoji: "🔍",
+    title: "Content Publishers",
+    description: "Maximize content reach across AI platforms. Get cited by answer engines and drive referral traffic.",
+    example: "Optimize for: 'renewable energy trends', 'remote work best practices'",
+    emoji: "📰",
   },
 ];
 
@@ -34,10 +34,10 @@ export function UseCasesSection() {
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="mb-4 text-3xl font-bold md:text-4xl">
-            What will you build?
+            Who benefits from AEO?
           </h2>
           <p className="mb-16 text-lg text-muted-foreground">
-            From sales teams to researchers, bulk.run powers diverse workflows
+            From B2B to e-commerce, AEO Visibility Machine powers diverse industries
           </p>
         </div>
 

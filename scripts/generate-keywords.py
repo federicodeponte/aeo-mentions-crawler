@@ -76,7 +76,7 @@ def main():
         # Initialize generator
         generator = KeywordGenerator(
             gemini_api_key=api_key,
-            model='gemini-3.0-pro-preview'  # FULL PARITY with openkeyword repo
+            model='gemini-3-pro-preview'  # CORRECT model name (no .0)
         )
         
         # Generate keywords (async call wrapped)
