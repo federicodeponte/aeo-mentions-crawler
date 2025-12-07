@@ -5,11 +5,10 @@ import { checkRateLimits, releaseBatch } from '@/middleware/rateLimits'
 import { logError, logDebug } from '@/lib/utils/logger'
 import { authenticateRequest } from '@/lib/auth-middleware'
 import { checkUsageLimits } from '@/lib/api-keys'
-// Dev mode removed - all processing via Modal for consistency
 import { isFeatureEnabled } from '@/lib/feature-flags'
-// Queue service no longer needed - Modal polls batches table directly
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
-export const maxDuration = 300 // Max 5 minutes (Vercel Pro) - can process batches directly!
+export const maxDuration = 300 // Max 5 minutes (Vercel Pro)
 
 // INPUT VALIDATION HELPERS
 /**
@@ -322,8 +321,95 @@ export async function POST(request: NextRequest): Promise<Response> {
       )
     }
 
-    // DIRECT MODAL CALL: Trigger Modal processing and wait for confirmation
-    const MODAL_API_URL = process.env.MODAL_API_URL || 'https://tech-bulkgpt--bulk-gpt-processor-v4-fastapi-app.modal.run'
+    // Process rows in parallel using Promise.all (no Modal needed!)
+    console.log(`[BATCH] Processing ${rows.length} rows in parallel...`)
+    
+    const batchStartTime = Date.now()
+    
+    // Process all rows in parallel
+    const results = await Promise.all(
+      rows.map(async (row, index) => {
+        try {
+          const rowStartTime = Date.now()
+          
+          // Replace template variables in prompt
+          let processedPrompt = prompt
+          for (const [key, value] of Object.entries(row)) {
+            processedPrompt = processedPrompt.replace(
+              new RegExp(`{{${key}}}`, 'g'),
+              String(value)
+            )
+          }
+          
+          // Call Gemini API directly
+          const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+          const model = genAI.getGenerativeModel({
+            model: 'gemini-2.0-flash-exp',
+          })
+          
+          const result = await model.generateContent(processedPrompt)
+          const response = result.response.text()
+          
+          const rowDuration = Date.now() - rowStartTime
+          
+          // Store result
+          await supabaseAdmin
+            .from('batch_results')
+            .insert({
+              batch_id: batchId,
+              row_index: index,
+              input_data: row,
+              output_data: { response },
+              status: 'completed',
+              processing_time_ms: rowDuration,
+            })
+          
+          console.log(`[BATCH] Row ${index + 1}/${rows.length} completed in ${rowDuration}ms`)
+          
+          return {
+            row_index: index,
+            success: true,
+            duration_ms: rowDuration,
+          }
+        } catch (error) {
+          console.error(`[BATCH] Row ${index} failed:`, error)
+          
+          // Store error
+          await supabaseAdmin
+            .from('batch_results')
+            .insert({
+              batch_id: batchId,
+              row_index: index,
+              input_data: row,
+              output_data: { error: error instanceof Error ? error.message : 'Unknown error' },
+              status: 'failed',
+            })
+          
+          return {
+            row_index: index,
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          }
+        }
+      })
+    )
+    
+    const totalDuration = Date.now() - batchStartTime
+    const successCount = results.filter(r => r.success).length
+    const failedCount = results.filter(r => !r.success).length
+    
+    // Update batch status
+    await supabaseAdmin
+      .from('batches')
+      .update({
+        status: failedCount === 0 ? 'completed' : 'completed_with_errors',
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', batchId)
+    
+    console.log(`[BATCH] Completed in ${totalDuration}ms. Success: ${successCount}, Failed: ${failedCount}`)
+
+    return NextResponse.json(
     
     // Build output_schema from outputColumns (same logic as insertPayload)
     const outputSchema = outputColumns && outputColumns.length > 0
