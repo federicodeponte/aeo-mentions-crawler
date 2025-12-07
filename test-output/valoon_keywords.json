@@ -1,0 +1,352 @@
+{
+  "keywords": [
+    {
+      "keyword": "get valoon quote",
+      "intent": "transactional",
+      "score": 100,
+      "cluster_name": "Pricing and Acquisition",
+      "is_question": false,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    },
+    {
+      "keyword": "sign up for valoon platform",
+      "intent": "transactional",
+      "score": 100,
+      "cluster_name": "Pricing and Acquisition",
+      "is_question": false,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    },
+    {
+      "keyword": "Valoon demo booking",
+      "intent": "transactional",
+      "score": 100,
+      "cluster_name": "Pricing and Acquisition",
+      "is_question": false,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    },
+    {
+      "keyword": "valoon vs procore for subcontractors",
+      "intent": "comparison",
+      "score": 96,
+      "cluster_name": "Competitor Comparisons",
+      "is_question": false,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    },
+    {
+      "keyword": "Valoon vs Fieldwire features comparison",
+      "intent": "comparison",
+      "score": 96,
+      "cluster_name": "Competitor Comparisons",
+      "is_question": false,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    },
+    {
+      "keyword": "Valoon pricing 2025",
+      "intent": "commercial",
+      "score": 96,
+      "cluster_name": "Pricing and Acquisition",
+      "is_question": false,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    },
+    {
+      "keyword": "Sign up for Valoon in California",
+      "intent": "transactional",
+      "score": 95,
+      "cluster_name": "Pricing and Acquisition",
+      "is_question": false,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    },
+    {
+      "keyword": "Valoon pricing for contractors",
+      "intent": "commercial",
+      "score": 95,
+      "cluster_name": "Pricing and Acquisition",
+      "is_question": false,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    },
+    {
+      "keyword": "Sign up for WhatsApp construction integration",
+      "intent": "transactional",
+      "score": 94,
+      "cluster_name": "Pricing and Acquisition",
+      "is_question": false,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    },
+    {
+      "keyword": "WhatsApp for general contractors",
+      "intent": "informational",
+      "score": 93,
+      "cluster_name": "WhatsApp Integration Features",
+      "is_question": false,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    },
+    {
+      "keyword": "Is Valoon available in United States?",
+      "intent": "question",
+      "score": 90,
+      "cluster_name": "Guides and FAQs",
+      "is_question": true,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    },
+    {
+      "keyword": "Manage punch lists with WhatsApp",
+      "intent": "informational",
+      "score": 90,
+      "cluster_name": "WhatsApp Integration Features",
+      "is_question": false,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    },
+    {
+      "keyword": "WhatsApp construction software",
+      "intent": "commercial",
+      "score": 90,
+      "cluster_name": "WhatsApp Integration Features",
+      "is_question": false,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    },
+    {
+      "keyword": "Valoon vs Procore field management",
+      "intent": "comparison",
+      "score": 90,
+      "cluster_name": "Competitor Comparisons",
+      "is_question": false,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    },
+    {
+      "keyword": "best WhatsApp integration for construction",
+      "intent": "commercial",
+      "score": 90,
+      "cluster_name": "WhatsApp Integration Features",
+      "is_question": false,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    },
+    {
+      "keyword": "Valoon vs Fieldwire for Texas contractors",
+      "intent": "comparison",
+      "score": 90,
+      "cluster_name": "Competitor Comparisons",
+      "is_question": false,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    },
+    {
+      "keyword": "whatsapp construction bot",
+      "intent": "commercial",
+      "score": 88,
+      "cluster_name": "WhatsApp Integration Features",
+      "is_question": false,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    },
+    {
+      "keyword": "daily logs via whatsapp chat",
+      "intent": "informational",
+      "score": 88,
+      "cluster_name": "WhatsApp Integration Features",
+      "is_question": false,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    },
+    {
+      "keyword": "Valoon vs Procore alternative",
+      "intent": "comparison",
+      "score": 88,
+      "cluster_name": "Competitor Comparisons",
+      "is_question": false,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    },
+    {
+      "keyword": "easy field reporting tool for contractors",
+      "intent": "commercial",
+      "score": 85,
+      "cluster_name": "Site Management Solutions",
+      "is_question": false,
+      "volume": 0,
+      "difficulty": 50,
+      "source": "ai_generated",
+      "aeo_opportunity": 0,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
+    }
+  ],
+  "clusters": [
+    {
+      "name": "Pricing and Acquisition",
+      "keywords": [
+        "get valoon quote",
+        "sign up for valoon platform",
+        "Valoon demo booking",
+        "Valoon pricing 2025",
+        "Sign up for Valoon in California",
+        "Valoon pricing for contractors",
+        "Sign up for WhatsApp construction integration"
+      ]
+    },
+    {
+      "name": "Competitor Comparisons",
+      "keywords": [
+        "valoon vs procore for subcontractors",
+        "Valoon vs Fieldwire features comparison",
+        "Valoon vs Procore field management",
+        "Valoon vs Fieldwire for Texas contractors",
+        "Valoon vs Procore alternative"
+      ]
+    },
+    {
+      "name": "WhatsApp Integration Features",
+      "keywords": [
+        "WhatsApp for general contractors",
+        "Manage punch lists with WhatsApp",
+        "WhatsApp construction software",
+        "best WhatsApp integration for construction",
+        "whatsapp construction bot",
+        "daily logs via whatsapp chat"
+      ]
+    },
+    {
+      "name": "Guides and FAQs",
+      "keywords": [
+        "Is Valoon available in United States?"
+      ]
+    },
+    {
+      "name": "Site Management Solutions",
+      "keywords": [
+        "easy field reporting tool for contractors"
+      ]
+    }
+  ],
+  "statistics": {
+    "total": 20,
+    "avg_score": 92.7,
+    "intent_breakdown": {
+      "transactional": 5,
+      "comparison": 5,
+      "commercial": 6,
+      "informational": 3,
+      "question": 1
+    },
+    "word_length_distribution": {
+      "short": 5,
+      "medium": 10,
+      "long": 5
+    },
+    "source_breakdown": {
+      "ai_generated": 20
+    },
+    "duplicate_count": 2
+  },
+  "processing_time_seconds": 149.46488213539124
+}

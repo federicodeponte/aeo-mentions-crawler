@@ -1,0 +1,21 @@
+keyword,intent,score,cluster,is_question,volume,difficulty,source,aeo_opportunity,has_featured_snippet,has_paa
+get valoon quote,transactional,100,Pricing and Acquisition,False,0,50,ai_generated,0,False,False
+sign up for valoon platform,transactional,100,Pricing and Acquisition,False,0,50,ai_generated,0,False,False
+Valoon demo booking,transactional,100,Pricing and Acquisition,False,0,50,ai_generated,0,False,False
+valoon vs procore for subcontractors,comparison,96,Competitor Comparisons,False,0,50,ai_generated,0,False,False
+Valoon vs Fieldwire features comparison,comparison,96,Competitor Comparisons,False,0,50,ai_generated,0,False,False
+Valoon pricing 2025,commercial,96,Pricing and Acquisition,False,0,50,ai_generated,0,False,False
+Sign up for Valoon in California,transactional,95,Pricing and Acquisition,False,0,50,ai_generated,0,False,False
+Valoon pricing for contractors,commercial,95,Pricing and Acquisition,False,0,50,ai_generated,0,False,False
+Sign up for WhatsApp construction integration,transactional,94,Pricing and Acquisition,False,0,50,ai_generated,0,False,False
+WhatsApp for general contractors,informational,93,WhatsApp Integration Features,False,0,50,ai_generated,0,False,False
+Is Valoon available in United States?,question,90,Guides and FAQs,True,0,50,ai_generated,0,False,False
+Manage punch lists with WhatsApp,informational,90,WhatsApp Integration Features,False,0,50,ai_generated,0,False,False
+WhatsApp construction software,commercial,90,WhatsApp Integration Features,False,0,50,ai_generated,0,False,False
+Valoon vs Procore field management,comparison,90,Competitor Comparisons,False,0,50,ai_generated,0,False,False
+best WhatsApp integration for construction,commercial,90,WhatsApp Integration Features,False,0,50,ai_generated,0,False,False
+Valoon vs Fieldwire for Texas contractors,comparison,90,Competitor Comparisons,False,0,50,ai_generated,0,False,False
+whatsapp construction bot,commercial,88,WhatsApp Integration Features,False,0,50,ai_generated,0,False,False
+daily logs via whatsapp chat,informational,88,WhatsApp Integration Features,False,0,50,ai_generated,0,False,False
+Valoon vs Procore alternative,comparison,88,Competitor Comparisons,False,0,50,ai_generated,0,False,False
+easy field reporting tool for contractors,commercial,85,Site Management Solutions,False,0,50,ai_generated,0,False,False

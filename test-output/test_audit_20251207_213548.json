@@ -1,0 +1,67 @@
+{
+  "passed": [
+    {
+      "name": "Environment check",
+      "duration": "0.00s",
+      "result": true
+    },
+    {
+      "name": "Module imports",
+      "duration": "1.13s",
+      "result": true
+    },
+    {
+      "name": "SDK compatibility",
+      "duration": "0.00s",
+      "result": [
+        false,
+        [
+          "ResearchEngine should NOT use 'google.generativeai'"
+        ]
+      ]
+    },
+    {
+      "name": "Rich context fields",
+      "duration": "0.00s",
+      "result": true
+    }
+  ],
+  "failed": [
+    {
+      "name": "Company analysis (valoon.chat)",
+      "error": "a coroutine was expected, got <function test_company_analysis at 0x109747420>"
+    },
+    {
+      "name": "Keyword generation (10 keywords)",
+      "error": "a coroutine was expected, got <function test_keyword_generation at 0x109747560>"
+    },
+    {
+      "name": "SERP analysis",
+      "error": "a coroutine was expected, got <function test_serp_analysis at 0x1097476a0>"
+    },
+    {
+      "name": "Error handling",
+      "error": "a coroutine was expected, got <function test_error_handling at 0x109747880>"
+    }
+  ],
+  "warnings": [
+    {
+      "check": "SDK",
+      "issue": "ResearchEngine should NOT use 'google.generativeai'"
+    }
+  ],
+  "audit_issues": [
+    {
+      "check": "Code quality",
+      "issue": "generator.py - Should use google.genai: google.generativeai"
+    },
+    {
+      "check": "Code quality",
+      "issue": "researcher.py - Should use google.genai: google.generativeai"
+    },
+    {
+      "check": "Code quality",
+      "issue": "company_analyzer.py - Should use google.genai: google.generativeai"
+    }
+  ]
+}

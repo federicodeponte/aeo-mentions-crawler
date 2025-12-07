@@ -1,0 +1,105 @@
+{
+  "passed": [
+    {
+      "name": "Environment check",
+      "duration": "0.00s",
+      "result": true
+    },
+    {
+      "name": "Module imports",
+      "duration": "0.97s",
+      "result": true
+    },
+    {
+      "name": "SDK compatibility",
+      "duration": "0.00s",
+      "result": [
+        false,
+        [
+          "ResearchEngine should NOT use 'google.generativeai'"
+        ]
+      ]
+    },
+    {
+      "name": "Company analysis (valoon.chat)",
+      "duration": "27.57s",
+      "result": {
+        "company_name": "Valoon",
+        "description": "Valoon offers a construction communication and documentation platform that integrates directly with WhatsApp to streamline site management. By allowing field workers to document progress, defects, and tasks via their existing chat app, Valoon structures unstructured communication into professional reports and project data automatically.",
+        "industry": "Construction Tech (ConTech)",
+        "products": [
+          "Valoon Platform",
+          "WhatsApp Integration Bot",
+          "Construction Documentation Tool"
+        ],
+        "brand_voice": "Pragmatic, efficient, user-centric, and accessible",
+        "competitors": [
+          "PlanRadar",
+          "Capmo",
+          "Craftnote",
+          "Procore",
+          "Fieldwire"
+        ],
+        "customer_problems": [
+          "Chaos and information loss in unstructured WhatsApp groups",
+          "Subcontractors refusing to install or learn complex construction apps",
+          "Time-consuming manual creation of daily construction reports",
+          "Lack of legally secure documentation for disputes"
+        ],
+        "differentiators": [
+          "Zero-barrier adoption: Subcontractors use WhatsApp, no new app installation required",
+          "Automated conversion of chat messages (text, voice, photos) into structured documentation",
+          "Seamless synchronization between instant messaging and project management dashboards"
+        ],
+        "key_features": [
+          "WhatsApp integration for photo and voice note uploads",
+          "Automated generation of daily construction reports (Bautagesberichte)",
+          "Defect management and ticketing system",
+          "Task assignment via chat interface",
+          "Centralized project dashboard for office teams",
+          "Exportable PDF reports"
+        ],
+        "pain_points": [
+          "Administrative overhead for site managers after site visits",
+          "Fragmented communication across different channels",
+          "Difficulty tracking task completion with external partners",
+          "Incomplete documentation leading to liability risks"
+        ],
+        "primary_region": "DACH (Germany, Austria, Switzerland)",
+        "product_category": "Construction Management Software",
+        "services": [
+          "Onboarding and Implementation",
+          "Customer Success Support"
+        ],
+        "solution_keywords": [
+          "Construction documentation",
+          "WhatsApp for construction",
+          "Site management",
+          "Defect tracking",
+          "Communication automation"
+        ],
+        "target_audience": [
+          "Construction Managers (Bauleiter)",
+          "General Contractors",
+          "Subcontractors",
+          "Site Supervisors",
+          "Architects"
+        ],
+        "use_cases": [
+          "Reporting a defect on-site by snapping a photo and sending it to the Valoon WhatsApp bot",
+          "Automatically compiling a daily site report from chat logs",
+          "Assigning tasks to subcontractors without requiring them to log into a portal",
+          "Archiving project communication for legal security"
+        ],
+        "value_propositions": [
+          "Saves significant time on administrative documentation",
+          "Ensures high adoption rates among non-tech-savvy field workers",
+          "Provides a single source of truth for project communication",
+          "Reduces legal risk through comprehensive, automated archiving"
+        ]
+      }
+    },
+    {
+      "name": "Keyword generation (10 keywords)",
+      "duration": "128.45s",
+      "result": 
