@@ -112,18 +112,24 @@ Answer Engines (Perplexity, ChatGPT, Claude, Gemini) rank based on:
 # KEYWORD REQUIREMENTS
 For each keyword, provide:
 - **keyword**: Conversational query targeting pain points, use cases, or themes
-- **aeo_type**: ["question", "comparison", "recommendation", "problem-solving", "definition", "how-to"]
-- **search_intent**: ["informational", "transactional", "navigational", "commercial"]
-- **relevance_score**: 0-100 (alignment with company offerings)
-- **ai_citation_potential**: "high", "medium", "low" (likelihood of AI citing this company)
-- **competition_level**: "low", "medium", "high"
+- **intent**: ["question", "commercial", "transactional", "comparison", "informational"]
+- **score**: 0-100 (company-fit/relevance score)
+- **cluster_name**: Semantic topic cluster (e.g., "Product Features", "Pain Points", "How-To Guides")
+- **is_question**: true/false (is this a question-based keyword?)
+- **source**: "ai_generated" (use this for all generated keywords)
+- **volume**: 0 (leave as 0 for now, can be enriched later)
+- **difficulty**: 0 (leave as 0 for now, can be enriched later)
+- **aeo_opportunity**: 0-100 (AEO opportunity score based on question format, intent, and relevance)
+- **has_featured_snippet**: false (leave as false for now)
+- **has_paa**: false (leave as false for now)
+- **serp_analyzed**: false (leave as false for now)
 
 # DISTRIBUTION TARGET
-- 40% Questions addressing pain points
-- 20% Comparisons with competitors
-- 20% Problem-solving for use cases
-- 10% Recommendations
-- 10% Definitions/How-to
+- 40% Questions addressing pain points (intent: question, informational)
+- 20% Commercial intent (best, top, review)
+- 20% Problem-solving/comparison keywords
+- 10% Transactional keywords
+- 10% How-to/definitions
 
 # OUTPUT FORMAT
 Return ONLY valid JSON (no markdown):
@@ -131,11 +137,17 @@ Return ONLY valid JSON (no markdown):
   "keywords": [
     {
       "keyword": "example question",
-      "aeo_type": "question",
-      "search_intent": "informational",
-      "relevance_score": 95,
-      "ai_citation_potential": "high",
-      "competition_level": "medium"
+      "intent": "question",
+      "score": 95,
+      "cluster_name": "Pain Points",
+      "is_question": true,
+      "source": "ai_generated",
+      "volume": 0,
+      "difficulty": 0,
+      "aeo_opportunity": 85,
+      "has_featured_snippet": false,
+      "has_paa": false,
+      "serp_analyzed": false
     }
   ]
 }
