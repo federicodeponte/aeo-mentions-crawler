@@ -192,7 +192,7 @@ export function ContextForm() {
       )}
 
       {/* Website Analysis Section */}
-      <div className="border border-primary/20 bg-primary/5 rounded-lg p-4 space-y-3">
+      <div className="border border-border rounded-lg p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Globe className="h-4 w-4 text-primary" />
           <Label htmlFor="website-url" className="text-sm font-semibold text-foreground">
