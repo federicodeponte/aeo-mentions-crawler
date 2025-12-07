@@ -1,0 +1,8 @@
+{
+  "simpleBrowser.focusLockIndicator.enabled": true,
+  "workbench.editor.enablePreview": true,
+  "simpleBrowser.defaultUrl": "http://localhost:3000",
+  "livePreview.autoRefreshPreview": true,
+  "livePreview.startingServer": "http://localhost:3000"
+}
+
