@@ -513,16 +513,18 @@ async def analyze_website(
     logger.debug(f"Using Gemini URL context + search grounding for: {url}")
     
     try:
-        # Build prompt - mention URL so Gemini can fetch it with url_context tool
+        # Build prompt with explicit web access instructions (Gemini 3 Pro has inherent capabilities)
         search_instruction = ""
         if use_google_search:
             search_instruction = f"""
 
+IMPORTANT: You have access to browse the web and search Google. Use these capabilities!
+
 CRITICAL ACCURACY REQUIREMENTS - NO HALLUCINATIONS ALLOWED:
 
 1. VERIFICATION RULE: Only return information that you can VERIFY from actual sources:
-   - Website content (via URL context tool)
-   - Google Search results (via google_search tool)
+   - Website content (browse {url} directly)
+   - Google Search results (search for company information)
    - DO NOT invent, guess, or infer URLs, contact details, or any information
    - If you cannot verify it, return null or "Not found" - NEVER make up data
 
@@ -559,31 +561,28 @@ Return JSON with null for unverified fields. NO HALLUCINATIONS."""
         import requests
         import json as json_lib
         
-        # Build tools list - NOTE: These tools are not supported by Gemini API
-        # url_context and google_search don't exist - need google_search_retrieval
-        tools_list = []
-        if use_google_search:
-            tools_list.append({"google_search_retrieval": {}})
-            logger.debug("Using Google Search grounding")
-        # NOTE: url_context IS a valid Gemini tool - can be added with {"url_context": {}}
+        # IMPORTANT: Gemini 3 Pro has inherent web access capabilities
+        # We don't need to declare tools - just request web access in the prompt
+        # The Python SDK doesn't support tool declarations the same way as TypeScript
         
-        # Note: Can't use responseMimeType with tools
+        # Note: Can use responseMimeType without tools for cleaner JSON
         generation_config = {
             "temperature": 0,
             "maxOutputTokens": 8192,
+            "responseMimeType": "application/json"  # Get clean JSON without markdown
         }
         
         payload = {
             "contents": [{
                 "parts": [{"text": extraction_prompt}]
             }],
-            "generationConfig": generation_config,
-            "tools": tools_list
+            "generationConfig": generation_config
+            # No tools array needed - Gemini 3 Pro has web access by default
         }
         
-        # Use REST API directly - Try Gemini 2.5 Flash Lite first (fastest)
+        # Use REST API directly - Try Gemini 3 Pro Preview first (has web access)
         models_to_try = [
-            'gemini-2.5-flash-lite',  # Primary model - fastest and cheapest
+            'gemini-3-pro-preview',  # Primary model - has inherent web access
             'gemini-2.5-flash',  # Fallback
             'gemini-2.5-pro',
             'gemini-1.5-pro',
