@@ -1,16 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { spawn } from 'child_process'
+import path from 'path'
 
 /**
  * POST /api/aeo/mentions-check
- * AEO Mentions Check - routes to Modal service for full analysis
+ * AEO Mentions Check - Local helper script approach
  * Checks visibility across: Perplexity, ChatGPT, Claude, Gemini
- * 
- * This now calls the Modal aeo-checks service which provides richer data:
- * - Query generation based on company analysis
- * - Dimension categorization (problem-solving, comparison, feature, decision)
- * - Mention type classification (primary, contextual, competitive, passing)
- * - Competitor detection
- * - Source URL extraction
  */
 
 export const maxDuration = 300 // 5 minutes for mentions check
@@ -85,44 +80,93 @@ export async function POST(request: NextRequest): Promise<Response> {
     console.log('[API:MENTIONS] Running mentions check for:', company_name)
     const startTime = Date.now()
 
-    try {
-      // Call Modal aeo-checks service /mentions/check endpoint
-      const modalEndpoint = process.env.MODAL_AEO_ENDPOINT || 'https://clients--aeo-checks-fastapi-app.modal.run/mentions/check'
-      
-      const payload = {
-        company_name,
-        company_analysis: company_analysis || {
-          companyInfo: {
-            name: company_name,
-            website: company_website || '',
+    // Local dev: Direct Python script (subprocess)
+    // Production: Vercel serverless function
+    const isDev = process.env.NODE_ENV === 'development'
+    
+    if (isDev) {
+      // Local: Call Python script directly
+      return new Promise((resolve) => {
+        const scriptPath = path.join(process.cwd(), 'scripts', 'check-mentions.py')
+        const python = spawn('python3', [scriptPath])
+        let stdout = ''
+        let stderr = ''
+        
+        python.stdout.on('data', (data) => {
+          stdout += data.toString()
+        })
+        
+        python.stderr.on('data', (data) => {
+          stderr += data.toString()
+          console.error('[MENTIONS:Python]', data.toString().trim())
+        })
+        
+        python.on('close', (code) => {
+          if (code !== 0) {
+            console.error('[MENTIONS] Python error:', stderr)
+            resolve(NextResponse.json(
+              { error: 'Mentions check failed', details: stderr },
+              { status: 500 }
+            ))
+            return
           }
-        },
-        api_key,
-        language: language || 'english',
-        country: country || 'US',
-        num_queries: num_queries || 10,
-        mode: mode || 'fast',
-      }
-
-      console.log('[API:MENTIONS] Calling Modal service:', modalEndpoint)
-      const response = await fetch(modalEndpoint, {
+          
+          try {
+            const result = JSON.parse(stdout)
+            const duration = (Date.now() - startTime) / 1000
+            console.log('[MENTIONS] Check complete in', duration, 's')
+            resolve(NextResponse.json(result))
+          } catch (e) {
+            console.error('[MENTIONS] Failed to parse output:', e)
+            resolve(NextResponse.json(
+              { error: 'Failed to parse output' },
+              { status: 500 }
+            ))
+          }
+        })
+        
+        // Send input to Python via stdin
+        const requestData = {
+          company_name,
+          company_analysis,
+          company_website,
+          api_keys: { gemini: api_key },
+          language,
+          country,
+          num_queries,
+          mode,
+        }
+        
+        python.stdin.write(JSON.stringify(requestData))
+        python.stdin.end()
+      })
+    }
+    
+    // Production: Call Vercel serverless function
+    try {
+      const response = await fetch('/api/python/check-mentions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company_name,
+          company_analysis,
+          company_website,
+          api_key,
+          language,
+          country,
+          num_queries,
+          mode,
+        }),
       })
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('[API:MENTIONS] Modal service error:', response.status, errorText)
-        throw new Error(`Modal service error: ${response.status} - ${errorText}`)
+        throw new Error(`Serverless function error: ${response.status} - ${errorText}`)
       }
 
       const result = await response.json()
-
       const duration = (Date.now() - startTime) / 1000
-      console.log('[API:MENTIONS] Mentions check complete in', duration, 's. Visibility:', result.visibility)
+      console.log('[API:MENTIONS] Mentions check complete in', duration, 's')
 
       return NextResponse.json(result)
     } catch (error) {
