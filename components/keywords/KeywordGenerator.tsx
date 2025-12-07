@@ -83,6 +83,21 @@ const LANGUAGES = [
   { value: 'id', label: '🇮🇩 Indonesian' },
   { value: 'th', label: '🇹🇭 Thai' },
   { value: 'vi', label: '🇻🇳 Vietnamese' },
+  { value: 'bg', label: '🇧🇬 Bulgarian' },
+  { value: 'hr', label: '🇭🇷 Croatian' },
+  { value: 'sk', label: '🇸🇰 Slovak' },
+  { value: 'sl', label: '🇸🇮 Slovenian' },
+  { value: 'lt', label: '🇱🇹 Lithuanian' },
+  { value: 'lv', label: '🇱🇻 Latvian' },
+  { value: 'et', label: '🇪🇪 Estonian' },
+  { value: 'sr', label: '🇷🇸 Serbian' },
+  { value: 'bn', label: '🇧🇩 Bengali' },
+  { value: 'fa', label: '🇮🇷 Persian' },
+  { value: 'ur', label: '🇵🇰 Urdu' },
+  { value: 'ms', label: '🇲🇾 Malay' },
+  { value: 'tl', label: '🇵🇭 Filipino' },
+  { value: 'sw', label: '🇰🇪 Swahili' },
+  { value: 'af', label: '🇿🇦 Afrikaans' },
 ]
 
 const COUNTRIES = [
@@ -114,6 +129,9 @@ const COUNTRIES = [
   { value: 'AR', label: '🇦🇷 Argentina' },
   { value: 'CL', label: '🇨🇱 Chile' },
   { value: 'CO', label: '🇨🇴 Colombia' },
+  { value: 'PE', label: '🇵🇪 Peru' },
+  { value: 'VE', label: '🇻🇪 Venezuela' },
+  { value: 'UY', label: '🇺🇾 Uruguay' },
   { value: 'JP', label: '🇯🇵 Japan' },
   { value: 'CN', label: '🇨🇳 China' },
   { value: 'KR', label: '🇰🇷 South Korea' },
@@ -126,17 +144,54 @@ const COUNTRIES = [
   { value: 'ID', label: '🇮🇩 Indonesia' },
   { value: 'PH', label: '🇵🇭 Philippines' },
   { value: 'VN', label: '🇻🇳 Vietnam' },
+  { value: 'BD', label: '🇧🇩 Bangladesh' },
+  { value: 'PK', label: '🇵🇰 Pakistan' },
   { value: 'AE', label: '🇦🇪 UAE' },
   { value: 'SA', label: '🇸🇦 Saudi Arabia' },
   { value: 'IL', label: '🇮🇱 Israel' },
   { value: 'TR', label: '🇹🇷 Turkey' },
-  { value: 'ZA', label: '🇿🇦 South Africa' },
   { value: 'EG', label: '🇪🇬 Egypt' },
+  { value: 'ZA', label: '🇿🇦 South Africa' },
   { value: 'NG', label: '🇳🇬 Nigeria' },
   { value: 'KE', label: '🇰🇪 Kenya' },
+  { value: 'MA', label: '🇲🇦 Morocco' },
+  { value: 'DZ', label: '🇩🇿 Algeria' },
   { value: 'NZ', label: '🇳🇿 New Zealand' },
   { value: 'RU', label: '🇷🇺 Russia' },
   { value: 'UA', label: '🇺🇦 Ukraine' },
+  { value: 'BG', label: '🇧🇬 Bulgaria' },
+  { value: 'HR', label: '🇭🇷 Croatia' },
+  { value: 'RS', label: '🇷🇸 Serbia' },
+  { value: 'SK', label: '🇸🇰 Slovakia' },
+  { value: 'SI', label: '🇸🇮 Slovenia' },
+  { value: 'LT', label: '🇱🇹 Lithuania' },
+  { value: 'LV', label: '🇱🇻 Latvia' },
+  { value: 'EE', label: '🇪🇪 Estonia' },
+  { value: 'IR', label: '🇮🇷 Iran' },
+  { value: 'IQ', label: '🇮🇶 Iraq' },
+  { value: 'QA', label: '🇶🇦 Qatar' },
+  { value: 'KW', label: '🇰🇼 Kuwait' },
+  { value: 'OM', label: '🇴🇲 Oman' },
+  { value: 'JO', label: '🇯🇴 Jordan' },
+  { value: 'LB', label: '🇱🇧 Lebanon' },
+  { value: 'LK', label: '🇱🇰 Sri Lanka' },
+  { value: 'NP', label: '🇳🇵 Nepal' },
+  { value: 'MM', label: '🇲🇲 Myanmar' },
+  { value: 'KH', label: '🇰🇭 Cambodia' },
+  { value: 'LA', label: '🇱🇦 Laos' },
+  { value: 'MN', label: '🇲🇳 Mongolia' },
+  { value: 'KZ', label: '🇰🇿 Kazakhstan' },
+  { value: 'UZ', label: '🇺🇿 Uzbekistan' },
+  { value: 'GE', label: '🇬🇪 Georgia' },
+  { value: 'AM', label: '🇦🇲 Armenia' },
+  { value: 'AZ', label: '🇦🇿 Azerbaijan' },
+  { value: 'ET', label: '🇪🇹 Ethiopia' },
+  { value: 'GH', label: '🇬🇭 Ghana' },
+  { value: 'TZ', label: '🇹🇿 Tanzania' },
+  { value: 'UG', label: '🇺🇬 Uganda' },
+  { value: 'SN', label: '🇸🇳 Senegal' },
+  { value: 'CI', label: '🇨🇮 Ivory Coast' },
+  { value: 'CM', label: '🇨🇲 Cameroon' },
   { value: 'Global', label: '🌍 Global' },
 ]
 
@@ -355,7 +410,7 @@ export function KeywordGenerator() {
           <div className="space-y-4">
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <Label htmlFor="language" className="text-xs font-medium">
                   Language
                 </Label>
@@ -369,7 +424,7 @@ export function KeywordGenerator() {
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <Label htmlFor="country" className="text-xs font-medium">
                   Country
                 </Label>
