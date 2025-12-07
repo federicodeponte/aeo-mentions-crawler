@@ -1,0 +1,62 @@
+{
+  "passed": [
+    {
+      "name": "Environment check",
+      "duration": "0.00s",
+      "result": "True"
+    },
+    {
+      "name": "Module imports",
+      "duration": "0.91s",
+      "result": "True"
+    },
+    {
+      "name": "SDK compatibility",
+      "duration": "0.00s",
+      "result": "(False, [\"ResearchEngine should NOT use 'google.generativeai'\"])"
+    },
+    {
+      "name": "Company analysis (valoon.chat)",
+      "duration": "23.66s",
+      "result": {
+        "company_name": "Valoon",
+        "description": "Valoon offers a specialized communication and project management platform for the construction industry that integrates directly with WhatsApp. The software bridges the gap between office staff and construction site workers by allowing field teams to document progress, manage tasks, and report defects using the chat interface they already know.",
+        "industry": "Construction Tech (ConTech) / SaaS",
+        "products": "['Valoon Platform', 'WhatsApp Integration Module', 'Digital Construction Diary', 'Defect Management ",
+        "brand_voice": "Pragmatic, professional, accessible, and efficiency-focused"
+      }
+    },
+    {
+      "name": "Keyword generation (10 keywords)",
+      "duration": "193.00s",
+      "result": {
+        "type": "GenerationResult",
+        "total_keywords": 10,
+        "avg_score": 95.6
+      }
+    },
+    {
+      "name": "SERP analysis",
+      "duration": "2.36s",
+      "result": "SerpAnalysis(keyword='construction project management', features=SerpFeatures(has_featured_snippet=F"
+    },
+    {
+      "name": "Rich context fields",
+      "duration": "0.00s",
+      "result": "True"
+    },
+    {
+      "name": "Error handling",
+      "duration": "4.31s",
+      "result": "True"
+    }
+  ],
+  "failed": [],
+  "warnings": [
+    {
+      "check": "SDK",
+      "issue": "ResearchEngine should NOT use 'google.generativeai'"
+    }
+  ],
+  "audit_issues": []
+}

@@ -498,19 +498,23 @@ export default function AnalyticsPage() {
 
         {!loading && (
           <div className="h-full flex flex-col">
-            <Tabs defaultValue="health" className="w-full flex-1 flex flex-col">
-              <TabsList className="grid w-full grid-cols-2 mb-6 h-11">
-                <TabsTrigger value="health" className="flex items-center justify-center gap-2 text-sm font-medium">
-                  <Activity className="h-4 w-4" />
-                  <span>AEO Health</span>
-                </TabsTrigger>
-                <TabsTrigger value="mentions" className="flex items-center justify-center gap-2 text-sm font-medium">
-                  <Target className="h-4 w-4" />
-                  <span>AEO Mentions</span>
-                </TabsTrigger>
-              </TabsList>
+            <Tabs defaultValue="health" className="w-full flex-1 flex flex-col min-h-0">
+              <div className="flex-shrink-0 pb-4">
+                <div className="flex justify-center">
+                  <TabsList className="w-auto">
+                    <TabsTrigger value="health" className="flex-row gap-1.5">
+                      <Activity className="h-3.5 w-3.5" />
+                      <span>AEO Health</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="mentions" className="flex-row gap-1.5">
+                      <Target className="h-3.5 w-3.5" />
+                      <span>AEO Mentions</span>
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+              </div>
 
-              <div className="flex-1 overflow-auto">
+              <div className="flex-1 min-h-0 overflow-y-auto">
                 <TabsContent value="health" className="mt-0 h-full">
                   {healthResult ? (
                     <HealthResults result={healthResult} url={url} />

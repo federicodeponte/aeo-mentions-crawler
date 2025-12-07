@@ -34,6 +34,13 @@ class CompanyDataModel(BaseModel):
     author_url: Optional[str] = None
 
 
+class ExistingBlogSlug(BaseModel):
+    """Existing blog for internal linking."""
+    slug: str
+    title: str
+    keyword: str
+
+
 class BlogGenerationRequest(BaseModel):
     """Request model for blog generation."""
     # Required
@@ -54,6 +61,12 @@ class BlogGenerationRequest(BaseModel):
     content_generation_instruction: Optional[str] = None
     sitemap_urls: Optional[List[str]] = None
     apiKey: Optional[str] = None  # For local dev
+    
+    # Batch mode
+    batch_mode: bool = False
+    batch_keywords: Optional[List[Dict[str, Any]]] = None
+    batch_siblings: Optional[List[Dict[str, Any]]] = None
+    batch_id: Optional[str] = None
 
 
 # === ENGINE INITIALIZATION (copied from api.py) ===
@@ -127,6 +140,85 @@ async def generate_blog(input_data: dict) -> dict:
         if request.apiKey:
             os.environ['GEMINI_API_KEY'] = request.apiKey
         
+        # Handle batch mode
+        if request.batch_mode and request.batch_keywords:
+            # Generate multiple blogs
+            results = []
+            batch_siblings = []
+            
+            # Build batch siblings from batch_keywords
+            for kw_data in request.batch_keywords:
+                slug = generate_slug(kw_data.get('keyword', ''))
+                batch_siblings.append({
+                    'slug': slug,
+                    'title': kw_data.get('keyword', ''),
+                    'keyword': kw_data.get('keyword', ''),
+                })
+            
+            # Generate each blog
+            for idx, kw_data in enumerate(request.batch_keywords):
+                keyword = kw_data.get('keyword', '')
+                word_count = kw_data.get('word_count', request.word_count)
+                
+                # Generate job ID
+                job_id = f"batch-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{idx}-{keyword[:20]}"
+                
+                # Build job config
+                job_config = {
+                    "primary_keyword": keyword,
+                    "company_url": request.company_url,
+                    "language": request.language,
+                    "country": request.country,
+                    "index": request.index,
+                    "word_count": word_count,
+                    "batch_id": request.batch_id or f"batch-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
+                    "batch_siblings": [s for i, s in enumerate(batch_siblings) if i != idx],
+                }
+                
+                # Add optional fields
+                if request.company_name:
+                    job_config["company_name"] = request.company_name
+                if request.company_data:
+                    job_config["company_data"] = request.company_data.model_dump()
+                if request.tone:
+                    job_config["tone"] = request.tone
+                if request.system_prompts:
+                    job_config["system_prompts"] = request.system_prompts
+                if request.content_generation_instruction:
+                    job_config["content_generation_instruction"] = request.content_generation_instruction
+                
+                # Execute
+                engine = get_engine()
+                context = await engine.execute(job_id=job_id, job_config=job_config)
+                
+                # Extract result
+                headline = ""
+                if context.structured_data:
+                    headline = getattr(context.structured_data, 'Headline', None) or ""
+                
+                html_content = ""
+                if context.validated_article:
+                    html_content = context.validated_article.get("html_content", "")
+                elif context.final_article:
+                    html_content = context.final_article.get("html_content", "")
+                
+                results.append({
+                    "keyword": keyword,
+                    "success": True,
+                    "headline": headline,
+                    "slug": generate_slug(headline) if headline else generate_slug(keyword),
+                    "html_content": html_content,
+                    "word_count": len(html_content.split()) if html_content else 0,
+                })
+            
+            return {
+                "success": True,
+                "batch_mode": True,
+                "results": results,
+                "total": len(results),
+            }
+        
+        # Single blog mode
         # Generate job ID
         job_id = f"local-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{request.primary_keyword[:20]}"
         
@@ -154,6 +246,10 @@ async def generate_blog(input_data: dict) -> dict:
             job_config["system_prompts"] = request.system_prompts
         if request.content_generation_instruction:
             job_config["content_generation_instruction"] = request.content_generation_instruction
+        if request.batch_siblings:
+            job_config["batch_siblings"] = request.batch_siblings
+        if request.batch_id:
+            job_config["batch_id"] = request.batch_id
         
         # Get engine and execute
         engine = get_engine()
@@ -163,16 +259,18 @@ async def generate_blog(input_data: dict) -> dict:
         duration = (datetime.now() - start_time).total_seconds()
         
         # Debug: Print context attributes
-        print(f"[DEBUG] Context attributes: {dir(context)}", file=sys.stderr)
-        print(f"[DEBUG] structured_data type: {type(context.structured_data)}", file=sys.stderr)
         print(f"[DEBUG] Has validated_article: {context.validated_article is not None}", file=sys.stderr)
         print(f"[DEBUG] Has final_article: {context.final_article is not None}", file=sys.stderr)
         if context.validated_article:
-            print(f"[DEBUG] validated_article keys: {list(context.validated_article.keys())[:10]}", file=sys.stderr)
-            print(f"[DEBUG] validated_article has html_content: {'html_content' in context.validated_article}", file=sys.stderr)
+            print(f"[DEBUG] validated_article keys: {list(context.validated_article.keys())}", file=sys.stderr)
+            if 'html_content' in context.validated_article:
+                content_len = len(context.validated_article.get('html_content', ''))
+                print(f"[DEBUG] validated_article html_content length: {content_len}", file=sys.stderr)
         if context.final_article:
-            print(f"[DEBUG] final_article keys: {list(context.final_article.keys())[:10]}", file=sys.stderr)
-            print(f"[DEBUG] final_article has html_content: {'html_content' in context.final_article}", file=sys.stderr)
+            print(f"[DEBUG] final_article keys: {list(context.final_article.keys())}", file=sys.stderr)
+            if 'html_content' in context.final_article:
+                content_len = len(context.final_article.get('html_content', ''))
+                print(f"[DEBUG] final_article html_content length: {content_len}", file=sys.stderr)
         
         # Build response from context
         # Try multiple sources for data (validated_article, final_article, structured_data)
