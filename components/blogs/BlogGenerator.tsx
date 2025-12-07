@@ -132,6 +132,7 @@ export function BlogGenerator() {
   const [timeRemaining, setTimeRemaining] = useState(0)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
   
   // Track if user is actively editing fields (prevent context overwrites)
   const isEditingRef = useRef<{ systemPrompts: boolean; additionalInstructions: boolean }>({
@@ -154,50 +155,77 @@ export function BlogGenerator() {
 
   // Restore generation state on mount
   useEffect(() => {
-    const savedState = sessionStorage.getItem(GENERATION_STATE_KEY)
-    if (!savedState) return
-
+    let intervalId: NodeJS.Timeout | null = null
+    
     try {
-      const state = JSON.parse(savedState)
-      const elapsed = Math.floor((Date.now() - state.startTime) / 1000)
-      
-      // Only restore if less than 5 minutes elapsed (blogs take longer)
-      if (elapsed < 300) {
-        setIsGenerating(true)
-        setBatchMode(state.batchMode)
-        if (state.batchMode) {
-          setBatchKeywords(state.batchKeywords)
+      const savedState = sessionStorage.getItem(GENERATION_STATE_KEY)
+      if (!savedState) return
+
+      try {
+        const state = JSON.parse(savedState)
+        const elapsed = Math.floor((Date.now() - state.startTime) / 1000)
+        
+        // Only restore if less than 5 minutes elapsed (blogs take longer)
+        if (elapsed < 300) {
+          setIsGenerating(true)
+          setBatchMode(state.batchMode)
+          if (state.batchMode) {
+            setBatchKeywords(state.batchKeywords || [])
+          } else {
+            setPrimaryKeyword(state.primaryKeyword || '')
+          }
+          setWordCount(state.wordCount || 1000)
+          setTone(state.tone || 'professional')
+          
+          // Calculate current progress (estimate 2min for single, 5min for batch)
+          const expectedTime = state.batchMode ? 300 : 120
+          const currentProgress = Math.min((elapsed / expectedTime) * 95, 95)
+          const remainingTime = Math.max(0, expectedTime - elapsed)
+          
+          setProgress(currentProgress)
+          setTimeRemaining(remainingTime)
+          
+          toast.info('Resuming blog generation...')
+          
+          // Continue progress bar
+          intervalId = setInterval(() => {
+            setProgress(prev => {
+              const newProgress = prev + (95 / expectedTime)
+              return Math.min(newProgress, 95)
+            })
+            setTimeRemaining(prev => Math.max(0, prev - 1))
+          }, 1000)
+          
+          progressIntervalRef.current = intervalId
         } else {
-          setPrimaryKeyword(state.primaryKeyword)
+          // Expired, clear it
+          try {
+            sessionStorage.removeItem(GENERATION_STATE_KEY)
+          } catch (e) {
+            console.warn('Failed to clear expired state:', e)
+          }
         }
-        setWordCount(state.wordCount)
-        setTone(state.tone)
-        
-        // Calculate current progress (estimate 2min for single, 5min for batch)
-        const expectedTime = state.batchMode ? 300 : 120
-        const currentProgress = Math.min((elapsed / expectedTime) * 95, 95)
-        const remainingTime = Math.max(0, expectedTime - elapsed)
-        
-        setProgress(currentProgress)
-        setTimeRemaining(remainingTime)
-        
-        toast.info('Resuming blog generation...')
-        
-        // Continue progress bar
-        progressIntervalRef.current = setInterval(() => {
-          setProgress(prev => {
-            const newProgress = prev + (95 / expectedTime)
-            return Math.min(newProgress, 95)
-          })
-          setTimeRemaining(prev => Math.max(0, prev - 1))
-        }, 1000)
-      } else {
-        // Expired, clear it
-        sessionStorage.removeItem(GENERATION_STATE_KEY)
+      } catch (e) {
+        console.error('Failed to parse generation state:', e)
+        try {
+          sessionStorage.removeItem(GENERATION_STATE_KEY)
+        } catch {
+          // Ignore cleanup errors
+        }
       }
     } catch (e) {
-      console.error('Failed to restore generation state:', e)
-      sessionStorage.removeItem(GENERATION_STATE_KEY)
+      console.error('Failed to access sessionStorage:', e)
+    }
+    
+    // Cleanup interval on unmount
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+        progressIntervalRef.current = null
+      }
     }
   }, [])
   
@@ -301,6 +329,12 @@ export function BlogGenerator() {
   }, [])
 
   const handleGenerate = useCallback(async () => {
+    // Prevent multiple simultaneous generations
+    if (isGenerating) {
+      toast.warning('Generation already in progress')
+      return
+    }
+
     if (!batchMode && !primaryKeyword.trim()) {
       toast.error('Please enter a primary keyword')
       return
@@ -324,6 +358,15 @@ export function BlogGenerator() {
       return
     }
 
+    // Clear any existing abort controller
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    
+    // Create new abort controller
+    const abortController = new AbortController()
+    abortControllerRef.current = abortController
+
     setIsGenerating(true)
     setResult(null)
     setBatchResult(null)
@@ -333,15 +376,20 @@ export function BlogGenerator() {
     setTimeRemaining(estimatedTime)
 
     // Save generation state to sessionStorage for persistence
-    const generationState = {
-      startTime: Date.now(),
-      batchMode,
-      primaryKeyword,
-      batchKeywords,
-      wordCount,
-      tone,
+    try {
+      const generationState = {
+        startTime: Date.now(),
+        batchMode,
+        primaryKeyword,
+        batchKeywords,
+        wordCount,
+        tone,
+      }
+      sessionStorage.setItem(GENERATION_STATE_KEY, JSON.stringify(generationState))
+    } catch (e) {
+      console.warn('Failed to save generation state:', e)
+      // Continue anyway - not critical
     }
-    sessionStorage.setItem(GENERATION_STATE_KEY, JSON.stringify(generationState))
 
     progressIntervalRef.current = setInterval(() => {
       setProgress(prev => {
@@ -382,6 +430,7 @@ export function BlogGenerator() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestBody),
+        signal: abortController.signal,
       })
 
       if (!response.ok) {
@@ -391,73 +440,141 @@ export function BlogGenerator() {
 
       const data = await response.json()
 
+      // Validate response structure
       if (batchMode) {
+        if (!data || typeof data !== 'object') {
+          throw new Error('Invalid response format')
+        }
+        
+        const successful = data.successful ?? 0
+        const total = data.total ?? 0
+        
         setBatchResult(data)
-        toast.success(`Generated ${data.successful} of ${data.total} blog articles in ${data.generation_time.toFixed(1)}s`)
+        
+        if (successful > 0) {
+          toast.success(`Generated ${successful} of ${total} blog articles in ${(data.generation_time || 0).toFixed(1)}s`)
+        } else {
+          toast.error(`Failed to generate any blogs. ${data.failed || 0} failed.`)
+        }
         
         // Clear generation state on success
-        sessionStorage.removeItem(GENERATION_STATE_KEY)
+        try {
+          sessionStorage.removeItem(GENERATION_STATE_KEY)
+        } catch (e) {
+          console.warn('Failed to clear generation state:', e)
+        }
         
         // Store batch in localStorage
-        const timestamp = new Date().toISOString()
-        const logEntry = {
-          id: `batch-${Date.now()}`,
-          type: 'blog_batch',
-          timestamp,
-          company: companyName.trim(),
-          url: companyUrl.trim(),
-          batchId: data.batch_id,
-          total: data.total,
-          successful: data.successful,
-          failed: data.failed,
-          generationTime: data.generation_time,
-          results: data.results,
+        try {
+          const timestamp = new Date().toISOString()
+          const logEntry = {
+            id: `batch-${Date.now()}`,
+            type: 'blog_batch',
+            timestamp,
+            company: companyName.trim(),
+            url: companyUrl.trim(),
+            batchId: data.batch_id,
+            total: total,
+            successful: successful,
+            failed: data.failed || 0,
+            generationTime: data.generation_time || 0,
+            results: data.results || [],
+          }
+          
+          const existingLogsStr = localStorage.getItem('bulk-gpt-logs')
+          let existingLogs: any[] = []
+          try {
+            existingLogs = existingLogsStr ? JSON.parse(existingLogsStr) : []
+          } catch (e) {
+            console.warn('Failed to parse existing logs, starting fresh:', e)
+            existingLogs = []
+          }
+          
+          existingLogs.unshift(logEntry)
+          localStorage.setItem('bulk-gpt-logs', JSON.stringify(existingLogs.slice(0, 50)))
+        } catch (e) {
+          console.warn('Failed to save batch to localStorage:', e)
+          // Continue anyway - not critical
+        }
+      } else {
+        // Validate single blog response structure
+        if (!data || typeof data !== 'object' || !data.metadata) {
+          throw new Error('Invalid response format: missing metadata')
         }
         
-        const existingLogs = JSON.parse(localStorage.getItem('bulk-gpt-logs') || '[]')
-        existingLogs.unshift(logEntry)
-        localStorage.setItem('bulk-gpt-logs', JSON.stringify(existingLogs.slice(0, 50)))
-      } else {
+        const wordCount = data.metadata.word_count ?? 0
+        const generationTime = data.metadata.generation_time ?? 0
+        
         setResult(data)
-        toast.success(`Generated blog article (${data.metadata.word_count} words) in ${data.metadata.generation_time.toFixed(1)}s`)
+        toast.success(`Generated blog article (${wordCount} words) in ${generationTime.toFixed(1)}s`)
         
         // Clear generation state on success
-        sessionStorage.removeItem(GENERATION_STATE_KEY)
-        
-        // Store in localStorage for LOG page
-        const timestamp = new Date().toISOString()
-        const logEntry = {
-          id: `blog-${Date.now()}`,
-          type: 'blog',
-          timestamp,
-          company: companyName.trim(),
-          url: companyUrl.trim(),
-          keyword: primaryKeyword.trim(),
-          wordCount: data.metadata.word_count,
-          generationTime: data.metadata.generation_time,
-          title: data.title,
-          content: data.content,
-          aeoScore: data.metadata.aeo_score,
+        try {
+          sessionStorage.removeItem(GENERATION_STATE_KEY)
+        } catch (e) {
+          console.warn('Failed to clear generation state:', e)
         }
         
-        const existingLogs = JSON.parse(localStorage.getItem('bulk-gpt-logs') || '[]')
-        existingLogs.unshift(logEntry)
-        localStorage.setItem('bulk-gpt-logs', JSON.stringify(existingLogs.slice(0, 50)))
+        // Store in localStorage for LOG page
+        try {
+          const timestamp = new Date().toISOString()
+          const logEntry = {
+            id: `blog-${Date.now()}`,
+            type: 'blog',
+            timestamp,
+            company: companyName.trim(),
+            url: companyUrl.trim(),
+            keyword: primaryKeyword.trim(),
+            wordCount: wordCount,
+            generationTime: generationTime,
+            title: data.title || '',
+            content: data.content || '',
+            aeoScore: data.metadata.aeo_score,
+          }
+          
+          const existingLogsStr = localStorage.getItem('bulk-gpt-logs')
+          let existingLogs: any[] = []
+          try {
+            existingLogs = existingLogsStr ? JSON.parse(existingLogsStr) : []
+          } catch (e) {
+            console.warn('Failed to parse existing logs, starting fresh:', e)
+            existingLogs = []
+          }
+          
+          existingLogs.unshift(logEntry)
+          localStorage.setItem('bulk-gpt-logs', JSON.stringify(existingLogs.slice(0, 50)))
+        } catch (e) {
+          console.warn('Failed to save blog to localStorage:', e)
+          // Continue anyway - not critical
+        }
       }
     } catch (error) {
+      // Don't show error if request was aborted (component unmounted)
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Blog generation aborted')
+        return
+      }
+      
       console.error('Blog generation error:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to generate blog')
+      
       // Clear generation state on error
-      sessionStorage.removeItem(GENERATION_STATE_KEY)
+      try {
+        sessionStorage.removeItem(GENERATION_STATE_KEY)
+      } catch (e) {
+        console.warn('Failed to clear generation state:', e)
+      }
     } finally {
       setIsGenerating(false)
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current)
+        progressIntervalRef.current = null
       }
       setProgress(100)
       setTimeRemaining(0)
+      abortControllerRef.current = null
     }
-  }, [batchMode, primaryKeyword, batchKeywords, wordCount, systemPrompts, additionalInstructions, companyName, companyUrl, geminiApiKey, businessContext])
+  }, [batchMode, primaryKeyword, batchKeywords, wordCount, systemPrompts, additionalInstructions, companyName, companyUrl, geminiApiKey, businessContext, isGenerating])
 
   return (
     <div className="h-full flex">
@@ -804,7 +921,7 @@ export function BlogGenerator() {
 
             <Button
               onClick={handleGenerate}
-              disabled={!hasContext || !geminiApiKey || isGenerating || (!batchMode && !primaryKeyword.trim()) || (batchMode && !batchKeywords.some(k => k.keyword.trim()))}
+              disabled={!hasContext || !geminiApiKey || isGenerating || isRefreshing || (!batchMode && !primaryKeyword.trim()) || (batchMode && !batchKeywords.some(k => k.keyword.trim()))}
               className="w-full"
               size="lg"
             >
@@ -1041,6 +1158,10 @@ export function BlogGenerator() {
                     }
                     
                     setIsRefreshing(true)
+                    
+                    // Create abort controller for refresh
+                    const refreshAbortController = new AbortController()
+                    
                     try {
                       // Build instructions from context (consistent format with generation)
                       const instructions: string[] = []
@@ -1081,6 +1202,7 @@ export function BlogGenerator() {
                           output_format: 'html',
                           apiKey: geminiApiKey,
                         }),
+                        signal: refreshAbortController.signal,
                       })
                       
                       if (!response.ok) {
@@ -1097,6 +1219,12 @@ export function BlogGenerator() {
                       }
                       
                       const refreshData = await response.json()
+                      
+                      // Validate response structure
+                      if (!refreshData || typeof refreshData !== 'object') {
+                        throw new Error('Invalid response format')
+                      }
+                      
                       if (refreshData.success && refreshData.refreshed_html) {
                         setResult({
                           ...result,
@@ -1107,6 +1235,12 @@ export function BlogGenerator() {
                         throw new Error(refreshData.error || 'Refresh failed')
                       }
                     } catch (error) {
+                      // Don't show error if request was aborted
+                      if (error instanceof Error && error.name === 'AbortError') {
+                        console.log('Refresh aborted')
+                        return
+                      }
+                      
                       toast.error(error instanceof Error ? error.message : 'Failed to refresh blog')
                     } finally {
                       setIsRefreshing(false)
@@ -1151,5 +1285,22 @@ export function BlogGenerator() {
       </div>
     </div>
   )
+  
+  // Cleanup on unmount - clear intervals and abort requests
+  useEffect(() => {
+    return () => {
+      // Clear progress interval
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+        progressIntervalRef.current = null
+      }
+      
+      // Abort any ongoing requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+        abortControllerRef.current = null
+      }
+    }
+  }, [])
 }
 
