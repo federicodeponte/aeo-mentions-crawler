@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { spawn } from 'child_process'
+import path from 'path'
 
 export const maxDuration = 300 // 5 minutes for comprehensive blog generation
 
@@ -81,23 +83,87 @@ export async function POST(request: NextRequest): Promise<Response> {
     const startTime = Date.now()
 
     try {
-      // Use Vercel Python serverless function (production) or local dev server
+      // Local dev: Direct Python script (subprocess)
+      // Production: Vercel serverless function
       const isDev = process.env.NODE_ENV === 'development'
-      const BLOG_WRITER_ENDPOINT = isDev 
-        ? (process.env.BLOG_WRITER_ENDPOINT || 'http://localhost:8001')  // Local dev server
-        : '/api/python/generate-blog'  // Vercel serverless function
-
-      // Prepare company data in OpenBlog format
-      const companyData = {
-        description: business_context.productDescription || business_context.companyName,
-        industry: business_context.targetIndustries,
-        target_audience: business_context.targetAudience ? [business_context.targetAudience] : [],
-        competitors: business_context.competitors ? business_context.competitors.split(',').map(c => c.trim()) : [],
+      
+      if (isDev) {
+        // Local: Call Python script directly
+        const scriptPath = path.join(process.cwd(), 'scripts', 'generate-blog.py')
+        
+        return new Promise((resolve) => {
+          const python = spawn('python3', [scriptPath])
+          let stdout = ''
+          let stderr = ''
+          
+          python.stdout.on('data', (data) => {
+            stdout += data.toString()
+          })
+          
+          python.stderr.on('data', (data) => {
+            stderr += data.toString()
+            console.error('[BLOG:Python]', data.toString().trim())
+          })
+          
+          python.on('close', (code) => {
+            if (code !== 0) {
+              console.error('[BLOG] Python error:', stderr)
+              resolve(NextResponse.json(
+                { error: 'Blog generation failed', details: stderr },
+                { status: 500 }
+              ))
+              return
+            }
+            
+            try {
+              const result = JSON.parse(stdout)
+              const generationTime = (Date.now() - startTime) / 1000
+              console.log('[BLOG] Generated in', generationTime, 's')
+              resolve(NextResponse.json(result))
+            } catch (e) {
+              console.error('[BLOG] Failed to parse output:', e)
+              resolve(NextResponse.json(
+                { error: 'Failed to parse output' },
+                { status: 500 }
+              ))
+            }
+          })
+          
+          // Send input to Python via stdin
+          const requestData = batch_mode ? {
+            keyword: 'batch',
+            word_count: wordCount,
+            tone: tone,
+            system_prompts: system_prompts || [],
+            additional_instructions: additionalInstructions,
+            company_name: companyName,
+            company_url: companyUrl,
+            apiKey: geminiApiKey,
+            business_context: businessContext,
+            batch_mode: true,
+            batch_keywords: batchKeywords,
+          } : {
+            keyword: keyword,
+            word_count: wordCount,
+            tone: tone,
+            system_prompts: system_prompts || [],
+            additional_instructions: additionalInstructions,
+            company_name: companyName,
+            company_url: companyUrl,
+            apiKey: geminiApiKey,
+            business_context: businessContext,
+          }
+          
+          python.stdin.write(JSON.stringify(requestData))
+          python.stdin.end()
+        })
       }
-
-      // Single blog generation
-      if (!batch_mode) {
-        const requestBody = {
+      
+      // Production: Call Vercel serverless function
+      const response = await fetch(`/api/python/generate-blog`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           primary_keyword: keyword,
           company_url: company_url,
           company_name: company_name,
@@ -105,127 +171,45 @@ export async function POST(request: NextRequest): Promise<Response> {
           country: country,
           word_count: word_count,
           tone: tone,
-          system_prompts: system_prompts,
+          system_prompts: system_prompts || [],
           content_generation_instruction: additional_instructions,
-          company_data: companyData,
+          company_data: {
+            description: business_context.productDescription || business_context.companyName,
+            industry: business_context.targetIndustries,
+            target_audience: business_context.targetAudience ? [business_context.targetAudience] : [],
+            competitors: business_context.competitors ? business_context.competitors.split(',').map((c: string) => c.trim()) : [],
+          },
+          batch_mode: batch_mode,
+          batch_keywords: batch_mode ? batch_keywords : undefined,
           index: true,
-        }
+        }),
+      })
 
-        const response = await fetch(`${BLOG_WRITER_ENDPOINT}/write`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
-        })
-
-        if (!response.ok) {
-          const errorText = await response.text()
-          throw new Error(`OpenBlog API error: ${response.status} - ${errorText}`)
-        }
-
-        const data = await response.json()
-
-        // Transform OpenBlog response to our format
-        const generationTime = (Date.now() - startTime) / 1000
-
-        return NextResponse.json({
-          title: data.headline || data.meta_title || keyword,
-          content: data.html_content || '',
-          metadata: {
-            keyword: keyword,
-            word_count: data.validated_article?.word_count || 0,
-            generation_time: generationTime,
-            company_name: company_name,
-            company_url: company_url,
-            aeo_score: data.aeo_score || 0,
-            job_id: data.job_id,
-            slug: data.slug,
-            meta_title: data.meta_title,
-            meta_description: data.meta_description,
-            read_time: data.read_time,
-          },
-        })
-      } 
-      
-      // Batch blog generation
-      else {
-        const batchId = `batch-${Date.now()}`
-        const results = []
-
-        // Generate all blogs in batch
-        for (let i = 0; i < batch_keywords.length; i++) {
-          const batchKeyword = batch_keywords[i]
-          
-          // Prepare sibling blogs for internal linking
-          const batchSiblings: ExistingBlogSlug[] = batch_keywords
-            .filter((_, idx) => idx !== i)
-            .map((kw, idx) => ({
-              slug: kw.keyword.toLowerCase().replace(/\s+/g, '-'),
-              title: kw.keyword,
-              keyword: kw.keyword,
-            }))
-
-          // Combine global instructions with per-keyword instructions
-          const combinedInstructions = [
-            additional_instructions,
-            batchKeyword.instructions
-          ].filter(Boolean).join('\n\n')
-
-          const requestBody = {
-            primary_keyword: batchKeyword.keyword,
-            company_url: company_url,
-            company_name: company_name,
-            language: language,
-            country: country,
-            word_count: batchKeyword.word_count || word_count,
-            tone: tone,
-            system_prompts: system_prompts,
-            content_generation_instruction: combinedInstructions || undefined,
-            company_data: companyData,
-            batch_id: batchId,
-            batch_siblings: batchSiblings,
-            index: true,
-          }
-
-          const response = await fetch(`${BLOG_WRITER_ENDPOINT}/generate`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody),
-          })
-
-          if (response.ok) {
-            const data = await response.json()
-            results.push({
-              keyword: batchKeyword.keyword,
-              title: data.headline || data.meta_title,
-              content: data.html_content,
-              word_count: data.validated_article?.word_count || 0,
-              aeo_score: data.aeo_score || 0,
-              job_id: data.job_id,
-              slug: data.slug,
-            })
-          } else {
-            results.push({
-              keyword: batchKeyword.keyword,
-              error: `Failed to generate: ${response.status}`,
-            })
-          }
-        }
-
-        const generationTime = (Date.now() - startTime) / 1000
-
-        return NextResponse.json({
-          batch_id: batchId,
-          total: batch_keywords.length,
-          successful: results.filter(r => !r.error).length,
-          failed: results.filter(r => r.error).length,
-          results: results,
-          generation_time: generationTime,
-        })
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Serverless function error: ${response.status} - ${errorText}`)
       }
+
+      const data = await response.json()
+      const generationTime = (Date.now() - startTime) / 1000
+      
+      return NextResponse.json(batch_mode ? data : {
+        title: data.headline || data.meta_title || keyword,
+        content: data.html_content || '',
+        metadata: {
+          keyword: keyword,
+          word_count: data.word_count || 0,
+          generation_time: generationTime,
+          company_name: company_name,
+          company_url: company_url,
+          aeo_score: data.aeo_score || 0,
+          job_id: data.job_id,
+          slug: data.slug,
+          meta_title: data.meta_title,
+          meta_description: data.meta_description,
+          read_time: data.read_time,
+        },
+      })
     } catch (error) {
       if (error instanceof Error) {
         console.error('Blog generation error:', error)

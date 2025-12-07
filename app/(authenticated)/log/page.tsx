@@ -85,9 +85,28 @@ export default function LogPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const storedLogs = JSON.parse(localStorage.getItem('bulk-gpt-logs') || '[]')
-      setLogs(storedLogs)
-      setIsLoading(false)
+      try {
+        const storedLogsRaw = localStorage.getItem('bulk-gpt-logs')
+        if (storedLogsRaw) {
+          const parsed = JSON.parse(storedLogsRaw)
+          // Validate it's an array
+          if (Array.isArray(parsed)) {
+            setLogs(parsed)
+          } else {
+            console.warn('[LOG] Invalid log format, resetting to empty array')
+            setLogs([])
+          }
+        } else {
+          setLogs([])
+        }
+      } catch (error) {
+        console.error('[LOG] Failed to parse logs from localStorage:', error)
+        // Clear corrupted data
+        localStorage.removeItem('bulk-gpt-logs')
+        setLogs([])
+      } finally {
+        setIsLoading(false)
+      }
     }
   }, [])
 
@@ -100,16 +119,16 @@ export default function LogPage() {
   }
 
   const handleExport = (log: LogEntry) => {
-    if (log.type === 'keywords' && log.keywords) {
+    if (log.type === 'keywords' && log.keywords && log.keywords.length > 0) {
       const csvContent = [
         ['Keyword', 'AEO Type', 'Intent', 'Relevance', 'AI Citation', 'Competition'].join(','),
         ...log.keywords.map(k => [
-          `"${k.keyword}"`,
-          k.aeo_type,
-          k.search_intent,
-          k.relevance_score,
-          k.ai_citation_potential,
-          k.competition_level
+          `"${(k.keyword || '').replace(/"/g, '""')}"`,
+          (k.aeo_type || '').replace(/"/g, '""'),
+          (k.search_intent || '').replace(/"/g, '""'),
+          k.relevance_score ?? '',
+          (k.ai_citation_potential || '').replace(/"/g, '""'),
+          (k.competition_level || '').replace(/"/g, '""')
         ].join(','))
       ].join('\n')
       
@@ -162,16 +181,16 @@ export default function LogPage() {
       a.click()
       URL.revokeObjectURL(url)
       toast.success('Analytics exported')
-    } else if (log.type === 'blog_batch' && log.results) {
+    } else if (log.type === 'blog_batch' && log.results && log.results.length > 0) {
       // Export batch results as CSV
       const csvContent = [
         ['Keyword', 'Title', 'Word Count', 'AEO Score', 'Status'].join(','),
         ...log.results.map(r => [
-          `"${r.keyword}"`,
-          `"${r.title}"`,
-          r.word_count,
-          r.aeo_score?.toFixed(1) || 'N/A',
-          r.status
+          `"${(r.keyword || '').replace(/"/g, '""')}"`,
+          `"${(r.title || '').replace(/"/g, '""')}"`,
+          r.word_count ?? 0,
+          r.aeo_score ? r.aeo_score.toFixed(1) : 'N/A',
+          r.status || 'unknown'
         ].join(','))
       ].join('\n')
       
@@ -314,7 +333,7 @@ export default function LogPage() {
                               <span className="font-medium text-foreground">{log.wordCount}</span> words
                             </span>
                           )}
-                          {log.aeoScore && (
+                          {log.aeoScore && typeof log.aeoScore === 'number' && (
                             <span className="flex items-center gap-1">
                               <BarChart3 className="h-3 w-3" />
                               AEO: <span className="font-medium text-foreground">{log.aeoScore.toFixed(1)}</span>
@@ -345,13 +364,13 @@ export default function LogPage() {
                       {/* Analytics metadata */}
                       {log.type === 'analytics' && (
                         <>
-                          {log.healthResult && (
+                          {log.healthResult && typeof log.healthResult.overall_score === 'number' && (
                             <span className="flex items-center gap-1">
                               <BarChart3 className="h-3 w-3" />
                               Health: <span className="font-medium text-foreground">{log.healthResult.overall_score.toFixed(1)}/100</span>
                             </span>
                           )}
-                          {log.mentionsResult && (
+                          {log.mentionsResult && typeof log.mentionsResult.total_mentions === 'number' && (
                             <span className="flex items-center gap-1">
                               <Globe className="h-3 w-3" />
                               {log.mentionsResult.total_mentions} AI mentions
@@ -367,7 +386,7 @@ export default function LogPage() {
                       )}
 
                       {/* Generation time (all types) */}
-                      {log.generationTime && (
+                      {log.generationTime && typeof log.generationTime === 'number' && (
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {log.generationTime.toFixed(1)}s
