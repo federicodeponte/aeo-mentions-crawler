@@ -35,13 +35,23 @@ except ImportError as e:
 def convert_to_python_format(input_data: Dict[str, Any]) -> MentionsCheckRequest:
     """Convert API request format to Python service format."""
     
-    # Extract company analysis if present
+    # Extract company analysis if present, or create default
     company_analysis = None
     if input_data.get('company_analysis'):
         ca_data = input_data['company_analysis']
         company_analysis = CompanyAnalysis(
             companyInfo=ca_data.get('companyInfo', {}),
             competitors=ca_data.get('competitors', [])
+        )
+    else:
+        # Create default CompanyAnalysis if not provided
+        # This is required by MentionsCheckRequest
+        company_analysis = CompanyAnalysis(
+            companyInfo={
+                'name': input_data.get('company_name', ''),
+                'website': input_data.get('company_website', ''),
+            },
+            competitors=[]
         )
     
     # Get API keys
@@ -74,8 +84,10 @@ async def run_check(input_data: Dict[str, Any]) -> Dict[str, Any]:
         if not request.companyName:
             raise ValueError("company_name is required")
         
-        if not request.companyAnalysis:
-            raise ValueError("company_analysis is required for meaningful results")
+        # companyAnalysis is always set (default created if not provided)
+        # but we can warn if it's minimal
+        if not request.companyAnalysis or not request.companyAnalysis.companyInfo:
+            logger.warning("Minimal company_analysis provided - results may be limited")
         
         # Set API keys in environment if provided
         if input_data.get('api_key'):

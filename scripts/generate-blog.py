@@ -162,18 +162,46 @@ async def generate_blog(input_data: dict) -> dict:
         # Calculate duration
         duration = (datetime.now() - start_time).total_seconds()
         
-        # Build response from context (simplified version)
+        # Debug: Print context attributes
+        print(f"[DEBUG] Context attributes: {dir(context)}", file=sys.stderr)
+        print(f"[DEBUG] structured_data type: {type(context.structured_data)}", file=sys.stderr)
+        print(f"[DEBUG] Has validated_article: {context.validated_article is not None}", file=sys.stderr)
+        print(f"[DEBUG] Has final_article: {context.final_article is not None}", file=sys.stderr)
+        if context.validated_article:
+            print(f"[DEBUG] validated_article keys: {list(context.validated_article.keys())[:10]}", file=sys.stderr)
+            print(f"[DEBUG] validated_article has html_content: {'html_content' in context.validated_article}", file=sys.stderr)
+        if context.final_article:
+            print(f"[DEBUG] final_article keys: {list(context.final_article.keys())[:10]}", file=sys.stderr)
+            print(f"[DEBUG] final_article has html_content: {'html_content' in context.final_article}", file=sys.stderr)
+        
+        # Build response from context
+        # Try multiple sources for data (validated_article, final_article, structured_data)
         headline = ""
         html_content = ""
         word_count = 0
         
+        # Get headline from structured_data
         if context.structured_data:
             # Note: Pydantic fields are capitalized (Headline not headline)
-            headline = getattr(context.structured_data, 'Headline', None) or getattr(context.structured_data, 'headline', '') or ""
+            headline = getattr(context.structured_data, 'Headline', None) or \
+                      getattr(context.structured_data, 'headline', '') or ""
         
-        if context.final_article:
+        # Get HTML content from validated_article or final_article
+        if context.validated_article:
+            html_content = context.validated_article.get("html_content", "")
+        elif context.final_article:
             html_content = context.final_article.get("html_content", "")
+        
+        # Calculate word count
+        if html_content:
             word_count = len(html_content.split())
+        
+        # Get AEO score from quality_report or context
+        aeo_score = None
+        if hasattr(context, 'quality_report') and context.quality_report:
+            aeo_score = getattr(context.quality_report, 'aeo_score', None)
+        if aeo_score is None and hasattr(context, 'aeo_score'):
+            aeo_score = context.aeo_score
         
         result = {
             "success": True,
@@ -185,7 +213,7 @@ async def generate_blog(input_data: dict) -> dict:
             "read_time_minutes": calculate_read_time(word_count),
             "language": request.language,
             "country": request.country,
-            "aeo_score": context.aeo_score if hasattr(context, 'aeo_score') else None,
+            "aeo_score": aeo_score,
             "duration_seconds": duration,
         }
         

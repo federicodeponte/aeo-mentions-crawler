@@ -11,6 +11,7 @@ interface KeywordRequest {
   country: string
   num_keywords: number
   apiKey: string
+  analyze_first?: boolean  // NEW: Trigger company analysis
   description?: string
   industry?: string
   products?: string

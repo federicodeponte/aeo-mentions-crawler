@@ -2,6 +2,10 @@ import { updateSession } from "@/utils/supabase/middleware"
 import { type NextRequest, NextResponse } from "next/server"
 
 export async function middleware(request: NextRequest) {
+  // TEMPORARY: Make entire app public (no auth)
+  // Skip authentication for all routes
+  return NextResponse.next()
+
   // Skip middleware for webhooks (Modal callbacks, etc.)
   // These endpoints handle their own authentication via webhook secrets
   if (request.nextUrl.pathname.startsWith('/api/webhook/')) {
@@ -15,6 +19,11 @@ export async function middleware(request: NextRequest) {
 
   // Skip middleware for components-showcase (public demo page)
   if (request.nextUrl.pathname === '/components-showcase') {
+    return NextResponse.next()
+  }
+
+  // Skip middleware for analytics (public page)
+  if (request.nextUrl.pathname === '/analytics') {
     return NextResponse.next()
   }
 

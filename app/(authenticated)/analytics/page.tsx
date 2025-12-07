@@ -180,6 +180,34 @@ export default function AnalyticsPage() {
       console.log('[ANALYTICS] Has API key:', !!apiKey)
       console.log('[ANALYTICS] Has products:', businessContext?.products?.length || 0)
 
+      // Build full company_analysis object from businessContext (before Promise.allSettled)
+      // businessContext.competitors is a string (comma-separated), need to parse it
+      const competitorsList = businessContext?.competitors ? businessContext.competitors.split(',').map((c: string) => c.trim()).filter(Boolean).map((c: string) => ({ name: c })) : []
+
+      const companyAnalysis = businessContext ? {
+          companyInfo: {
+            name: companyName,
+            website: url,
+            description: businessContext.valueProposition || businessContext.productDescription || '',
+            industry: businessContext.targetIndustries || businessContext.icp || '',
+            products: businessContext.products || [],
+            // Map other available fields from businessContext
+            // Note: Some fields may not exist in BusinessContext interface, so we use empty arrays/strings as defaults
+            target_audience: [],
+            services: [],
+            pain_points: [],
+            use_cases: [],
+            key_features: [],
+            solution_keywords: businessContext.targetKeywords || [],
+            value_propositions: businessContext.valueProposition ? [businessContext.valueProposition] : [],
+            differentiators: [],
+            customer_problems: [],
+            product_category: businessContext.productType || '',
+            primary_region: businessContext.countries?.[0] || 'US',
+          },
+          competitors: competitorsList,
+        } : undefined
+
       const [healthResponse, mentionsResponse] = await Promise.allSettled([
         // Health Check (~10 seconds)
         fetch('/api/aeo/health-check', {
@@ -202,7 +230,7 @@ export default function AnalyticsPage() {
           throw err
         }),
         
-        // Mentions Check (~40 seconds for fast mode: 10 queries × 2 platforms)
+        // Mentions Check (~40 seconds for fast mode: 10 queries x 2 platforms)
         fetch('/api/aeo/mentions-check', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -211,12 +239,10 @@ export default function AnalyticsPage() {
             company_website: url,
             api_key: apiKey,
             gemini_api_key: localStorage.getItem('gemini-api-key') || undefined,
-            industry: businessContext?.targetIndustries || '',
-            products: businessContext?.products || [],
-            description: businessContext?.valueProposition || businessContext?.productDescription || '',
+            company_analysis: companyAnalysis,
             language: 'english',
             country: businessContext?.countries?.[0] || 'US',
-            mode: 'fast', // fast = 5 queries × 3 platforms
+            mode: 'fast', // fast = 5 queries x 3 platforms
           }),
         }).then(async (res) => {
           console.log('[MENTIONS] Response status:', res.status)
@@ -470,56 +496,43 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {!healthResult && !mentionsResult && !loading && (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center space-y-2">
-              <Sparkles className="h-12 w-12 mx-auto text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">
-                Enter company details and click Run to start
-              </p>
-            </div>
-          </div>
-        )}
-
-        {(healthResult || mentionsResult) && !loading && (
-          <div className="h-full overflow-auto">
-            <Tabs defaultValue={healthResult ? 'health' : 'mentions'} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="health" disabled={!healthResult}>
-                  <span className="flex items-center gap-2">
-                    <Activity className="h-4 w-4" />
-                    <span>AEO Health</span>
-                  </span>
+        {!loading && (
+          <div className="h-full flex flex-col">
+            <Tabs defaultValue="health" className="w-full flex-1 flex flex-col">
+              <TabsList className="grid w-full grid-cols-2 mb-6 h-11">
+                <TabsTrigger value="health" className="flex items-center justify-center gap-2 text-sm font-medium">
+                  <Activity className="h-4 w-4" />
+                  <span>AEO Health</span>
                 </TabsTrigger>
-                <TabsTrigger value="mentions" disabled={!mentionsResult}>
-                  <span className="flex items-center gap-2">
-                    <Target className="h-4 w-4" />
-                    <span>AEO Mentions</span>
-                  </span>
+                <TabsTrigger value="mentions" className="flex items-center justify-center gap-2 text-sm font-medium">
+                  <Target className="h-4 w-4" />
+                  <span>AEO Mentions</span>
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="health" className="mt-0">
-                {healthResult ? (
-                  <HealthResults result={healthResult} url={url} />
-                ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Run a health check to see results here</p>
-                  </div>
-                )}
-              </TabsContent>
+              <div className="flex-1 overflow-auto">
+                <TabsContent value="health" className="mt-0 h-full">
+                  {healthResult ? (
+                    <HealthResults result={healthResult} url={url} />
+                  ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p className="text-sm">Run a health check to see results here</p>
+                    </div>
+                  )}
+                </TabsContent>
 
-              <TabsContent value="mentions" className="mt-0">
-                {mentionsResult ? (
-                  <MentionsResults result={mentionsResult} companyName={companyName} />
-                ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Run a mentions check to see results here</p>
-                  </div>
-                )}
-              </TabsContent>
+                <TabsContent value="mentions" className="mt-0 h-full">
+                  {mentionsResult ? (
+                    <MentionsResults result={mentionsResult} companyName={companyName} />
+                  ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p className="text-sm">Run a mentions check to see results here</p>
+                    </div>
+                  )}
+                </TabsContent>
+              </div>
             </Tabs>
           </div>
         )}

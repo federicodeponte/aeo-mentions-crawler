@@ -55,6 +55,7 @@ export async function updateSession(request: NextRequest) {
     '/',           // Landing page
     '/auth',       // Auth pages
     '/prototype',  // Prototype pages
+    '/analytics',  // Analytics page (public)
   ]
   
   const isPublicPath = publicPaths.some(path => 
