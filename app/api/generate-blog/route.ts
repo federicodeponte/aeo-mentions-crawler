@@ -81,8 +81,11 @@ export async function POST(request: NextRequest): Promise<Response> {
     const startTime = Date.now()
 
     try {
-      // Use local blog-writer service
-      const BLOG_WRITER_ENDPOINT = process.env.BLOG_WRITER_ENDPOINT || 'http://localhost:8001'
+      // Use Vercel Python serverless function (production) or local dev server
+      const isDev = process.env.NODE_ENV === 'development'
+      const BLOG_WRITER_ENDPOINT = isDev 
+        ? (process.env.BLOG_WRITER_ENDPOINT || 'http://localhost:8001')  // Local dev server
+        : '/api/python/generate-blog'  // Vercel serverless function
 
       // Prepare company data in OpenBlog format
       const companyData = {

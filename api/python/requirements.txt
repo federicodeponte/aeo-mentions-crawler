@@ -1,0 +1,29 @@
+# Vercel Python Serverless Functions Dependencies
+# Keep minimal for faster cold starts
+
+# Core AI
+google-generativeai>=0.3.0
+anthropic>=0.18.0
+
+# Web scraping & parsing
+beautifulsoup4>=4.12.0
+lxml>=5.1.0
+requests>=2.31.0
+
+# Content processing
+markdown>=3.5.0
+Pillow>=10.2.0
+
+# Async support
+aiohttp>=3.9.0
+asyncio>=3.4.3
+
+# Playwright (for blog-writer screenshots)
+playwright>=1.40.0
+
+# OpenAI (for logo detection in company analysis)
+openai>=1.0.0
+
+# SE Ranking API (optional for advanced keyword research)
+# seranking-api>=1.0.0  # Uncomment if needed
+
