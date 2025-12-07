@@ -1,220 +1,290 @@
-# bulk.run — Run AI on 1000 rows
+# 🤖 AEO Visibility Machine
 
-Transform CSV data into AI-generated content at scale using Google Gemini AI.
+**Standalone AEO content generation platform** - Generate keywords and blogs optimized for AI search engines (ChatGPT, Perplexity, Claude, Gemini).
 
-## 🎯 Project Status
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org/)
 
-**✅ Production Ready** - All performance optimizations, UX improvements, and accessibility enhancements complete.
+---
 
-This application has been optimized for performance, accessibility, and user experience. See [CHANGELOG.md](./CHANGELOG.md) for complete improvement history.
+## ✨ Features
+
+### 🎯 **Context Analysis**
+- Deep website analysis with Gemini 3.0 Pro Preview
+- Native Google Search integration for competitive intelligence
+- URL context extraction for brand understanding
+- Automatic extraction of pain points, value propositions, use cases
+
+### 🔑 **AEO Keyword Research**
+- AI-powered keyword generation optimized for answer engines
+- AEO-specific scoring (type, intent, citation potential)
+- Support for 28+ languages and 50+ countries
+- CSV export with comprehensive metadata
+- Bulk upload via CSV (up to 50 keywords)
+
+### ✍️ **Blog Generation (OpenBlog Engine)**
+- 12-stage pipeline for enterprise-grade content
+- AEO scores of 70-85+ (industry-leading)
+- Automatic internal linking between batch blogs
+- Smart citation validation
+- FAQ/PAA extraction
+- SEO-optimized metadata
+- Markdown export
+
+### 🎨 **Advanced Content Control**
+- **6 Writing Tones**: Professional, Casual, Technical, Friendly, Authoritative, Educational
+- **Client Knowledge Base**: Company-specific facts for AI context
+- **Content Instructions**: Per-blog style and structure guidance
+- **Batch Generation**: Multiple blogs with cross-linking (up to 50)
+
+### 📊 **Execution Logging**
+- Local storage of all keyword/blog generations
+- Export history as CSV or Markdown
+- Generation time tracking
+- AEO score history
+
+---
 
 ## 🚀 Quick Start
 
+### Prerequisites
+
+- Node.js 18+ and npm/yarn/pnpm
+- Gemini API key ([Get one here](https://aistudio.google.com/apikey))
+
+### Installation
+
 ```bash
+# Clone the repository
+git clone https://github.com/federicodeponte/openaeomachine.git
+cd openaeomachine
+
 # Install dependencies
 npm install
+# or
+pnpm install
 
 # Set up environment variables
 cp .env.example .env.local
-# Edit .env.local with your Supabase credentials
+# Add your GEMINI_API_KEY to .env.local
 
-# Run development server
+# Run the development server
 npm run dev
-
-# Open http://localhost:3000
-# Login: test@example.com / password
 ```
 
-## 📁 Project Structure
+Open [http://localhost:3000](http://localhost:3000) to see the app.
 
-```
-bulk-gpt-app/
-├── app/                    # Next.js 14 app directory
-│   ├── (authenticated)/   # Protected routes
-│   │   ├── agents/       # Agents page
-│   │   ├── context/      # Context files management
-│   │   ├── output/       # Analytics & results
-│   │   └── profile/      # User settings
-│   ├── api/              # API routes
-│   └── auth/             # Authentication pages
-├── components/            # React components
-│   ├── bulk/            # Bulk processing components
-│   ├── dashboard/        # Dashboard components
-│   └── ui/              # Shared UI components
-├── hooks/                # Custom React hooks (SWR caching)
-├── lib/                  # Utilities and helpers
-│   ├── analytics/       # Web Vitals monitoring
-│   └── supabase/        # Supabase clients
-├── public/               # Static assets
-└── supabase/             # Database migrations
-```
+---
 
-## 🛠️ Tech Stack
+## 🔧 Configuration
 
-- **Framework:** Next.js 14 (App Router)
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS
-- **State Management:** React Hooks + SWR (caching)
-- **Database:** Supabase (PostgreSQL)
-- **AI:** Google Gemini AI
-- **Testing:** Vitest + Playwright
-- **Deployment:** Vercel
+### Environment Variables
 
-## ⚡ Key Features
-
-- ✅ **CSV Processing** - Upload and process CSV files at scale
-- ✅ **AI-Powered** - Google Gemini AI for content generation
-- ✅ **Real-time Results** - Streaming results as they're generated
-- ✅ **Context Files** - Upload reference files for better AI context
-- ✅ **Saved Prompts** - Save and reuse custom prompts
-- ✅ **Analytics Dashboard** - Track usage and performance
-- ✅ **Scheduled Runs** - Automate batch processing
-- ✅ **Export Results** - Download processed data as CSV
-- ✅ **Performance Optimized** - 60-100% faster loads with SWR caching
-- ✅ **Accessible** - WCAG compliant with skip links and ARIA labels
-- ✅ **Mobile Responsive** - Optimized for all screen sizes
-
-## 🚀 Performance Features
-
-- **SWR Caching** - Client-side caching for instant subsequent loads
-- **HTTP Cache Headers** - Browser/CDN caching for API responses
-- **Code Splitting** - Lazy-loaded components for faster initial load
-- **Performance Logging** - Detailed timing metrics for optimization
-- **Core Web Vitals** - Automatic tracking of LCP, FID, CLS, FCP, TTFB
-
-## 📖 Documentation
-
-### Getting Started
-- **[DEVELOPER_QUICKSTART.md](./DEVELOPER_QUICKSTART.md)** - Complete developer setup guide
-- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** - Production deployment instructions
-- **[TESTING_CHECKLIST.md](./TESTING_CHECKLIST.md)** - Comprehensive testing procedures
-
-### Project Information
-- **[CHANGELOG.md](./CHANGELOG.md)** - Version history and improvements
-- **[IMPROVEMENTS_SUMMARY.md](./IMPROVEMENTS_SUMMARY.md)** - Complete improvements overview
-- **[QUICK_START.md](./QUICK_START.md)** - Quick reference guide
-
-### Historical Documentation
-- **archive/** - Historical documentation (reference only)
-
-## 🔧 Development
+Create a `.env.local` file:
 
 ```bash
-# Type checking
-npm run type-check
+# Required: Gemini API Key
+GEMINI_API_KEY=your_gemini_api_key_here
 
-# Run linting
-npm run lint
-
-# Build for production
-npm run build
-
-# Start production server
-npm start
-
-# Run tests
-npm test
+# Optional: Modal endpoints (for blog generation)
+# Defaults to public Modal endpoints if not set
+MODAL_BLOG_WRITER_ENDPOINT=https://clients--blog-writer-fastapi-app.modal.run
 ```
 
-## 🧪 Testing
+### User Settings
 
-**Comprehensive E2E testing infrastructure** - See [TESTING_CHECKLIST.md](./TESTING_CHECKLIST.md) for full documentation.
+Set your Gemini API key in the app:
+1. Go to **Settings** (user menu)
+2. Enter your Gemini API key
+3. Save (stored in browser localStorage)
 
-### Quick Start
+---
 
-```bash
-# One-time setup (< 5 minutes)
-npm run test:setup   # Creates test user, starts server, validates environment
+## 📖 Usage Guide
 
-# Run all E2E tests
-npm run test:e2e
+### 1. **Company Context Analysis**
 
-# Cleanup after testing
-npm run test:cleanup
+Navigate to **CONTEXT** tab:
+- Enter a company website URL (e.g., `scaile.tech`)
+- Click **Analyze Website**
+- AI extracts: description, industry, products, competitors, pain points, value propositions, use cases, content themes
+- Context is stored and auto-populated for keyword/blog generation
+
+### 2. **Keyword Generation**
+
+Navigate to **RUN** tab:
+- **Single Mode**: Enter one keyword
+- **Batch Mode**: Add multiple keywords manually or upload CSV
+- **CSV Format**: `keyword[,word_count][,instructions]`
+  ```csv
+  AI in healthcare
+  Machine learning basics,1500
+  Data science tools,2000,Include case studies
+  ```
+- Configure:
+  - Language (28+ supported)
+  - Country (50+ supported)
+  - Word count
+  - Tone (Professional/Casual/Technical/etc.)
+  - Advanced: Client knowledge base + content instructions
+- Click **Generate Keywords**
+- Export results as CSV
+
+### 3. **Blog Generation**
+
+Navigate to **BLOGS** tab:
+- **Single Mode**: Generate one blog
+- **Batch Mode**: Generate multiple blogs with internal linking
+- Upload keywords via CSV (same format as keyword generation)
+- Configure:
+  - Word count (500-3000)
+  - Tone with examples
+  - Advanced options (optional):
+    - Client Knowledge Base: Company facts
+    - Content Instructions: How to write
+- Click **Generate**
+- Export as Markdown
+
+### 4. **Execution History**
+
+Navigate to **LOG** tab:
+- View all past keyword/blog generations
+- Export individual results
+- Clear history
+
+---
+
+## 🏗️ Architecture
+
+### Tech Stack
+
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS + shadcn/ui
+- **AI**: Gemini 3.0 Pro Preview (native tools)
+- **Blog Engine**: OpenBlog (Modal-hosted, 12-stage pipeline)
+- **Storage**: localStorage (client-side)
+
+### Key Components
+
+```
+app/
+├── (authenticated)/          # Protected routes
+│   ├── context/             # Company analysis
+│   ├── go/                  # Keyword generation
+│   ├── blogs/               # Blog generation
+│   ├── log/                 # Execution history
+│   └── settings/            # API key management
+├── api/
+│   ├── analyse-website/     # Context extraction (Gemini 3.0 Pro)
+│   ├── generate-keywords/   # Keyword research (Gemini)
+│   └── generate-blog/       # Blog generation (OpenBlog)
+└── components/
+    ├── context/             # ContextForm
+    ├── keywords/            # KeywordGenerator
+    └── blogs/               # BlogGenerator
 ```
 
-### Available Commands
+### External Services
 
-```bash
-npm run test:env      # Verify environment setup
-npm run test:server   # Start dev server on port 3334
-npm run test:user     # Create test user in Supabase
-npm run test:setup    # Complete automated setup
-npm run test:e2e      # Run Playwright E2E tests
-npm run test:cleanup  # Stop server and clean up
+- **Gemini 3.0 Pro Preview**: Company analysis, keyword research
+  - Native Google Search integration
+  - Native URL Context extraction
+- **OpenBlog (Modal)**: Enterprise blog generation
+  - 12-stage pipeline
+  - AEO scoring
+  - Citation validation
+  - Internal linking
+
+---
+
+## 🎯 AEO Optimization
+
+### What is AEO?
+
+**Answer Engine Optimization (AEO)** optimizes content for AI platforms like:
+- ChatGPT (OpenAI)
+- Perplexity AI
+- Claude (Anthropic)
+- Gemini (Google)
+- Mistral
+
+### AEO Features
+
+**Keyword Research**:
+- `aeo_type`: question/comparison/recommendation/problem-solving/how-to/definition
+- `search_intent`: transactional/informational/navigational
+- `ai_citation_potential`: high/medium/low
+- `competition_level`: low/medium/high
+- `relevance_score`: 0-100
+
+**Blog Generation**:
+- Conversational, question-answering format
+- Entity-rich content with contextual relationships
+- Structured data (FAQ, TOC, sections)
+- Citation validation (15-20 sources)
+- AEO scores of 70-85+
+
+---
+
+## 📝 CSV Formats
+
+### Keywords CSV
+
+```csv
+keyword[,word_count][,instructions]
 ```
 
-## 📊 Performance Benchmarks
-
-### Before Optimizations
-- Context files load: 500-1000ms
-- Prompts load: 300-600ms
-- Analytics dashboard: Included in initial bundle (~200KB)
-
-### After Optimizations
-- Context files load: **Instant** (cached) or ~200ms (first load)
-- Prompts load: **Instant** (cached) or ~150ms (first load)
-- Analytics dashboard: **Lazy loaded** (~50KB initial savings)
-- Expected cache hit rate: **70-80%** for typical usage
-
-## 🎨 UX Improvements
-
-- ✅ **Tool Categories** - Tools organized by category (Enrichment, Generation, Analysis)
-- ✅ **Onboarding Flow** - Improved trigger logic for new users
-- ✅ **Empty States** - Enhanced with actionable guidance
-- ✅ **Mobile Optimization** - Improved touch targets and spacing
-- ✅ **Accessibility** - Skip links, ARIA labels, focus indicators
-- ✅ **Loading States** - Skeleton loaders for better perceived performance
-
-## 🔒 Security
-
-- Supabase Row Level Security (RLS) enabled
-- Environment variables for sensitive data
-- Secure authentication flow
-- API rate limiting
-
-## 🌐 Environment Variables
-
-Required environment variables (see `.env.example`):
-
-```bash
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-
-# App
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-
-# Optional: Analytics
-NEXT_PUBLIC_POSTHOG_KEY=your_posthog_key
-NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
+**Examples**:
+```csv
+AI in healthcare
+Machine learning basics,1500
+Data science tools,2000,Include case studies and ROI data
+Cloud computing,1800,Target CTOs and technical buyers
 ```
+
+### Export Formats
+
+**Keywords**: CSV with all AEO fields  
+**Blogs**: Markdown (`.md`) with full HTML content
+
+---
+
+## 🔐 Privacy & Data
+
+- **No external database**: All data stored in browser localStorage
+- **API keys**: Stored securely in localStorage (never sent to our servers)
+- **Context data**: Only sent to Gemini API for analysis
+- **Blog generation**: Processed via secure Modal endpoints
+
+---
 
 ## 🤝 Contributing
 
-1. Read [DEVELOPER_QUICKSTART.md](./DEVELOPER_QUICKSTART.md) for setup
-2. Follow existing code patterns (hooks, components, API routes)
-3. Add performance logging to new API routes
-4. Write tests for new features
-5. Update documentation
+This is a standalone tool. For enterprise features or custom deployments, contact [SCAILE](https://scaile.tech).
+
+---
 
 ## 📄 License
 
-Private repository - All rights reserved
+MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-## 🆘 Getting Help
+## 🔗 Related Projects
 
-- **Setup Issues:** See [DEVELOPER_QUICKSTART.md](./DEVELOPER_QUICKSTART.md)
-- **Deployment:** See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
-- **Testing:** See [TESTING_CHECKLIST.md](./TESTING_CHECKLIST.md)
-- **Performance:** Check browser console for `[PERF]` and `[Web Vitals]` logs
+- **OpenBlog**: [federicodeponte/openblog](https://github.com/federicodeponte/openblog) - 12-stage AEO blog generation pipeline
+- **SCAILE**: [scaile.tech](https://scaile.tech) - Enterprise AEO services
 
 ---
 
-**Last Updated:** January 2025  
-**Version:** 1.0.0  
-**Status:** Production Ready ✅
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/federicodeponte/openaeomachine/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/federicodeponte/openaeomachine/discussions)
+- **Email**: [federico@scaile.tech](mailto:federico@scaile.tech)
+
+---
+
+**Built with ❤️ by [SCAILE](https://scaile.tech)**
