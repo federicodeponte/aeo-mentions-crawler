@@ -129,29 +129,31 @@ export async function POST(request: NextRequest): Promise<Response> {
             }
           })
           
-          // Send input to Python via stdin
+          // Send input to Python via stdin (using BlogGenerationRequest schema)
           const requestData = batch_mode ? {
-            keyword: 'batch',
-            word_count: wordCount,
+            primary_keyword: 'batch',
+            company_url: company_url,
+            language: language || 'en',
+            country: country || 'US',
+            company_name: company_name,
+            word_count: word_count,
             tone: tone,
             system_prompts: system_prompts || [],
-            additional_instructions: additionalInstructions,
-            company_name: companyName,
-            company_url: companyUrl,
-            apiKey: geminiApiKey,
-            business_context: businessContext,
+            content_generation_instruction: additional_instructions,
             batch_mode: true,
-            batch_keywords: batchKeywords,
+            batch_keywords: batch_keywords,
+            index: true,
           } : {
-            keyword: keyword,
-            word_count: wordCount,
+            primary_keyword: keyword,
+            company_url: company_url,
+            language: language || 'en',
+            country: country || 'US',
+            company_name: company_name,
+            word_count: word_count,
             tone: tone,
             system_prompts: system_prompts || [],
-            additional_instructions: additionalInstructions,
-            company_name: companyName,
-            company_url: companyUrl,
-            apiKey: geminiApiKey,
-            business_context: businessContext,
+            content_generation_instruction: additional_instructions,
+            index: true,
           }
           
           python.stdin.write(JSON.stringify(requestData))
