@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { runMentionsCheck } from '@/lib/services/aeo-mentions-check-v2'
+import { spawn } from 'child_process'
+import path from 'path'
 
 /**
  * POST /api/aeo/mentions-check
- * AEO Mentions Check - Local TypeScript implementation
+ * AEO Mentions Check - Python script approach
  * 
- * Ported from mentions_service.py - same logic, runs locally
+ * Calls check-mentions.py which uses services/aeo-checks/mentions_service.py
+ * Same code as openaeoanalytics repo, runs locally
  * Checks visibility across: Perplexity, ChatGPT, Claude, Gemini
  */
 
@@ -77,39 +79,85 @@ export async function POST(request: NextRequest): Promise<Response> {
     console.log('[API:MENTIONS] Running mentions check for:', company_name)
     const startTime = Date.now()
 
-    try {
-      const result = await runMentionsCheck({
-        companyName: company_name,
-        companyWebsite: company_website || '',
-        companyAnalysis: company_analysis,
-        apiKey: api_key,
-        geminiApiKey: gemini_api_key,
-        language: language || 'english',
-        country: country || 'US',
-        numQueries: num_queries || 50,
-        mode: mode || 'full',
+    // Call Python script directly (same pattern as generate-keywords.py, generate-blog.py)
+    return new Promise((resolve) => {
+      const scriptPath = path.join(process.cwd(), 'scripts', 'check-mentions.py')
+      const python = spawn('python3', [scriptPath])
+      let stdout = ''
+      let stderr = ''
+
+      python.stdout.on('data', (data) => {
+        stdout += data.toString()
       })
 
-      const duration = (Date.now() - startTime) / 1000
-      console.log(
-        '[API:MENTIONS] Mentions check complete in',
-        duration,
-        's. Visibility:',
-        result.visibility,
-        '%'
-      )
+      python.stderr.on('data', (data) => {
+        stderr += data.toString()
+        console.error('[MENTIONS:Python]', data.toString().trim())
+      })
 
-      return NextResponse.json(result)
-    } catch (error) {
-      console.error('[API:MENTIONS] Mentions check error:', error)
-      return NextResponse.json(
-        {
-          error: 'Mentions check failed',
-          message: error instanceof Error ? error.message : 'Unknown error',
-        },
-        { status: 500 }
-      )
-    }
+      python.on('close', (code) => {
+        if (code !== 0) {
+          console.error('[MENTIONS] Python error:', stderr)
+          resolve(
+            NextResponse.json(
+              { error: 'Mentions check failed', details: stderr },
+              { status: 500 }
+            )
+          )
+          return
+        }
+
+        try {
+          const result = JSON.parse(stdout)
+          
+          // Check for error in result
+          if (result.error) {
+            resolve(
+              NextResponse.json(
+                { error: 'Mentions check failed', message: result.error },
+                { status: 500 }
+              )
+            )
+            return
+          }
+
+          const duration = (Date.now() - startTime) / 1000
+          console.log(
+            '[API:MENTIONS] Mentions check complete in',
+            duration,
+            's. Visibility:',
+            result.visibility,
+            '%'
+          )
+          resolve(NextResponse.json(result))
+        } catch (e) {
+          console.error('[MENTIONS] Failed to parse output:', e)
+          console.error('[MENTIONS] Raw output:', stdout)
+          resolve(
+            NextResponse.json(
+              { error: 'Failed to parse output', details: stdout.substring(0, 500) },
+              { status: 500 }
+            )
+          )
+        }
+      })
+
+      // Send input to Python via stdin
+      const requestData = {
+        company_name,
+        company_analysis,
+        company_website,
+        api_key,
+        gemini_api_key,
+        language,
+        country,
+        num_queries,
+        mode,
+      }
+
+      python.stdin.write(JSON.stringify(requestData))
+      python.stdin.end()
+    })
   } catch (error) {
     console.error('[API:MENTIONS] Request error:', error)
     return NextResponse.json(

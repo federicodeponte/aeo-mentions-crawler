@@ -109,19 +109,9 @@ export async function OPTIONS() {
 }
 
 export async function POST(request: NextRequest): Promise<Response> {
-  let userId: string | null = null
+  let userId: string | null = 'anonymous' // No auth required for batch processing
 
   try {
-    // Authenticate request (supports cookie, Bearer token, or API key)
-    userId = await authenticateRequest(request)
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized - please sign in or provide valid Bearer token/API key' },
-        { status: 401 }
-      )
-    }
-
     const body = await request.json()
 
     // Validate required fields

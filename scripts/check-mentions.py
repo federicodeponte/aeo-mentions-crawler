@@ -23,7 +23,14 @@ services_path = os.path.join(os.path.dirname(__file__), '../../services/aeo-chec
 sys.path.insert(0, services_path)
 
 # Import the mentions service
-from mentions_service import check_mentions, MentionsCheckRequest, CompanyAnalysis
+# Note: We import the function directly, not the FastAPI app
+try:
+    from mentions_service import check_mentions, MentionsCheckRequest, CompanyAnalysis
+except ImportError as e:
+    logger.error(f"Failed to import mentions_service: {e}")
+    logger.error(f"Services path: {services_path}")
+    logger.error(f"Current working directory: {os.getcwd()}")
+    raise
 
 def convert_to_python_format(input_data: Dict[str, Any]) -> MentionsCheckRequest:
     """Convert API request format to Python service format."""
