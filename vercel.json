@@ -1,11 +1,15 @@
+# Vercel Configuration for Python Serverless Functions
+
 {
-  "buildCommand": "next build",
-  "framework": "nextjs",
-  "outputDirectory": ".next",
-  "crons": [
-    {
-      "path": "/api/cron/execute-schedules",
-      "schedule": "0 0 * * *"
+  "functions": {
+    "api/python/*.py": {
+      "runtime": "python3.9",
+      "maxDuration": 300,
+      "memory": 3008
     }
-  ]
+  },
+  "env": {
+    "GEMINI_API_KEY": "@gemini-api-key",
+    "SERANKING_API_KEY": "@seranking-api-key"
+  }
 }
