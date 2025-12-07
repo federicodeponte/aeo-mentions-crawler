@@ -1,0 +1,14 @@
+[
+  {
+    "key": "cmd+shift+p",
+    "command": "simpleBrowser.show",
+    "when": "!terminalFocus"
+  },
+  {
+    "key": "cmd+shift+l",
+    "command": "simpleBrowser.show",
+    "args": ["http://localhost:3000"]
+  }
+]
+
+
