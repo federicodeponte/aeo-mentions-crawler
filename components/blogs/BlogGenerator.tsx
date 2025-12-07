@@ -133,6 +133,12 @@ export function BlogGenerator() {
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
+  // Track if user is actively editing fields (prevent context overwrites)
+  const isEditingRef = useRef<{ systemPrompts: boolean; additionalInstructions: boolean }>({
+    systemPrompts: false,
+    additionalInstructions: false,
+  })
+  
   // Rotating message state
   const [messageIndex, setMessageIndex] = useState(0)
   const [dots, setDots] = useState('')
@@ -141,6 +147,7 @@ export function BlogGenerator() {
   const [result, setResult] = useState<BlogResult | null>(null)
   const [batchResult, setBatchResult] = useState<BatchResult | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Persistent generation tracking
   const GENERATION_STATE_KEY = 'blog_generation_state'
@@ -200,16 +207,22 @@ export function BlogGenerator() {
       const storedKey = localStorage.getItem('gemini-api-key')
       setGeminiApiKey(storedKey)
       
-      // Load Client Knowledge Base from context (preferred) or fallback to systemInstructions
-      if (businessContext.clientKnowledgeBase) {
-        setSystemPrompts(businessContext.clientKnowledgeBase)
-      } else if (businessContext.systemInstructions) {
-        setSystemPrompts(businessContext.systemInstructions)
+      // Only load from context if user is NOT actively editing (prevent overwrites)
+      if (!isEditingRef.current.systemPrompts) {
+        // Load Client Knowledge Base from context (preferred) or fallback to systemInstructions
+        if (businessContext.clientKnowledgeBase) {
+          setSystemPrompts(businessContext.clientKnowledgeBase)
+        } else if (businessContext.systemInstructions) {
+          setSystemPrompts(businessContext.systemInstructions)
+        }
       }
       
-      // Load Content Instructions from context
-      if (businessContext.contentInstructions) {
-        setAdditionalInstructions(businessContext.contentInstructions)
+      // Only load from context if user is NOT actively editing
+      if (!isEditingRef.current.additionalInstructions) {
+        // Load Content Instructions from context
+        if (businessContext.contentInstructions) {
+          setAdditionalInstructions(businessContext.contentInstructions)
+        }
       }
     }
   }, [businessContext.clientKnowledgeBase, businessContext.contentInstructions, businessContext.systemInstructions])
@@ -444,7 +457,7 @@ export function BlogGenerator() {
       setProgress(100)
       setTimeRemaining(0)
     }
-  }, [batchMode, primaryKeyword, batchKeywords, wordCount, additionalInstructions, companyName, companyUrl, geminiApiKey, businessContext])
+  }, [batchMode, primaryKeyword, batchKeywords, wordCount, systemPrompts, additionalInstructions, companyName, companyUrl, geminiApiKey, businessContext])
 
   return (
     <div className="h-full flex">
@@ -738,6 +751,12 @@ export function BlogGenerator() {
                       id="system-prompts"
                       placeholder="Company facts (one per line):&#10;We target Fortune 500&#10;We specialize in security"
                       value={systemPrompts}
+                      onFocus={() => {
+                        isEditingRef.current.systemPrompts = true
+                      }}
+                      onBlur={() => {
+                        isEditingRef.current.systemPrompts = false
+                      }}
                       onChange={(e) => {
                         setSystemPrompts(e.target.value)
                         // Save to context
@@ -760,6 +779,12 @@ export function BlogGenerator() {
                       id="instructions"
                       placeholder="e.g., Include statistics, add case studies"
                       value={additionalInstructions}
+                      onFocus={() => {
+                        isEditingRef.current.additionalInstructions = true
+                      }}
+                      onBlur={() => {
+                        isEditingRef.current.additionalInstructions = false
+                      }}
                       onChange={(e) => {
                         setAdditionalInstructions(e.target.value)
                         // Save to context
@@ -1009,21 +1034,36 @@ export function BlogGenerator() {
                       return
                     }
                     
-                    setIsGenerating(true)
+                    // Check for API key
+                    if (!geminiApiKey) {
+                      toast.error('Please set your Gemini API key in Settings first')
+                      return
+                    }
+                    
+                    setIsRefreshing(true)
                     try {
-                      // Build instructions from context (same as refresh flow for uploaded blogs)
+                      // Build instructions from context (consistent format with generation)
                       const instructions: string[] = []
                       
+                      // Use same format as generation: split by newlines for Client Knowledge Base
                       if (businessContext.clientKnowledgeBase) {
-                        instructions.push(`Client Knowledge Base: ${businessContext.clientKnowledgeBase}`)
+                        const knowledgeBaseLines = businessContext.clientKnowledgeBase
+                          .split('\n')
+                          .filter(line => line.trim())
+                        instructions.push(...knowledgeBaseLines)
                       }
                       
+                      // Add Content Instructions as single instruction
                       if (businessContext.contentInstructions) {
-                        instructions.push(`Content Instructions: ${businessContext.contentInstructions}`)
+                        instructions.push(businessContext.contentInstructions)
                       }
                       
+                      // Fallback to systemInstructions if no specific instructions
                       if (businessContext.systemInstructions && instructions.length === 0) {
-                        instructions.push(`System Instructions: ${businessContext.systemInstructions}`)
+                        const systemLines = businessContext.systemInstructions
+                          .split('\n')
+                          .filter(line => line.trim())
+                        instructions.push(...systemLines)
                       }
                       
                       // Fallback if no instructions set
@@ -1044,7 +1084,16 @@ export function BlogGenerator() {
                       })
                       
                       if (!response.ok) {
-                        throw new Error('Refresh failed')
+                        // Parse error response for better error messages
+                        let errorMessage = 'Refresh failed'
+                        try {
+                          const errorData = await response.json()
+                          errorMessage = errorData.error || errorData.message || errorMessage
+                        } catch {
+                          // If JSON parse fails, use status text
+                          errorMessage = `Refresh failed: ${response.status} ${response.statusText}`
+                        }
+                        throw new Error(errorMessage)
                       }
                       
                       const refreshData = await response.json()
@@ -1060,13 +1109,13 @@ export function BlogGenerator() {
                     } catch (error) {
                       toast.error(error instanceof Error ? error.message : 'Failed to refresh blog')
                     } finally {
-                      setIsGenerating(false)
+                      setIsRefreshing(false)
                     }
                   }}
-                  disabled={isGenerating}
+                  disabled={isGenerating || isRefreshing}
                 >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  {isRefreshing ? 'Refreshing...' : 'Refresh'}
                 </Button>
                 <Button
                   variant="outline"
