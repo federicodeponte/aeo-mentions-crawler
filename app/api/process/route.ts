@@ -420,106 +420,12 @@ export async function POST(request: NextRequest): Promise<Response> {
       },
       duration_ms: totalDuration,
     })
-        
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 120000) // 2 min timeout for large batches
-        
-        const modalResponse = await fetch(`${MODAL_API_URL}/batch`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            batch_id: batchId,
-            rows: rows,
-            prompt: prompt,
-            context: context || '',
-            output_columns: outputSchema,
-            tools: enabledTools,
-          }),
-          signal: controller.signal,
-        })
-        
-        clearTimeout(timeoutId)
-        
-        if (modalResponse.ok) {
-          const modalData = await modalResponse.json()
-          logDebug('[MODAL] Batch accepted by Modal', { batchId, modalData })
-          
-          // Update batch status to "processing" now that Modal confirmed
-          await supabaseAdmin
-            .from('batches')
-            .update({ status: 'processing', updated_at: new Date().toISOString() })
-            .eq('id', batchId)
-          
-          modalAccepted = true
-          break
-        } else {
-          const errorText = await modalResponse.text()
-          lastError = new Error(`Modal returned ${modalResponse.status}: ${errorText}`)
-          logError(`[MODAL] Attempt ${attempt} failed`, lastError, { batchId })
-        }
-      } catch (err) {
-        lastError = err instanceof Error ? err : new Error(String(err))
-        logError(`[MODAL] Attempt ${attempt} error`, lastError, { batchId })
-        
-        // Don't retry on abort (timeout)
-        if (lastError.name === 'AbortError') {
-          lastError = new Error('Modal request timed out after 30 seconds')
-          break
-        }
-      }
-      
-      // Wait before retry (exponential backoff)
-      if (attempt < MAX_RETRIES) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
-      }
-    }
-    
-    // If Modal didn't accept, mark batch as failed
-    if (!modalAccepted) {
-      await supabaseAdmin
-        .from('batches')
-        .update({ 
-          status: 'failed', 
-          error_message: lastError?.message || 'Failed to start processing',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', batchId)
-      
-      // Release rate limit on failure
-      if (userId) {
-        releaseBatch(userId)
-      }
-      
-      return NextResponse.json(
-        {
-          error: 'Failed to start batch processing',
-          details: lastError?.message || 'Modal service unavailable',
-          batchId,
-        },
-        { status: 503, headers: corsHeaders }
-      )
-    }
-
-    return NextResponse.json(
-      {
-        success: true,
-        batchId,
-        status: 'processing', // Now "processing" since Modal confirmed
-        totalRows: rows.length,
-        originalRows: wasTruncated ? originalRows.length : undefined,
-        truncated: wasTruncated,
-        message: wasTruncated
-          ? `Processing first ${MAX_ROWS_PER_BATCH} rows (beta limit). Original file had ${originalRows.length} rows.`
-          : 'Batch accepted. Processing started.',
-      },
-      { status: 202, headers: corsHeaders }
-    )
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-      logError('Process API error', error, {
-        source: 'api/process/POST',
-        userId
-      })
+    logError('Process API error', error, {
+      source: 'api/process/POST',
+      userId
+    })
     // Release rate limit on error
     if (userId) {
       releaseBatch(userId)
