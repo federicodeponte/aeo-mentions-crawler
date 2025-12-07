@@ -14,6 +14,9 @@ export interface BusinessContext {
   icp?: string
   valueProposition?: string
   
+  // System instructions (reusable prompts)
+  systemInstructions?: string
+  
   // Arrays
   countries?: string[]
   products?: string[]

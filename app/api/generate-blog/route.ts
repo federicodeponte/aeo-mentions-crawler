@@ -81,8 +81,8 @@ export async function POST(request: NextRequest): Promise<Response> {
     const startTime = Date.now()
 
     try {
-      // Use OpenBlog Modal endpoint
-      const BLOG_WRITER_ENDPOINT = 'https://clients--blog-writer-fastapi-app.modal.run'
+      // Use local blog-writer service
+      const BLOG_WRITER_ENDPOINT = process.env.BLOG_WRITER_ENDPOINT || 'http://localhost:8001'
 
       // Prepare company data in OpenBlog format
       const companyData = {
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest): Promise<Response> {
             index: true,
           }
 
-          const response = await fetch(`${BLOG_WRITER_ENDPOINT}/write`, {
+          const response = await fetch(`${BLOG_WRITER_ENDPOINT}/generate`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

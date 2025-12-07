@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { spawn } from 'child_process'
-import * as path from 'path'
 
 export const maxDuration = 600 // 10 minutes for full keyword generation
 
@@ -39,68 +37,39 @@ export async function POST(request: NextRequest): Promise<Response> {
 }
 
 /**
- * Call Python openkeywords library directly via subprocess.
- * Input sent via stdin, output received via stdout.
+ * Call local keyword generator service via HTTP
  */
 async function callPythonKeywordGenerator(input: any): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const scriptPath = path.join(process.cwd(), 'scripts', 'generate-keywords.py')
-    
-    console.log('[KEYWORDS] Calling Python script:', scriptPath)
-    
-    // Spawn Python process
-    const python = spawn('python3', [scriptPath], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-    })
+  const KEYWORD_ENDPOINT = process.env.KEYWORD_GENERATOR_ENDPOINT || 'http://localhost:8002'
+  
+  console.log('[KEYWORDS] Calling local service:', KEYWORD_ENDPOINT)
+  
+  // Transform input to match local service API
+  const requestBody = {
+    company_name: input.companyName || input.company_name,
+    company_url: input.companyUrl || input.company_url,
+    company_description: input.companyDescription || input.company_description,
+    industry: input.industry,
+    target_audience: input.targetAudience || input.target_audience,
+    products: input.products,
+    competitors: input.competitors,
+    language: input.language || 'en',
+    country: input.country || 'US',
+    target_count: input.targetCount || input.num_keywords || 50,
+    mode: input.mode || 'generate', // 'generate' or 'refresh'
+    existing_keywords: input.existingKeywords || input.existing_keywords,
+  }
 
-    let stdout = ''
-    let stderr = ''
-
-    // Collect stdout
-    python.stdout.on('data', (data) => {
-      stdout += data.toString()
-    })
-
-    // Collect stderr (for logs and errors)
-    python.stderr.on('data', (data) => {
-      const text = data.toString()
-      stderr += text
-      console.log('[KEYWORDS:Python]', text.trim())
-    })
-
-    // Handle process completion
-    python.on('close', (code) => {
-      if (code !== 0) {
-        console.error('[KEYWORDS] Python exited with code', code)
-        console.error('[KEYWORDS] stderr:', stderr)
-        try {
-          const errorData = JSON.parse(stderr)
-          reject(new Error(`Python error: ${errorData.error}`))
-        } catch {
-          reject(new Error(`Python process failed with code ${code}: ${stderr || 'No error message'}`))
-        }
-        return
-      }
-
-      // Parse JSON output
-      try {
-        const result = JSON.parse(stdout)
-        console.log('[KEYWORDS] Success:', result.keywords?.length || 0, 'keywords in', result.processing_time_seconds, 's')
-        resolve(result)
-      } catch (error) {
-        console.error('[KEYWORDS] Failed to parse Python output:', stdout.substring(0, 200))
-        reject(new Error('Failed to parse Python output'))
-      }
-    })
-
-    // Handle spawn errors
-    python.on('error', (error) => {
-      console.error('[KEYWORDS] Failed to spawn Python:', error)
-      reject(new Error(`Failed to spawn Python: ${error.message}`))
-    })
-
-    // Send input data to Python via stdin
-    python.stdin.write(JSON.stringify(input))
-    python.stdin.end()
+  const response = await fetch(`${KEYWORD_ENDPOINT}/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(requestBody),
   })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || `Service error: ${response.status}`)
+  }
+
+  return await response.json()
 }

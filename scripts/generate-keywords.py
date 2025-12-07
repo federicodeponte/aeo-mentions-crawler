@@ -67,10 +67,10 @@ def main():
             enable_clustering=True,
             cluster_count=6,
             min_score=40,
-            # Enable ALL FREE features
-            enable_gemini_serp=True,  # Gemini Google Search for AEO scoring
-            enable_trends=False,  # Google Trends (disabled for speed)
-            enable_autocomplete=False,  # Google Autocomplete (disabled for speed)
+            # Disable SERP for now - gemini-3-pro-preview has API incompatibility
+            enable_gemini_serp=False,
+            enable_trends=False,
+            enable_autocomplete=False,
         )
         
         # Initialize generator
