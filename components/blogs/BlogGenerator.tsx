@@ -112,7 +112,7 @@ interface BatchResult {
 }
 
 export function BlogGenerator() {
-  const { businessContext, hasContext } = useContextStorage()
+  const { businessContext, hasContext, updateContext } = useContextStorage()
   
   // Form state
   const [batchMode, setBatchMode] = useState(false)
@@ -1011,13 +1011,33 @@ export function BlogGenerator() {
                     
                     setIsGenerating(true)
                     try {
+                      // Build instructions from context (same as refresh flow for uploaded blogs)
+                      const instructions: string[] = []
+                      
+                      if (businessContext.clientKnowledgeBase) {
+                        instructions.push(`Client Knowledge Base: ${businessContext.clientKnowledgeBase}`)
+                      }
+                      
+                      if (businessContext.contentInstructions) {
+                        instructions.push(`Content Instructions: ${businessContext.contentInstructions}`)
+                      }
+                      
+                      if (businessContext.systemInstructions && instructions.length === 0) {
+                        instructions.push(`System Instructions: ${businessContext.systemInstructions}`)
+                      }
+                      
+                      // Fallback if no instructions set
+                      if (instructions.length === 0) {
+                        instructions.push('Update to latest information', 'Improve clarity')
+                      }
+                      
                       const response = await fetch('/api/refresh-blog', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                           content: result.content,
                           content_format: 'html',
-                          instructions: ['Update to latest information', 'Improve clarity'],
+                          instructions: instructions,
                           output_format: 'html',
                           apiKey: geminiApiKey,
                         }),
