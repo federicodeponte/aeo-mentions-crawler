@@ -216,6 +216,52 @@ export function KeywordGenerator() {
   // Results state
   const [results, setResults] = useState<KeywordResults | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+
+  // Persistent generation tracking
+  const GENERATION_STATE_KEY = 'keyword_generation_state'
+
+  // Restore generation state on mount
+  useEffect(() => {
+    const savedState = sessionStorage.getItem(GENERATION_STATE_KEY)
+    if (!savedState) return
+
+    try {
+      const state = JSON.parse(savedState)
+      const elapsed = Math.floor((Date.now() - state.startTime) / 1000)
+      
+      // Only restore if less than 2 minutes elapsed (reasonable timeout)
+      if (elapsed < 120) {
+        setIsGenerating(true)
+        setLanguage(state.language)
+        setCountry(state.country)
+        setNumKeywords(state.numKeywords)
+        
+        // Calculate current progress
+        const currentProgress = Math.min((elapsed / 70) * 95, 95)
+        const remainingTime = Math.max(0, 70 - elapsed)
+        
+        setProgress(currentProgress)
+        setTimeRemaining(remainingTime)
+        
+        toast.info('Resuming keyword generation...')
+        
+        // Continue progress bar
+        progressIntervalRef.current = setInterval(() => {
+          setProgress(prev => {
+            const newProgress = prev + (95 / 70)
+            return Math.min(newProgress, 95)
+          })
+          setTimeRemaining(prev => Math.max(0, prev - 1))
+        }, 1000)
+      } else {
+        // Expired, clear it
+        sessionStorage.removeItem(GENERATION_STATE_KEY)
+      }
+    } catch (e) {
+      console.error('Failed to restore generation state:', e)
+      sessionStorage.removeItem(GENERATION_STATE_KEY)
+    }
+  }, [])
   
   // Load Gemini API key from localStorage
   useEffect(() => {
@@ -261,18 +307,34 @@ export function KeywordGenerator() {
     setIsGenerating(true)
     setResults(null)
     setProgress(0)
-    setTimeRemaining(45) // Gemini 3 Pro takes ~45s for keyword generation
+    setTimeRemaining(70) // Gemini 3.0 Pro Preview + FREE features (Autocomplete + Trends) takes ~70s for 50 keywords
+
+    // Save generation state to sessionStorage for persistence
+    const generationState = {
+      startTime: Date.now(),
+      language,
+      country,
+      numKeywords,
+    }
+    sessionStorage.setItem(GENERATION_STATE_KEY, JSON.stringify(generationState))
 
     // Start progress bar
     progressIntervalRef.current = setInterval(() => {
       setProgress(prev => {
-        const newProgress = prev + (95 / 45) // Reach 95% in 45 seconds
+        const newProgress = prev + (95 / 70) // Reach 95% in 70 seconds
         return Math.min(newProgress, 95)
       })
       setTimeRemaining(prev => Math.max(0, prev - 1))
     }, 1000)
 
     try {
+      console.log('[KEYWORDS] Starting keyword generation...')
+      console.log('[KEYWORDS] Company:', companyName.trim())
+      console.log('[KEYWORDS] URL:', companyUrl.trim())
+      console.log('[KEYWORDS] Count:', numKeywords)
+      console.log('[KEYWORDS] Has API key:', !!geminiApiKey)
+      console.log('[KEYWORDS] Has context:', !!businessContext)
+
       const response = await fetch('/api/generate-keywords', {
         method: 'POST',
         headers: {
@@ -298,14 +360,22 @@ export function KeywordGenerator() {
         }),
       })
 
+      console.log('[KEYWORDS] Response status:', response.status)
+
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Failed to generate keywords' }))
+        console.error('[KEYWORDS] Error response:', error)
         throw new Error(error.error || error.message || 'Failed to generate keywords')
       }
 
       const data = await response.json()
+      console.log('[KEYWORDS] Success! Generated', data.keywords?.length || 0, 'keywords')
+      console.log('[KEYWORDS] Response keys:', Object.keys(data))
       setResults(data)
       toast.success(`Generated ${data.keywords.length} keywords in ${data.metadata.generation_time.toFixed(1)}s`)
+      
+      // Clear generation state on success
+      sessionStorage.removeItem(GENERATION_STATE_KEY)
       
       // Store in localStorage for LOG page
       const timestamp = new Date().toISOString()
@@ -328,6 +398,8 @@ export function KeywordGenerator() {
     } catch (error) {
       console.error('Keyword generation error:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to generate keywords')
+      // Clear generation state on error
+      sessionStorage.removeItem(GENERATION_STATE_KEY)
     } finally {
       setIsGenerating(false)
       if (progressIntervalRef.current) {
@@ -496,15 +568,15 @@ export function KeywordGenerator() {
 
               {/* Message with rotation */}
               <div className="space-y-2">
-                <div className="h-6 flex items-center justify-center">
+                <div className="h-16 flex items-center justify-center px-6">
                   <span
                     key={messageIndex}
-                    className="text-sm font-medium text-foreground animate-[fadeIn_0.3s_ease-in-out]"
+                    className="text-sm font-medium text-foreground animate-[fadeIn_0.3s_ease-in-out] text-center whitespace-nowrap"
                   >
                     {LOADING_MESSAGES[messageIndex]}{dots}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground text-center h-5">
                   ~{timeRemaining}s remaining
                 </p>
               </div>
@@ -518,9 +590,9 @@ export function KeywordGenerator() {
                   />
                 </div>
                 
-                {/* Navigate away message */}
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-center">
-                  <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                {/* Navigate away message - FIXED HEIGHT */}
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-center h-[76px] flex flex-col justify-center min-w-[300px]">
+                  <p className="text-xs text-blue-600 dark:text-blue-400 font-medium whitespace-nowrap">
                     💡 Feel free to navigate away
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -672,9 +744,12 @@ export function KeywordGenerator() {
                            '🤖 AI'}
                         </span>
                       </td>
-                      <td className="p-3 text-muted-foreground text-xs">{keyword.volume ? keyword.volume.toLocaleString() : '-'}</td>
-                      <td className="p-3">
-                        {keyword.difficulty !== undefined && keyword.difficulty > 0 ? (
+                      <td className="p-3 text-muted-foreground text-xs">
+                        {keyword.volume && keyword.volume > 0 ? keyword.volume.toLocaleString() : '-'}
+                      </td>
+                      <td className="p-3 text-muted-foreground text-xs">
+                        {/* Difficulty: Only show if analyzed (not default 50, or explicitly set via SERP/volume lookup) */}
+                        {keyword.serp_analyzed || (keyword.difficulty !== undefined && keyword.difficulty !== 50 && keyword.difficulty > 0) ? (
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                             keyword.difficulty < 30 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
                             keyword.difficulty < 60 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
@@ -683,7 +758,7 @@ export function KeywordGenerator() {
                             {keyword.difficulty}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground text-xs">-</span>
+                          '-'
                         )}
                       </td>
                       <td className="p-3">

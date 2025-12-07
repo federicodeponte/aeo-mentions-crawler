@@ -23,8 +23,8 @@ export function ContextForm() {
   const [geminiApiKey, setGeminiApiKey] = useState<string | null>(null)
   const [analysisProgress, setAnalysisProgress] = useState(0)
   const [timeRemaining, setTimeRemaining] = useState(0)
-
-  const EXPECTED_ANALYSIS_TIME = 38 // seconds for Gemini 3 Pro
+  
+  const EXPECTED_ANALYSIS_TIME = 30 // seconds for Gemini 3 Pro Preview
   
   // Load Gemini API key and analyzed URL from localStorage on mount
   useEffect(() => {
@@ -173,7 +173,7 @@ export function ContextForm() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4">
       {/* API Key Info (not blocking) */}
       {!geminiApiKey && (
         <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 space-y-2">
@@ -277,7 +277,7 @@ export function ContextForm() {
       {hasContext && <div className="border-t border-border" />}
 
       {/* Context Display */}
-      {hasContext && (
+          {hasContext && (
         <div className="space-y-4">
         <div className="flex items-center justify-between">
             <Label className="text-sm font-semibold">Extracted Context</Label>
@@ -290,7 +290,7 @@ export function ContextForm() {
               <Trash2 className="h-3.5 w-3.5 mr-1.5" />
               Clear All
             </Button>
-          </div>
+        </div>
 
           <div className="grid gap-3">
             {businessContext.companyName && (
@@ -304,7 +304,7 @@ export function ContextForm() {
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Website</Label>
                 <Input value={businessContext.companyWebsite} readOnly className="text-xs bg-muted/50" />
-                  </div>
+                </div>
             )}
             
             {businessContext.targetIndustries && (
@@ -321,7 +321,7 @@ export function ContextForm() {
                   value={businessContext.productDescription} 
                   readOnly 
                   className="text-xs bg-muted/50 resize-none" 
-                  rows={3}
+              rows={3}
             />
           </div>
             )}
@@ -334,15 +334,15 @@ export function ContextForm() {
                   readOnly 
                   className="text-xs bg-muted/50 resize-none" 
                   rows={2}
-                />
-            </div>
+            />
+          </div>
           )}
             
             {businessContext.targetAudience && (
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Target Audience</Label>
                 <Input value={businessContext.targetAudience} readOnly className="text-xs bg-muted/50" />
-            </div>
+                  </div>
           )}
             
             {businessContext.competitors && (
@@ -353,28 +353,28 @@ export function ContextForm() {
                   readOnly 
                   className="text-xs bg-muted/50 resize-none" 
                   rows={2}
-                />
-              </div>
+            />
+          </div>
             )}
             
             {businessContext.brandTone && (
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Brand Tone</Label>
                 <Input value={businessContext.brandTone} readOnly className="text-xs bg-muted/50" />
-              </div>
+                  </div>
             )}
             
             {businessContext.painPoints && (
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Pain Points</Label>
-                <Textarea 
+            <Textarea
                   value={businessContext.painPoints} 
                   readOnly 
                   className="text-xs bg-muted/50 resize-none" 
-                  rows={3}
+              rows={3}
                 />
-              </div>
-            )}
+            </div>
+          )}
             
             {businessContext.valuePropositions && (
               <div className="space-y-1">
@@ -385,8 +385,8 @@ export function ContextForm() {
                   className="text-xs bg-muted/50 resize-none" 
                   rows={2}
                 />
-              </div>
-            )}
+            </div>
+          )}
             
             {businessContext.useCases && (
               <div className="space-y-1">
@@ -397,8 +397,8 @@ export function ContextForm() {
                   className="text-xs bg-muted/50 resize-none" 
                   rows={2}
                 />
-              </div>
-            )}
+            </div>
+          )}
             
             {businessContext.contentThemes && (
               <div className="space-y-1">
@@ -412,8 +412,8 @@ export function ContextForm() {
               </div>
             )}
           </div>
-        </div>
-      )}
+              </div>
+            )}
 
       {/* Clear Confirmation Modal */}
       {showClearConfirmation && (
@@ -443,7 +443,7 @@ export function ContextForm() {
             >
               Clear All
             </Button>
-            </div>
+      </div>
           </div>
         </div>
       )}

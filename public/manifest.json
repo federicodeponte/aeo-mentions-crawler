@@ -1,7 +1,7 @@
 {
-  "name": "bulk.run",
-  "short_name": "bulk.run",
-  "description": "Run AI on 1000 rows at once",
+  "name": "AEO Visibility Machine",
+  "short_name": "AEO Visibility",
+  "description": "AI-Powered Answer Engine Optimization Platform",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",

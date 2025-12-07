@@ -141,6 +141,58 @@ export function BlogGenerator() {
   const [result, setResult] = useState<BlogResult | null>(null)
   const [batchResult, setBatchResult] = useState<BatchResult | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+
+  // Persistent generation tracking
+  const GENERATION_STATE_KEY = 'blog_generation_state'
+
+  // Restore generation state on mount
+  useEffect(() => {
+    const savedState = sessionStorage.getItem(GENERATION_STATE_KEY)
+    if (!savedState) return
+
+    try {
+      const state = JSON.parse(savedState)
+      const elapsed = Math.floor((Date.now() - state.startTime) / 1000)
+      
+      // Only restore if less than 5 minutes elapsed (blogs take longer)
+      if (elapsed < 300) {
+        setIsGenerating(true)
+        setBatchMode(state.batchMode)
+        if (state.batchMode) {
+          setBatchKeywords(state.batchKeywords)
+        } else {
+          setPrimaryKeyword(state.primaryKeyword)
+        }
+        setWordCount(state.wordCount)
+        setTone(state.tone)
+        
+        // Calculate current progress (estimate 2min for single, 5min for batch)
+        const expectedTime = state.batchMode ? 300 : 120
+        const currentProgress = Math.min((elapsed / expectedTime) * 95, 95)
+        const remainingTime = Math.max(0, expectedTime - elapsed)
+        
+        setProgress(currentProgress)
+        setTimeRemaining(remainingTime)
+        
+        toast.info('Resuming blog generation...')
+        
+        // Continue progress bar
+        progressIntervalRef.current = setInterval(() => {
+          setProgress(prev => {
+            const newProgress = prev + (95 / expectedTime)
+            return Math.min(newProgress, 95)
+          })
+          setTimeRemaining(prev => Math.max(0, prev - 1))
+        }, 1000)
+      } else {
+        // Expired, clear it
+        sessionStorage.removeItem(GENERATION_STATE_KEY)
+      }
+    } catch (e) {
+      console.error('Failed to restore generation state:', e)
+      sessionStorage.removeItem(GENERATION_STATE_KEY)
+    }
+  }, [])
   
   // Load Gemini API key from localStorage
   useEffect(() => {
@@ -255,6 +307,17 @@ export function BlogGenerator() {
     const estimatedTime = batchMode ? batchKeywords.filter(k => k.keyword.trim()).length * 90 : 60
     setTimeRemaining(estimatedTime)
 
+    // Save generation state to sessionStorage for persistence
+    const generationState = {
+      startTime: Date.now(),
+      batchMode,
+      primaryKeyword,
+      batchKeywords,
+      wordCount,
+      tone,
+    }
+    sessionStorage.setItem(GENERATION_STATE_KEY, JSON.stringify(generationState))
+
     progressIntervalRef.current = setInterval(() => {
       setProgress(prev => {
         const newProgress = prev + (95 / estimatedTime)
@@ -307,6 +370,9 @@ export function BlogGenerator() {
         setBatchResult(data)
         toast.success(`Generated ${data.successful} of ${data.total} blog articles in ${data.generation_time.toFixed(1)}s`)
         
+        // Clear generation state on success
+        sessionStorage.removeItem(GENERATION_STATE_KEY)
+        
         // Store batch in localStorage
         const timestamp = new Date().toISOString()
         const logEntry = {
@@ -329,6 +395,9 @@ export function BlogGenerator() {
       } else {
         setResult(data)
         toast.success(`Generated blog article (${data.metadata.word_count} words) in ${data.metadata.generation_time.toFixed(1)}s`)
+        
+        // Clear generation state on success
+        sessionStorage.removeItem(GENERATION_STATE_KEY)
         
         // Store in localStorage for LOG page
         const timestamp = new Date().toISOString()
@@ -353,6 +422,8 @@ export function BlogGenerator() {
     } catch (error) {
       console.error('Blog generation error:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to generate blog')
+      // Clear generation state on error
+      sessionStorage.removeItem(GENERATION_STATE_KEY)
     } finally {
       setIsGenerating(false)
       if (progressIntervalRef.current) {
@@ -724,15 +795,15 @@ export function BlogGenerator() {
 
               {/* Message with rotation */}
               <div className="space-y-2">
-                <div className="h-6 flex items-center justify-center">
+                <div className="h-16 flex items-center justify-center px-6">
                   <span
                     key={messageIndex}
-                    className="text-sm font-medium text-foreground animate-[fadeIn_0.3s_ease-in-out]"
+                    className="text-sm font-medium text-foreground animate-[fadeIn_0.3s_ease-in-out] text-center whitespace-nowrap"
                   >
                     {LOADING_MESSAGES[messageIndex]}{dots}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground text-center h-5">
                   ~{timeRemaining}s remaining
                 </p>
               </div>
@@ -746,9 +817,9 @@ export function BlogGenerator() {
                   />
                 </div>
                 
-                {/* Navigate away message */}
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-center">
-                  <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                {/* Navigate away message - FIXED HEIGHT */}
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-center h-[76px] flex flex-col justify-center min-w-[300px]">
+                  <p className="text-xs text-blue-600 dark:text-blue-400 font-medium whitespace-nowrap">
                     💡 Feel free to navigate away
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">

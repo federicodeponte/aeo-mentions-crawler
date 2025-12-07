@@ -335,8 +335,8 @@ select:focus-visible,
   }
   to {
     opacity: 1;
-    transform: translateY(0);
-  }
+      transform: translateY(0);
+    }
 }
 
 .animate-fade-in {
@@ -362,19 +362,19 @@ select:focus-visible,
   to {
     opacity: 1;
     transform: translateY(0);
+    }
   }
-}
 
-@keyframes scale-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
 
 @keyframes checkmark {
   0% {
@@ -391,12 +391,12 @@ select:focus-visible,
 }
 
 @keyframes slide-in-right {
-  from {
-    opacity: 0;
+    from {
+      opacity: 0;
     transform: translateX(-10px);
-  }
-  to {
-    opacity: 1;
+    }
+    to {
+      opacity: 1;
     transform: translateX(0);
   }
 }
@@ -586,15 +586,15 @@ select:focus-visible,
 
 /* Count-up animation for success numbers */
 @keyframes countUp {
-  from {
-    opacity: 0;
+    from {
+      opacity: 0;
     transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 /* Card hover effects - subtle Cursor-style lift */
 .card-hover {

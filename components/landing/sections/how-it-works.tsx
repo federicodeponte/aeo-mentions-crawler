@@ -6,21 +6,21 @@ import { ArrowRight } from "lucide-react";
 const steps = [
   {
     number: "1",
-    emoji: "👟",
-    title: "Upload Your CSV",
-    description: "Drop your CSV file with up to 1,000 rows. We'll detect columns automatically.",
+    emoji: "🎯",
+    title: "Enter Company Context",
+    description: "Provide your company details and target market. We'll analyze your positioning.",
   },
   {
     number: "2", 
-    emoji: "🏃",
-    title: "Write Your Prompt",
-    description: "Tell AI what to generate for each row. Use {{column_name}} to reference your data.",
+    emoji: "🔍",
+    title: "Generate AEO Keywords",
+    description: "AI generates strategic keywords optimized for answer engines like ChatGPT and Perplexity.",
   },
   {
     number: "3",
-    emoji: "🏁",
-    title: "Download Results",
-    description: "Get your enriched CSV with new AI-generated columns. Export to CSV or Excel.",
+    emoji: "✨",
+    title: "Create AI-Optimized Content",
+    description: "Generate blog articles that boost your visibility in AI search engines.",
   },
 ];
 
@@ -31,7 +31,7 @@ export function HowItWorksSection() {
         {/* Section header */}
         <div className="text-center mb-12">
           <h2 className="text-2xl md:text-3xl font-semibold mb-3">How it works</h2>
-          <p className="text-muted-foreground">Three steps to AI-powered data</p>
+          <p className="text-muted-foreground">Three steps to AEO dominance</p>
         </div>
 
         {/* Steps with flow */}

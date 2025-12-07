@@ -1,9 +1,8 @@
 'use client'
 
 import * as React from 'react'
-import { Check } from 'lucide-react'
+import { Check, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Input } from '@/components/ui/input'
 import {
   Command,
   CommandEmpty,
@@ -35,50 +34,78 @@ export function SearchableSelect({
   options,
   value,
   onValueChange,
-  placeholder = 'Type to search...',
+  placeholder = 'Select...',
   disabled = false,
   className,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false)
-  const [inputValue, setInputValue] = React.useState('')
+  const [search, setSearch] = React.useState('')
   const inputRef = React.useRef<HTMLInputElement>(null)
 
   const selectedOption = options.find((option) => option.value === value)
 
-  // Update input value when a selection is made or cleared
-  React.useEffect(() => {
-    if (!open && selectedOption) {
-      setInputValue(selectedOption.label)
-    }
-  }, [open, selectedOption])
-
-  // Filter options based on input
+  // Filter options based on search
   const filteredOptions = React.useMemo(() => {
-    if (!inputValue) return options
+    if (!search) return options
     return options.filter((option) =>
-      option.label.toLowerCase().includes(inputValue.toLowerCase())
+      option.label.toLowerCase().includes(search.toLowerCase()) ||
+      option.value.toLowerCase().includes(search.toLowerCase())
     )
-  }, [options, inputValue])
+  }, [options, search])
+
+  // When dropdown closes, clear search
+  React.useEffect(() => {
+    if (!open) {
+      setSearch('')
+    }
+  }, [open])
+
+  // Display value: show search when dropdown is open, otherwise show selected
+  const displayValue = open ? search : (selectedOption?.label || '')
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <div className="relative w-full">
-          <Input
+          <input
             ref={inputRef}
-            value={inputValue}
+            type="text"
+            value={displayValue}
             onChange={(e) => {
-              setInputValue(e.target.value)
-              setOpen(true)
+              setSearch(e.target.value)
+              if (!open) setOpen(true)
             }}
-            onFocus={() => setOpen(true)}
+            onFocus={() => {
+              setOpen(true)
+              // Select all text on focus for easy replacement
+              setTimeout(() => inputRef.current?.select(), 0)
+            }}
+            onClick={() => {
+              if (!open) {
+                setOpen(true)
+                setTimeout(() => inputRef.current?.select(), 0)
+              }
+            }}
             placeholder={placeholder}
             disabled={disabled}
-            className={cn('w-full', className)}
+            className={cn(
+              'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+              className
+            )}
+            role="combobox"
+            aria-expanded={open}
           />
+          <ChevronsUpDown className="absolute right-3 top-3 h-4 w-4 shrink-0 opacity-50 pointer-events-none" />
         </div>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <PopoverContent 
+        className="w-[--radix-popover-trigger-width] p-0" 
+        align="start"
+        onOpenAutoFocus={(e) => {
+          // Prevent the popover from stealing focus from the input
+          e.preventDefault()
+        }}
+      >
         <Command shouldFilter={false}>
           <CommandList>
             <CommandEmpty>No results found.</CommandEmpty>
@@ -89,11 +116,10 @@ export function SearchableSelect({
                   value={option.value}
                   onSelect={() => {
                     onValueChange(option.value)
-                    setInputValue(option.label)
+                    setSearch('')
                     setOpen(false)
-                    inputRef.current?.blur()
                   }}
-                  className="text-sm cursor-pointer"
+                  className="cursor-pointer"
                 >
                   <Check
                     className={cn(
@@ -111,4 +137,3 @@ export function SearchableSelect({
     </Popover>
   )
 }
-
