@@ -25,11 +25,23 @@ const LOADING_MESSAGES = [
 
 interface Keyword {
   keyword: string
-  aeo_type: string // New: question, comparison, recommendation, etc.
-  search_intent: string
-  relevance_score: number
-  ai_citation_potential: string // New: high, medium, low
-  competition_level: string
+  intent: string // question, commercial, transactional, comparison, informational
+  score: number // company-fit score (0-100)
+  cluster_name?: string // semantic cluster grouping
+  is_question: boolean
+  source: string // ai_generated, research_reddit, research_quora, research_niche, gap_analysis, serp_paa
+  volume?: number // monthly search volume
+  difficulty?: number // keyword difficulty (0-100)
+  aeo_opportunity?: number // AEO opportunity score (0-100)
+  has_featured_snippet?: boolean
+  has_paa?: boolean
+  serp_analyzed?: boolean
+  // Legacy fields for backward compatibility
+  aeo_type?: string
+  search_intent?: string
+  relevance_score?: number
+  ai_citation_potential?: string
+  competition_level?: string
 }
 
 interface KeywordResults {
@@ -501,16 +513,21 @@ export function KeywordGenerator() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  // Export to CSV with AEO fields
+                  // Export to CSV with all new OpenKeyword fields
                   const csvContent = [
-                    ['Keyword', 'AEO Type', 'Intent', 'Relevance', 'AI Citation', 'Competition'].join(','),
+                    ['Keyword', 'Intent', 'Score', 'Cluster', 'Source', 'Volume', 'Difficulty', 'AEO Opportunity', 'Featured Snippet', 'PAA', 'Is Question'].join(','),
                     ...results.keywords.map(k => [
                       `"${k.keyword}"`,
-                      k.aeo_type,
-                      k.search_intent,
-                      k.relevance_score,
-                      k.ai_citation_potential,
-                      k.competition_level
+                      k.intent || k.search_intent || '',
+                      k.score || k.relevance_score || 0,
+                      k.cluster_name || '',
+                      k.source || 'ai_generated',
+                      k.volume || 0,
+                      k.difficulty || 0,
+                      k.aeo_opportunity || 0,
+                      k.has_featured_snippet ? 'Yes' : 'No',
+                      k.has_paa ? 'Yes' : 'No',
+                      k.is_question ? 'Yes' : 'No'
                     ].join(','))
                   ].join('\n')
                   
@@ -537,69 +554,102 @@ export function KeywordGenerator() {
                 <thead className="bg-muted/50 border-b border-border sticky top-0 z-10">
                   <tr>
                     <th className="text-left p-3 font-medium">#</th>
-                    <th className="text-left p-3 font-medium min-w-[300px]">Keyword</th>
-                    <th className="text-left p-3 font-medium">AEO Type</th>
+                    <th className="text-left p-3 font-medium min-w-[250px]">Keyword</th>
                     <th className="text-left p-3 font-medium">Intent</th>
-                    <th className="text-left p-3 font-medium">Relevance</th>
-                    <th className="text-left p-3 font-medium">AI Citation</th>
-                    <th className="text-left p-3 font-medium">Competition</th>
+                    <th className="text-left p-3 font-medium">Score</th>
+                    <th className="text-left p-3 font-medium">Cluster</th>
+                    <th className="text-left p-3 font-medium">Source</th>
+                    <th className="text-left p-3 font-medium">Volume</th>
+                    <th className="text-left p-3 font-medium">Difficulty</th>
+                    <th className="text-left p-3 font-medium">AEO Opp.</th>
+                    <th className="text-left p-3 font-medium">Features</th>
                   </tr>
                 </thead>
                 <tbody>
                   {results.keywords.map((keyword, index) => (
                     <tr key={index} className="border-b border-border last:border-0 hover:bg-muted/30">
                       <td className="p-3 text-muted-foreground">{index + 1}</td>
-                      <td className="p-3 font-medium">{keyword.keyword}</td>
                       <td className="p-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                          keyword.aeo_type === 'question' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' :
-                          keyword.aeo_type === 'comparison' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' :
-                          keyword.aeo_type === 'recommendation' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                          keyword.aeo_type === 'problem-solving' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
-                          keyword.aeo_type === 'how-to' ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400' :
-                          'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                        }`}>
-                          {keyword.aeo_type}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {keyword.is_question && <span className="text-xs" title="Question keyword">❓</span>}
+                          <span className="font-medium">{keyword.keyword}</span>
+                        </div>
                       </td>
                       <td className="p-3">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                          keyword.search_intent === 'transactional' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                          keyword.search_intent === 'informational' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
-                          keyword.search_intent === 'navigational' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' :
+                          (keyword.intent || keyword.search_intent) === 'question' || (keyword.intent || keyword.search_intent) === 'informational' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
+                          (keyword.intent || keyword.search_intent) === 'commercial' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                          (keyword.intent || keyword.search_intent) === 'transactional' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' :
+                          (keyword.intent || keyword.search_intent) === 'comparison' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' :
                           'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
                         }`}>
-                          {keyword.search_intent}
+                          {keyword.intent || keyword.search_intent || 'informational'}
                         </span>
                       </td>
                       <td className="p-3">
                         <div className="flex items-center gap-2">
                           <div className="flex-1 bg-muted rounded-full h-1.5">
                             <div 
-                              className="bg-primary h-1.5 rounded-full" 
-                              style={{ width: `${keyword.relevance_score}%` }}
+                              className={`h-1.5 rounded-full ${
+                                (keyword.score || keyword.relevance_score || 0) >= 80 ? 'bg-green-500' :
+                                (keyword.score || keyword.relevance_score || 0) >= 60 ? 'bg-yellow-500' :
+                                'bg-red-500'
+                              }`}
+                              style={{ width: `${keyword.score || keyword.relevance_score || 0}%` }}
                             />
                           </div>
-                          <span className="text-xs text-muted-foreground w-8">{keyword.relevance_score}%</span>
+                          <span className="text-xs text-muted-foreground w-8">{keyword.score || keyword.relevance_score || 0}</span>
                         </div>
                       </td>
+                      <td className="p-3 text-muted-foreground text-xs">{keyword.cluster_name || '-'}</td>
                       <td className="p-3">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                          keyword.ai_citation_potential === 'high' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                          keyword.ai_citation_potential === 'medium' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' :
-                          'bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-400'
+                          keyword.source?.includes('research') ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' :
+                          keyword.source === 'gap_analysis' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' :
+                          keyword.source === 'serp_paa' ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400' :
+                          'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
                         }`}>
-                          {keyword.ai_citation_potential}
+                          {keyword.source === 'research_reddit' ? '🔴 Reddit' :
+                           keyword.source === 'research_quora' ? '🟠 Quora' :
+                           keyword.source === 'research_niche' ? '💬 Forums' :
+                           keyword.source === 'gap_analysis' ? '🎯 Gap' :
+                           keyword.source === 'serp_paa' ? '💡 PAA' :
+                           '🤖 AI'}
                         </span>
                       </td>
+                      <td className="p-3 text-muted-foreground text-xs">{keyword.volume ? keyword.volume.toLocaleString() : '-'}</td>
                       <td className="p-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                          keyword.competition_level === 'low' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                          keyword.competition_level === 'medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                          'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                        }`}>
-                          {keyword.competition_level}
-                        </span>
+                        {keyword.difficulty !== undefined && keyword.difficulty > 0 ? (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            keyword.difficulty < 30 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                            keyword.difficulty < 60 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                            'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                          }`}>
+                            {keyword.difficulty}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">-</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {keyword.aeo_opportunity !== undefined && keyword.aeo_opportunity > 0 ? (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            keyword.aeo_opportunity >= 70 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                            keyword.aeo_opportunity >= 50 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                            'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                          }`}>
+                            {keyword.aeo_opportunity}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">-</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex gap-1">
+                          {keyword.has_featured_snippet && <span className="text-sm" title="Featured Snippet">🌟</span>}
+                          {keyword.has_paa && <span className="text-sm" title="People Also Ask">💬</span>}
+                          {!keyword.has_featured_snippet && !keyword.has_paa && <span className="text-muted-foreground text-xs">-</span>}
+                        </div>
                       </td>
                     </tr>
                   ))}
