@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
-import { Play, AlertCircle, Sparkles, Bot } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Play, AlertCircle, Sparkles, Bot, Activity, Target } from 'lucide-react'
 import { HealthResults } from '@/components/aeo/HealthResults'
 import { MentionsResults } from '@/components/aeo/MentionsResults'
 import { useContextStorage } from '@/hooks/useContextStorage'
@@ -481,9 +482,45 @@ export default function AnalyticsPage() {
         )}
 
         {(healthResult || mentionsResult) && !loading && (
-          <div className="space-y-6 overflow-auto">
-            {healthResult && <HealthResults result={healthResult} url={url} />}
-            {mentionsResult && <MentionsResults result={mentionsResult} companyName={companyName} />}
+          <div className="h-full overflow-auto">
+            <Tabs defaultValue={healthResult ? 'health' : 'mentions'} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="health" disabled={!healthResult}>
+                  <span className="flex items-center gap-2">
+                    <Activity className="h-4 w-4" />
+                    <span>AEO Health</span>
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="mentions" disabled={!mentionsResult}>
+                  <span className="flex items-center gap-2">
+                    <Target className="h-4 w-4" />
+                    <span>AEO Mentions</span>
+                  </span>
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="health" className="mt-0">
+                {healthResult ? (
+                  <HealthResults result={healthResult} url={url} />
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Run a health check to see results here</p>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="mentions" className="mt-0">
+                {mentionsResult ? (
+                  <MentionsResults result={mentionsResult} companyName={companyName} />
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Run a mentions check to see results here</p>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
         )}
       </div>

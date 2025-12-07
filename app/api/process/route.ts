@@ -409,25 +409,17 @@ export async function POST(request: NextRequest): Promise<Response> {
     
     console.log(`[BATCH] Completed in ${totalDuration}ms. Success: ${successCount}, Failed: ${failedCount}`)
 
-    return NextResponse.json(
-    
-    // Build output_schema from outputColumns (same logic as insertPayload)
-    const outputSchema = outputColumns && outputColumns.length > 0
-      ? outputColumns.map((col: string | { name: string; description?: string }) => {
-          if (typeof col === 'string') {
-            return { name: col }
-          }
-          return { name: col.name, description: col.description }
-        })
-      : []
-    
-    const MAX_RETRIES = 2
-    let modalAccepted = false
-    let lastError: Error | null = null
-    
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        logDebug(`[MODAL] Calling Modal /batch (attempt ${attempt}/${MAX_RETRIES})`, { batchId })
+    return NextResponse.json({
+      success: true,
+      batch_id: batchId,
+      message: `Batch processing completed`,
+      results: {
+        total: results.length,
+        success: successCount,
+        failed: failedCount,
+      },
+      duration_ms: totalDuration,
+    })
         
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 120000) // 2 min timeout for large batches
