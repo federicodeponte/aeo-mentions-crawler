@@ -10,6 +10,7 @@ import { Sparkles, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useContextStorage } from '@/hooks/useContextStorage'
 import { toast } from 'sonner'
@@ -196,12 +197,14 @@ const COUNTRIES = [
 ]
 
 export function KeywordGenerator() {
-  const { businessContext, hasContext } = useContextStorage()
+  const { businessContext, hasContext, updateContext } = useContextStorage()
   
   // Form state - automatically use context if available
   const [language, setLanguage] = useState('en')
   const [country, setCountry] = useState('US')
   const [numKeywords, setNumKeywords] = useState(50)
+  const [mode, setMode] = useState<'generate' | 'refresh'>('generate')
+  const [systemInstructions, setSystemInstructions] = useState('')
   const [geminiApiKey, setGeminiApiKey] = useState<string | null>(null)
   
   // Progress tracking
@@ -270,6 +273,20 @@ export function KeywordGenerator() {
       setGeminiApiKey(storedKey)
     }
   }, [])
+
+  // Load system instructions from context
+  useEffect(() => {
+    if (businessContext.systemInstructions) {
+      setSystemInstructions(businessContext.systemInstructions)
+    }
+  }, [businessContext.systemInstructions])
+
+  // Auto-switch to refresh mode if we have existing keywords
+  useEffect(() => {
+    if (results && results.keywords.length > 0 && mode === 'generate') {
+      // Don't auto-switch, just make it available
+    }
+  }, [results, mode])
 
   // Rotating messages effect
   useEffect(() => {
@@ -346,6 +363,9 @@ export function KeywordGenerator() {
           language,
           country,
           num_keywords: numKeywords,
+          mode, // 'generate' or 'refresh'
+          existing_keywords: mode === 'refresh' && results ? results.keywords.map(k => k.keyword) : undefined,
+          system_instructions: systemInstructions.trim() || undefined,
           apiKey: geminiApiKey,
           // Pass all rich context
           description: businessContext.productDescription,
@@ -525,6 +545,72 @@ export function KeywordGenerator() {
                 className="text-sm"
                 disabled={isGenerating}
               />
+            </div>
+
+            {/* Generation Mode Toggle */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">
+                Generation Mode
+              </Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={mode === 'generate' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setMode('generate')}
+                  disabled={isGenerating}
+                  className="text-xs"
+                >
+                  🆕 Generate
+                </Button>
+                <Button
+                  type="button"
+                  variant={mode === 'refresh' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setMode('refresh')}
+                  disabled={isGenerating || !results || results.keywords.length === 0}
+                  className="text-xs"
+                >
+                  🔄 Refresh
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {mode === 'generate' ? 'Create new keywords from scratch' : 'Regenerate based on existing keywords'}
+              </p>
+            </div>
+
+            {/* System Instructions */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label htmlFor="system-instructions" className="text-xs font-medium">
+                  System Instructions
+                </Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs"
+                  onClick={() => {
+                    updateContext({ systemInstructions })
+                    toast.success('System instructions saved to context')
+                  }}
+                  disabled={isGenerating}
+                >
+                  💾 Save
+                </Button>
+              </div>
+              <Textarea
+                id="system-instructions"
+                placeholder="Optional instructions for keyword generation:&#10;- Focus on commercial intent&#10;- Include long-tail variations&#10;- Prioritize SEO metrics"
+                value={systemInstructions}
+                onChange={(e) => setSystemInstructions(e.target.value)}
+                className="text-xs resize-none font-mono"
+                rows={3}
+                disabled={isGenerating}
+              />
+              <p className="text-xs text-muted-foreground">
+                Saved instructions auto-load next time
+              </p>
             </div>
 
             <Button

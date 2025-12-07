@@ -112,7 +112,7 @@ interface BatchResult {
 }
 
 export function BlogGenerator() {
-  const { businessContext, hasContext } = useContextStorage()
+  const { businessContext, hasContext, updateContext } = useContextStorage()
   
   // Form state
   const [batchMode, setBatchMode] = useState(false)
@@ -201,6 +201,13 @@ export function BlogGenerator() {
       setGeminiApiKey(storedKey)
     }
   }, [])
+
+  // Load system instructions from context
+  useEffect(() => {
+    if (businessContext.systemInstructions) {
+      setSystemPrompts(businessContext.systemInstructions)
+    }
+  }, [businessContext.systemInstructions])
 
   // Rotating messages effect
   useEffect(() => {
@@ -719,12 +726,27 @@ export function BlogGenerator() {
               {showAdvanced && (
                 <div className="p-3 space-y-3 border-t border-border">
                   <div className="space-y-2">
-                    <Label htmlFor="system-prompts" className="text-xs font-medium">
-                      Client Knowledge Base
-                    </Label>
+                    <div className="flex justify-between items-center">
+                      <Label htmlFor="system-prompts" className="text-xs font-medium">
+                        System Instructions (Reusable)
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs"
+                        onClick={() => {
+                          updateContext({ systemInstructions: systemPrompts })
+                          toast.success('System instructions saved to context')
+                        }}
+                        disabled={isGenerating}
+                      >
+                        💾 Save
+                      </Button>
+                    </div>
                     <Textarea
                       id="system-prompts"
-                      placeholder="Company facts (one per line):&#10;We target Fortune 500&#10;We specialize in security"
+                      placeholder="Instructions used for every blog:&#10;- Always cite sources&#10;- Write in active voice&#10;- Use technical terminology"
                       value={systemPrompts}
                       onChange={(e) => setSystemPrompts(e.target.value)}
                       className="text-xs resize-none font-mono"
@@ -732,7 +754,7 @@ export function BlogGenerator() {
                       disabled={isGenerating}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Facts about your company
+                      Saved instructions auto-load next time
                     </p>
                   </div>
 

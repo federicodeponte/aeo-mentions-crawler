@@ -67,10 +67,10 @@ def main():
             enable_clustering=True,
             cluster_count=6,
             min_score=40,
-            # Disable SERP for now - gemini-3-pro-preview has API incompatibility
-            enable_gemini_serp=False,
-            enable_trends=False,
-            enable_autocomplete=False,
+            # Full parity with openkeyword (FREE features)
+            enable_gemini_serp=True,  # Google Search grounding (FIXED API)
+            enable_trends=False,  # Google Trends (disabled for speed)
+            enable_autocomplete=False,  # Google Autocomplete (disabled for speed)
         )
         
         # Initialize generator
