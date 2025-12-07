@@ -13,7 +13,7 @@ import { test, expect } from '@playwright/test'
 import { readFileSync } from 'fs'
 
 test.describe('LOG Page', () => {
-  test.beforeEach(async ({ page, context }) => {
+  test.beforeEach(async ({ page, context, browserName }) => {
     // Set up test data in localStorage before each test
     const testLogs = [
       {
@@ -135,7 +135,12 @@ test.describe('LOG Page', () => {
     }, testLogs)
 
     // Navigate to LOG page
-    await page.goto('/log')
+    // If auth is required, it will redirect - we'll handle that
+    await page.goto('/log', { waitUntil: 'networkidle' })
+    
+    // If redirected to auth, we can skip or handle differently
+    // For now, just wait for the page to load
+    await page.waitForLoadState('domcontentloaded')
   })
 
   test('should display all log entries', async ({ page }) => {
