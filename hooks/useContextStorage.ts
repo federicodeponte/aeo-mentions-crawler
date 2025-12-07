@@ -17,6 +17,10 @@ export interface BusinessContext {
   // System instructions (reusable prompts)
   systemInstructions?: string
   
+  // Blog-specific fields
+  clientKnowledgeBase?: string  // Client Knowledge Base (facts about company)
+  contentInstructions?: string   // Content Instructions (how to write)
+  
   // Arrays
   countries?: string[]
   products?: string[]

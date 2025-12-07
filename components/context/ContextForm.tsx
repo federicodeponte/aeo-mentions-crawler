@@ -439,6 +439,54 @@ export function ContextForm() {
         </p>
       </div>
 
+      {/* Client Knowledge Base Section */}
+      <div className="border border-border rounded-lg p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <Label className="text-sm font-semibold">Client Knowledge Base</Label>
+            <p className="text-xs text-muted-foreground">
+              Facts about your company (one per line)
+            </p>
+          </div>
+        </div>
+        
+        <Textarea
+          placeholder="Example:&#10;We target Fortune 500 companies&#10;We specialize in security solutions&#10;Founded in 2020"
+          value={businessContext.clientKnowledgeBase || ''}
+          onChange={(e) => updateContext({ clientKnowledgeBase: e.target.value })}
+          className="text-xs min-h-[80px] font-mono"
+          rows={3}
+        />
+        
+        <p className="text-xs text-muted-foreground">
+          💡 These facts will be automatically loaded in the Blog generator
+        </p>
+      </div>
+
+      {/* Content Instructions Section */}
+      <div className="border border-border rounded-lg p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <Label className="text-sm font-semibold">Content Instructions</Label>
+            <p className="text-xs text-muted-foreground">
+              How to write the content (style, format, requirements)
+            </p>
+          </div>
+        </div>
+        
+        <Textarea
+          placeholder="Example: Include statistics, add case studies, use conversational tone, focus on AEO and Answer Engine visibility, include variations with 'AI search'"
+          value={businessContext.contentInstructions || ''}
+          onChange={(e) => updateContext({ contentInstructions: e.target.value })}
+          className="text-xs min-h-[80px]"
+          rows={3}
+        />
+        
+        <p className="text-xs text-muted-foreground">
+          💡 These instructions will be automatically loaded in the Blog generator
+        </p>
+      </div>
+
       {/* Clear Confirmation Modal */}
       {showClearConfirmation && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">

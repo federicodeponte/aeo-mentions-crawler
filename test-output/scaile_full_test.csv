@@ -1,31 +1,31 @@
 keyword,intent,score,cluster,is_question,volume,difficulty,source,aeo_opportunity,has_featured_snippet,has_paa
-Book AI contract review demo,transactional,100,Demo Requests and Booking,False,0,50,ai_generated,75,False,True
-Get quote for Scaile platform,transactional,100,Pricing and Quotes,False,0,50,ai_generated,65,False,False
-Get Scaile demo,transactional,100,Demo Requests and Booking,False,0,50,ai_generated,65,False,False
-Get Scaile demo for contractors,transactional,99,Demo Requests and Booking,False,0,50,ai_generated,55,False,False
-How much does Scaile cost,question,98,Pricing and Quotes,True,0,50,ai_generated,95,True,False
-Order custom risk playbook configuration,transactional,98,Pricing and Quotes,False,0,50,ai_generated,65,False,False
-Scaile platform pricing,commercial,98,Pricing and Quotes,False,0,50,ai_generated,65,False,False
-Sign up for Scaile,transactional,98,Registration and Access,False,0,50,ai_generated,55,False,False
-Sign up for risk dashboard,transactional,96,Registration and Access,False,0,50,ai_generated,65,False,False
-Scaile vs traditional law firms,comparison,96,Comparisons and Alternatives,False,0,50,ai_generated,65,False,False
-Book demo for construction legal software,transactional,96,Demo Requests and Booking,False,0,50,ai_generated,0,False,False
-Scaile vs manual contract review,comparison,96,Comparisons and Alternatives,False,0,50,ai_generated,0,False,False
-Get quote for contract AI,transactional,93,Pricing and Quotes,False,0,50,ai_generated,0,False,False
-Scaile vs Document Crunch 2025,comparison,92,Comparisons and Alternatives,False,0,50,ai_generated,0,False,False
-How to automate construction contract review 2025,question,90,General Inquiries and Education,True,0,50,ai_generated,0,False,False
-Best construction contract AI software,commercial,90,Top Industry Rankings,False,0,50,ai_generated,0,False,False
-Automated risk assessment for contractors,commercial,90,General Inquiries and Education,False,0,50,ai_generated,0,False,False
-Book AI platform demo California,transactional,90,Demo Requests and Booking,False,0,50,ai_generated,0,False,False
-What is the best construction risk AI?,question,88,Top Industry Rankings,True,0,50,ai_generated,0,False,False
-AI contract review vs manual legal review,comparison,85,Comparisons and Alternatives,False,0,50,ai_generated,0,False,False
-Best construction legal tech 2025,commercial,85,Top Industry Rankings,False,0,50,ai_generated,0,False,False
-AI contract review vs outside counsel cost,comparison,85,Comparisons and Alternatives,False,0,50,ai_generated,0,False,False
-California construction risk software,commercial,85,General Inquiries and Education,False,0,50,ai_generated,0,False,False
-Top rated construction risk management tools 2025,commercial,85,Top Industry Rankings,False,0,50,ai_generated,0,False,False
-Construction risk management software pricing 2025,commercial,85,Pricing and Quotes,False,0,50,ai_generated,0,False,False
-AI contract software for subcontractors,commercial,84,General Inquiries and Education,False,0,50,ai_generated,0,False,False
-Sign up for contract AI,transactional,82,Registration and Access,False,0,50,ai_generated,0,False,False
-Top legaltech for general contractors US,commercial,80,Top Industry Rankings,False,0,50,ai_generated,0,False,False
-Can AI review construction contracts in 2025,question,78,General Inquiries and Education,True,0,50,ai_generated,0,False,False
-What are AI risk playbooks?,question,75,General Inquiries and Education,True,0,50,ai_generated,0,False,False
+Get quote for enterprise generative AI solution,transactional,100,Generative AI Solutions,False,0,50,ai_generated,60,False,False
+Get quote for LLMOps services,transactional,100,MLOps & LLMOps Services,False,0,50,ai_generated,55,False,False
+Book AI roadmap consultation in Chicago,transactional,100,AI Strategy & Consulting,False,0,50,ai_generated,60,False,False
+Hire dedicated AI strategy consultants,transactional,100,AI Strategy & Consulting,False,0,50,ai_generated,80,False,True
+Book MLOps audit services,transactional,100,MLOps & LLMOps Services,False,0,50,ai_generated,65,False,False
+Order AI compliance assessment,transactional,100,Governance & Compliance,False,0,50,ai_generated,55,False,False
+best ai strategy & roadmap Europe (Benelux),commercial,99,AI Strategy & Consulting,False,0,50,hyper_niche_geo,55,False,False
+best ai governance & compliance Europe (Benelux),commercial,99,Governance & Compliance,False,0,50,hyper_niche_geo,60,False,False
+best data & ai engineering Europe (Benelux),commercial,99,Data & AI Engineering,False,0,50,hyper_niche_geo,65,False,False
+buy generative ai strategy,transactional,98,Generative AI Solutions,False,0,50,ai_generated,65,False,False
+Hire AI consultants San Francisco,transactional,98,General Enterprise AI Vendors,False,0,50,ai_generated,60,False,False
+best ai strategy & roadmap for enterprise,commercial,98,AI Strategy & Consulting,False,0,50,hyper_niche_size,0,False,False
+best ai governance & compliance for enterprise,commercial,98,Governance & Compliance,False,0,50,hyper_niche_size,0,False,False
+data & ai engineering for enterprise,commercial,98,Data & AI Engineering,False,0,50,hyper_niche_size,0,False,False
+Best AI governance consulting firms New York,commercial,96,Governance & Compliance,False,0,50,ai_generated,0,False,False
+Enterprise AI strategy pricing,commercial,96,AI Strategy & Consulting,False,0,50,ai_generated,0,False,False
+Best MLOps services San Francisco,commercial,96,MLOps & LLMOps Services,False,0,50,ai_generated,0,False,False
+Hire MLOps consultants,transactional,95,MLOps & LLMOps Services,False,0,50,ai_generated,0,False,False
+Get quote for AI strategy,transactional,95,AI Strategy & Consulting,False,0,50,ai_generated,0,False,False
+Schedule AI readiness assessment,transactional,95,AI Strategy & Consulting,False,0,50,ai_generated,0,False,False
+book ai strategy consultation,transactional,95,AI Strategy & Consulting,False,0,50,ai_generated,0,False,False
+Who provides MLOps services?,question,93,MLOps & LLMOps Services,True,0,50,ai_generated,0,False,False
+Book AI audit,transactional,93,Governance & Compliance,False,0,50,ai_generated,0,False,False
+Implementing LLMOps for regulated US industries,informational,90,MLOps & LLMOps Services,False,0,50,ai_generated,0,False,False
+best llmops services for finance,commercial,90,MLOps & LLMOps Services,False,0,50,ai_generated,0,False,False
+Top AI consultancy,commercial,90,General Enterprise AI Vendors,False,0,50,ai_generated,0,False,False
+Scaile vs Deloitte AI consulting,comparison,90,General Enterprise AI Vendors,False,0,50,ai_generated,0,False,False
+Cost of AI governance advisory,commercial,90,Governance & Compliance,False,0,50,ai_generated,0,False,False
+Top AI consultancy firms NYC,commercial,90,General Enterprise AI Vendors,False,0,50,ai_generated,0,False,False
+Enterprise generative AI pricing 2025,commercial,90,Generative AI Solutions,False,0,50,ai_generated,0,False,False
