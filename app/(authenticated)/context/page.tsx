@@ -32,9 +32,9 @@ export default function ContextPage() {
           <ContextForm />
           
           {/* Help Section */}
-          <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 space-y-2">
-            <h3 className="text-xs font-medium text-primary/90">Why Company Context Matters</h3>
-            <ul className="text-xs text-primary/70 space-y-1 list-disc list-inside">
+          <div className="border border-border rounded-lg p-4 space-y-2">
+            <h3 className="text-sm font-semibold text-foreground">Why Company Context Matters</h3>
+            <ul className="text-sm text-muted-foreground space-y-1.5 list-disc list-inside">
               <li>AI extracts company info, products, and brand identity</li>
               <li>Powers strategic keyword generation for AI search engines</li>
               <li>Optimizes content for ChatGPT, Perplexity, Claude, and Gemini</li>
