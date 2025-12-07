@@ -6,7 +6,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Sparkles, Loader2, Download, Plus, X, Upload, ChevronDown, ChevronUp } from 'lucide-react'
+import { Sparkles, Loader2, Download, Plus, X, Upload, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -200,12 +200,19 @@ export function BlogGenerator() {
       const storedKey = localStorage.getItem('gemini-api-key')
       setGeminiApiKey(storedKey)
       
-      // Load system instructions from context if available
-      if (businessContext.systemInstructions) {
+      // Load Client Knowledge Base from context (preferred) or fallback to systemInstructions
+      if (businessContext.clientKnowledgeBase) {
+        setSystemPrompts(businessContext.clientKnowledgeBase)
+      } else if (businessContext.systemInstructions) {
         setSystemPrompts(businessContext.systemInstructions)
       }
+      
+      // Load Content Instructions from context
+      if (businessContext.contentInstructions) {
+        setAdditionalInstructions(businessContext.contentInstructions)
+      }
     }
-  }, [businessContext.systemInstructions])
+  }, [businessContext.clientKnowledgeBase, businessContext.contentInstructions, businessContext.systemInstructions])
 
   // Rotating messages effect
   useEffect(() => {
@@ -731,7 +738,11 @@ export function BlogGenerator() {
                       id="system-prompts"
                       placeholder="Company facts (one per line):&#10;We target Fortune 500&#10;We specialize in security"
                       value={systemPrompts}
-                      onChange={(e) => setSystemPrompts(e.target.value)}
+                      onChange={(e) => {
+                        setSystemPrompts(e.target.value)
+                        // Save to context
+                        updateContext({ clientKnowledgeBase: e.target.value })
+                      }}
                       className="text-xs resize-none font-mono"
                       rows={3}
                       disabled={isGenerating}
@@ -749,7 +760,11 @@ export function BlogGenerator() {
                       id="instructions"
                       placeholder="e.g., Include statistics, add case studies"
                       value={additionalInstructions}
-                      onChange={(e) => setAdditionalInstructions(e.target.value)}
+                      onChange={(e) => {
+                        setAdditionalInstructions(e.target.value)
+                        // Save to context
+                        updateContext({ contentInstructions: e.target.value })
+                      }}
                       className="text-xs resize-none"
                       rows={2}
                       disabled={isGenerating}
@@ -984,29 +999,79 @@ export function BlogGenerator() {
                   )}
                 </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  // Export as Markdown
-                  const markdown = `# ${result.title}\n\n${result.content}`
-                  const blob = new Blob([markdown], { type: 'text/markdown' })
-                  const url = URL.createObjectURL(blob)
-                  const a = document.createElement('a')
-                  a.href = url
-                  
-                  const timestamp = new Date().toISOString().split('T')[0]
-                  const keywordSlug = result.metadata.keyword.replace(/[^a-z0-9]/gi, '-').toLowerCase()
-                  a.download = `blog-${keywordSlug}-${timestamp}.md`
-                  
-                  a.click()
-                  URL.revokeObjectURL(url)
-                  toast.success('Blog exported as Markdown')
-                }}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export MD
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    if (!result.content) {
+                      toast.error('No content to refresh')
+                      return
+                    }
+                    
+                    setIsGenerating(true)
+                    try {
+                      const response = await fetch('/api/refresh-blog', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          content: result.content,
+                          content_format: 'html',
+                          instructions: ['Update to latest information', 'Improve clarity'],
+                          output_format: 'html',
+                          apiKey: geminiApiKey,
+                        }),
+                      })
+                      
+                      if (!response.ok) {
+                        throw new Error('Refresh failed')
+                      }
+                      
+                      const refreshData = await response.json()
+                      if (refreshData.success && refreshData.refreshed_html) {
+                        setResult({
+                          ...result,
+                          content: refreshData.refreshed_html,
+                        })
+                        toast.success('Blog refreshed successfully')
+                      } else {
+                        throw new Error(refreshData.error || 'Refresh failed')
+                      }
+                    } catch (error) {
+                      toast.error(error instanceof Error ? error.message : 'Failed to refresh blog')
+                    } finally {
+                      setIsGenerating(false)
+                    }
+                  }}
+                  disabled={isGenerating}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Refresh
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    // Export as Markdown
+                    const markdown = `# ${result.title}\n\n${result.content}`
+                    const blob = new Blob([markdown], { type: 'text/markdown' })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    
+                    const timestamp = new Date().toISOString().split('T')[0]
+                    const keywordSlug = result.metadata.keyword.replace(/[^a-z0-9]/gi, '-').toLowerCase()
+                    a.download = `blog-${keywordSlug}-${timestamp}.md`
+                    
+                    a.click()
+                    URL.revokeObjectURL(url)
+                    toast.success('Blog exported as Markdown')
+                  }}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export MD
+                </Button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-auto border border-border rounded-lg p-6 prose prose-sm dark:prose-invert max-w-none">
