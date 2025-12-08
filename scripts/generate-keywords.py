@@ -140,6 +140,10 @@ async def run_generation(input_data: dict) -> dict:
         # ENABLE FULL PIPELINE (uses DataForSEO or Gemini)
         enable_serp_analysis=True,   # Get SERP features, AEO opportunities
         enable_volume_lookup=True,   # Get search volume + difficulty
+        # Google Trends & Autocomplete (FREE add-ons, optional)
+        enable_google_trends=input_data.get('enable_google_trends', False),
+        enable_autocomplete=input_data.get('enable_autocomplete', False),
+        autocomplete_expansion_limit=input_data.get('autocomplete_limit', 50),
         # Note: If no DataForSEO API key, Gemini SERP analyzer is used automatically
     )
     
@@ -148,6 +152,10 @@ async def run_generation(input_data: dict) -> dict:
     logger.info("   ✓ SE Ranking competitor gap analysis")
     logger.info("   ✓ SERP analysis for AEO opportunities")
     logger.info("   ✓ Volume + difficulty lookup")
+    if config.enable_autocomplete:
+        logger.info("   ✓ Google Autocomplete (real user queries)")
+    if config.enable_google_trends:
+        logger.info("   ✓ Google Trends (seasonality, rising queries)")
     
     # STEP 4: Generate keywords
     generator = KeywordGenerator(
