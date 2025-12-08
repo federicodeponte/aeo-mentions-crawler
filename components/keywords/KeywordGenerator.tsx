@@ -204,11 +204,12 @@ export function KeywordGenerator() {
   const [numKeywords, setNumKeywords] = useState(50)
   const [geminiApiKey, setGeminiApiKey] = useState<string | null>(null)
   
-  // Simple progress tracking
+  // Simulated progress tracking (for UX engagement)
   const [progress, setProgress] = useState(0)
+  const [currentStage, setCurrentStage] = useState('')
+  const [currentSubstage, setCurrentSubstage] = useState('')
   
-  // Rotating message state
-  const [messageIndex, setMessageIndex] = useState(0)
+  // Dots animation state
   const [dots, setDots] = useState('')
   
   // Results state
@@ -236,21 +237,9 @@ export function KeywordGenerator() {
         
         // Calculate current progress
         const currentProgress = Math.min((elapsed / 70) * 95, 95)
-        const remainingTime = Math.max(0, 70 - elapsed)
         
         setProgress(currentProgress)
-        setTimeRemaining(remainingTime)
-        
         toast.info('Resuming keyword generation...')
-        
-        // Continue progress bar
-        progressIntervalRef.current = setInterval(() => {
-          setProgress(prev => {
-            const newProgress = prev + (95 / 70)
-            return Math.min(newProgress, 95)
-          })
-          setTimeRemaining(prev => Math.max(0, prev - 1))
-        }, 1000)
       } else {
         // Expired, clear it
         sessionStorage.removeItem(GENERATION_STATE_KEY)
@@ -269,20 +258,15 @@ export function KeywordGenerator() {
     }
   }, [])
 
-  // Rotating messages effect
+  // Dots animation effect
   useEffect(() => {
     if (!isGenerating) return
-
-    const messageTimer = setInterval(() => {
-      setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length)
-    }, 2000)
 
     const dotTimer = setInterval(() => {
       setDots((prev) => (prev.length >= 3 ? '' : prev + '.'))
     }, 400)
 
     return () => {
-      clearInterval(messageTimer)
       clearInterval(dotTimer)
     }
   }, [isGenerating])
@@ -303,8 +287,8 @@ export function KeywordGenerator() {
     setIsGenerating(true)
     setResults(null)
     setProgress(0)
-    setTimeRemaining(480) // Realistic estimate: 8 minutes for full generation
     setCurrentStage('')
+    setCurrentSubstage('')
     setCurrentSubstage('')
     setStageProgress({
       company_analysis: 0,
@@ -361,9 +345,35 @@ export function KeywordGenerator() {
         throw new Error(error.error || error.message || 'Failed to generate keywords')
       }
 
-      // Simple progress animation while waiting
+      // Simulate realistic 7-stage progress (for UX engagement)
+      const stages = [
+        { name: 'company_analysis', label: 'Analyzing company', duration: 15, end: 15 },
+        { name: 'configuration', label: 'Setting up', duration: 5, end: 20 },
+        { name: 'ai_generation', label: 'Generating keywords', duration: 60, end: 40 },
+        { name: 'research', label: 'Researching forums', duration: 30, end: 60 },
+        { name: 'serp_analysis', label: 'Analyzing SERP', duration: 30, end: 80 },
+        { name: 'deduplication', label: 'Removing duplicates', duration: 15, end: 90 },
+        { name: 'clustering', label: 'Clustering keywords', duration: 10, end: 95 },
+      ]
+
+      let currentProgress = 0
+      let stageIndex = 0
+      
       const progressInterval = setInterval(() => {
-        setProgress(prev => Math.min(prev + 1, 95))
+        if (stageIndex < stages.length) {
+          const stage = stages[stageIndex]
+          setCurrentStage(stage.name)
+          setCurrentSubstage(stage.label)
+          
+          currentProgress += (stage.end - currentProgress) / 10
+          setProgress(Math.min(currentProgress, stage.end))
+          
+          if (currentProgress >= stage.end - 1) {
+            stageIndex++
+          }
+        } else {
+          setProgress(prev => Math.min(prev + 0.5, 95))
+        }
       }, 500)
 
       // Get JSON response
@@ -402,7 +412,6 @@ export function KeywordGenerator() {
     } finally {
       setIsGenerating(false)
       setProgress(100)
-      setTimeRemaining(0)
     }
   }, [companyName, companyUrl, language, country, numKeywords, geminiApiKey, businessContext])
 
@@ -550,21 +559,21 @@ export function KeywordGenerator() {
                 </div>
               </div>
 
-              {/* Simple progress message */}
+              {/* Engaging 7-stage progress (simulated) */}
               <div className="space-y-4">
                 <div className="text-center space-y-2">
                   <p className="text-sm font-medium text-foreground">
-                    Generating keywords{dots}
+                    {currentSubstage || 'Generating keywords'}{dots}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     This may take a few minutes
                   </p>
                 </div>
 
-                {/* Simple progress bar */}
+                {/* Overall progress bar */}
                 <div className="w-full max-w-md mx-auto space-y-2">
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Progress</span>
+                    <span>Overall Progress</span>
                     <span>{Math.round(progress)}%</span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2">
@@ -575,8 +584,46 @@ export function KeywordGenerator() {
                   </div>
                 </div>
 
+                {/* 7-stage breakdown */}
+                <div className="w-full max-w-md mx-auto space-y-2 text-xs">
+                  {[
+                    { key: 'company_analysis', icon: '🔍', label: 'Company Analysis', range: [0, 15] },
+                    { key: 'configuration', icon: '⚙️', label: 'Configuration', range: [15, 20] },
+                    { key: 'ai_generation', icon: '🤖', label: 'AI Generation', range: [20, 40] },
+                    { key: 'research', icon: '📚', label: 'Research', range: [40, 60] },
+                    { key: 'serp_analysis', icon: '🔎', label: 'SERP Analysis', range: [60, 80] },
+                    { key: 'deduplication', icon: '🎯', label: 'Deduplication', range: [80, 90] },
+                    { key: 'clustering', icon: '📊', label: 'Clustering', range: [90, 95] },
+                  ].map((stage) => {
+                    const [start, end] = stage.range
+                    const isActive = progress >= start && progress < end
+                    const isComplete = progress >= end
+                    const stageProgress = Math.min(Math.max(((progress - start) / (end - start)) * 100, 0), 100)
+                    
+                    return (
+                      <div 
+                        key={stage.key}
+                        className={`flex items-center gap-2 transition-opacity ${
+                          isActive ? 'opacity-100' : isComplete ? 'opacity-60' : 'opacity-30'
+                        }`}
+                      >
+                        <span className="text-base">{isComplete ? '✅' : stage.icon}</span>
+                        <span className="flex-1">{stage.label}</span>
+                        <div className="w-24 bg-muted rounded-full h-1">
+                          <div
+                            className={`h-1 rounded-full transition-all duration-500 ${
+                              isComplete ? 'bg-green-500' : 'bg-blue-500'
+                            }`}
+                            style={{ width: `${stageProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
                 {/* Navigate away message */}
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-center mt-6">
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-center mt-4">
                   <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
                     💡 Feel free to navigate away
                   </p>
