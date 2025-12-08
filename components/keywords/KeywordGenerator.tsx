@@ -742,47 +742,44 @@ export function KeywordGenerator() {
               </div>
 
               {/* Engaging 7-stage progress (simulated) */}
-              <div className="space-y-6">
-                {/* Current Stage & Substage */}
-                <div className="text-center space-y-3">
-                  <div className="space-y-1">
-                    <p className="text-lg font-bold text-foreground">
+              <div className="space-y-8">
+                {/* Current Stage - Clean and Minimal */}
+                <div className="text-center space-y-4">
+                  <div className="space-y-2">
+                    <p className="text-2xl font-bold text-foreground">
                       {currentStage || 'Starting...'}
                     </p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground/80">
                       {currentSubstage || 'Initializing'}{dots}
                     </p>
                   </div>
-                  <p className="text-xs text-muted-foreground/80">
-                    ⏱️ Generation takes ~5-7 minutes
-                  </p>
-                </div>
-
-                {/* Overall progress bar */}
-                <div className="w-full max-w-md mx-auto space-y-2">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="font-medium">Overall Progress</span>
-                    <span className="font-mono">{Math.round(progress)}%</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-3">
-                    <div
-                      className="bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 h-3 rounded-full transition-all duration-500 shadow-sm"
-                      style={{ width: `${progress}%` }}
-                    />
+                  
+                  {/* Overall progress bar - bigger and cleaner */}
+                  <div className="w-full max-w-lg mx-auto space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">⏱️ ~5-7 minutes</span>
+                      <span className="font-mono font-semibold text-foreground">{Math.round(progress)}%</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden shadow-inner">
+                      <div
+                        className="bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* 7-stage breakdown with updated ranges (matching 5-7 min total) */}
-                <div className="w-full max-w-md mx-auto space-y-2 text-xs">
+                {/* 7-stage breakdown - clean and minimal */}
+                <div className="w-full max-w-md mx-auto space-y-1.5">
                   {[
-                    { key: 'company_analysis', icon: '🔍', label: '1. Company Analysis', range: [0, 10] },
-                    { key: 'configuration', icon: '⚙️', label: '2. Configuration', range: [10, 15] },
-                    { key: 'ai_generation', icon: '🤖', label: '3. AI Generation', range: [15, 40] },
-                    { key: 'research', icon: '📚', label: '4. Research & Enrichment', range: [40, 60] },
-                    { key: 'serp_analysis', icon: '🔎', label: '5. SERP Analysis', range: [60, 75] },
-                    { key: 'deduplication', icon: '🎯', label: '6. Deduplication & Scoring', range: [75, 85] },
-                    { key: 'clustering', icon: '📊', label: '7. Final Clustering', range: [85, 95] },
-                  ].map((stage) => {
+                    { key: 'company_analysis', icon: '🔍', label: 'Company Analysis', range: [0, 10], duration: '~30s' },
+                    { key: 'configuration', icon: '⚙️', label: 'Configuration', range: [10, 15], duration: '~20s' },
+                    { key: 'ai_generation', icon: '🤖', label: 'AI Generation', range: [15, 40], duration: '~2min' },
+                    { key: 'research', icon: '📚', label: 'Research & Enrichment', range: [40, 60], duration: '~90s' },
+                    { key: 'serp_analysis', icon: '🔎', label: 'SERP Analysis', range: [60, 75], duration: '~1min' },
+                    { key: 'deduplication', icon: '🎯', label: 'Deduplication', range: [75, 85], duration: '~30s' },
+                    { key: 'clustering', icon: '📊', label: 'Final Clustering', range: [85, 95], duration: '~20s' },
+                  ].map((stage, idx) => {
                     const [start, end] = stage.range
                     const isActive = progress >= start && progress < end
                     const isComplete = progress >= end
@@ -791,38 +788,49 @@ export function KeywordGenerator() {
                     return (
                       <div 
                         key={stage.key}
-                        className={`flex items-center gap-2 p-2 rounded-md transition-all ${
-                          isActive ? 'bg-primary/10 opacity-100 scale-100' : 
-                          isComplete ? 'opacity-60 scale-95' : 
-                          'opacity-30 scale-95'
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 ${
+                          isActive ? 'bg-primary/10 border border-primary/20' : 
+                          isComplete ? 'opacity-50' : 
+                          'opacity-30'
                         }`}
                       >
-                        <span className="text-base">{isComplete ? '✅' : isActive ? '⏳' : stage.icon}</span>
-                        <span className={`flex-1 ${isActive ? 'font-medium' : ''}`}>{stage.label}</span>
-                        <div className="w-20 bg-muted rounded-full h-1.5">
-                          <div
-                            className={`h-1.5 rounded-full transition-all duration-500 ${
-                              isComplete ? 'bg-green-500' : 'bg-blue-500'
-                            }`}
-                            style={{ width: `${stageProgress}%` }}
-                          />
+                        <span className="text-lg shrink-0">
+                          {isComplete ? '✅' : isActive ? '⏳' : stage.icon}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline justify-between gap-2 mb-1">
+                            <span className={`text-xs ${isActive ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
+                              {idx + 1}. {stage.label}
+                            </span>
+                            {isActive && (
+                              <span className="text-xs text-muted-foreground font-mono">
+                                {stage.duration}
+                              </span>
+                            )}
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className={`h-1.5 rounded-full transition-all duration-500 ${
+                                isComplete ? 'bg-green-500' : 
+                                isActive ? 'bg-gradient-to-r from-blue-500 to-cyan-500 animate-pulse' : 
+                                'bg-muted-foreground/20'
+                              }`}
+                              style={{ width: `${isComplete ? 100 : stageProgress}%` }}
+                            />
+                          </div>
                         </div>
                       </div>
                     )
                   })}
                 </div>
 
-                {/* Navigate away message */}
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-center mt-4">
-                  <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                    💡 Feel free to navigate away
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Results will be saved in the{' '}
+                {/* Navigate away message - minimal */}
+                <div className="border border-border/50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-muted-foreground">
+                    💡 Feel free to navigate away — Results saved in{' '}
                     <a href="/log" className="text-primary hover:underline font-medium">
                       LOG
                     </a>
-                    {' '}tab
                   </p>
                 </div>
               </div>
