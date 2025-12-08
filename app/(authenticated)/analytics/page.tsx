@@ -131,11 +131,6 @@ export default function AnalyticsPage() {
       return
     }
 
-    if (!apiKey) {
-      toast.error('Please set your OpenRouter API key in Settings first')
-      return
-    }
-
     if (!businessContext?.products || businessContext.products.length === 0) {
       toast.error('Please add products/services in Business Context first')
       return
@@ -320,7 +315,6 @@ export default function AnalyticsPage() {
   }
 
   const hasContextData = Boolean(businessContext?.companyWebsite && businessContext?.companyName)
-  const hasApiKey = Boolean(apiKey)
   const hasProducts = Boolean(businessContext?.products && businessContext.products.length > 0)
   const canRun = hasContextData // Button enabled only if we have context data
 
@@ -389,19 +383,6 @@ export default function AnalyticsPage() {
             </Alert>
           )}
 
-          {/* API Key Warning - only if not set */}
-          {!hasApiKey && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>API key required:</strong> Set your OpenRouter key in{' '}
-                <a href="/settings" className="text-primary hover:underline">
-                  Settings
-                </a>
-                {' '}for mentions analysis.
-              </AlertDescription>
-            </Alert>
-          )}
 
           {/* Run Button */}
           <Button
