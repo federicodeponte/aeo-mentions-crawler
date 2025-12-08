@@ -28,7 +28,7 @@ interface KeywordRequest {
 export async function POST(request: NextRequest): Promise<Response> {
   try {
     const body: KeywordRequest = await request.json()
-    const { company_name, company_url, apiKey } = body
+    const { company_name, company_url, apiKey: clientApiKey } = body
 
     if (!company_name) {
       return NextResponse.json(
@@ -37,10 +37,13 @@ export async function POST(request: NextRequest): Promise<Response> {
       )
     }
 
+    // Use client-provided API key or fallback to server env variable
+    const apiKey = clientApiKey || process.env.GEMINI_API_KEY
+
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Gemini API key is required. Please set it in Settings.' },
-        { status: 400 }
+        { error: 'Gemini API key is not configured. Please contact support.' },
+        { status: 500 }
       )
     }
 
