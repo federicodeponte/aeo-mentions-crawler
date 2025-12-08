@@ -50,7 +50,6 @@ async def test_client(company_url: str, company_name: str):
         print(f"   - generate: {signature(gen.generate)}")
         
         print("\n📊 CompanyInfo Fields:")
-        from openkeywords.models import CompanyInfo
         print(f"   - {list(CompanyInfo.__annotations__.keys())[:10]}...")
         
         print("\n✅ All imports and code structure verified!")
@@ -118,8 +117,8 @@ async def test_client(company_url: str, company_name: str):
     print("📊 PHASE 2: Keyword Generation")
     print("-" * 80)
     
+    # Build CompanyInfo from analysis
     try:
-        # Build CompanyInfo from analysis
         company_info = CompanyInfo(
             name=analysis.get('company_name', company_name),
             url=company_url,
