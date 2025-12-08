@@ -7,6 +7,10 @@ import { NextRequest } from 'next/server'
 import { spawn } from 'child_process'
 import path from 'path'
 
+// Force Node.js runtime for child_process support
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 interface KeywordRequest {
   company_name: string
   company_url?: string
@@ -65,17 +69,25 @@ export async function POST(request: NextRequest) {
     const encoder = new TextEncoder()
     const stream = new ReadableStream({
       async start(controller) {
-        // Spawn Python process
-        const pythonScript = path.join(process.cwd(), 'scripts', 'generate-keywords-streaming.py')
-        const pythonProcess = spawn('python3', [pythonScript])
+        try {
+          // Spawn Python process
+          const pythonScript = path.join(process.cwd(), 'scripts', 'generate-keywords-streaming.py')
+          console.log('[API:KEYWORDS:STREAM] Python script path:', pythonScript)
+          
+          const pythonProcess = spawn('python3', [pythonScript], {
+            stdio: ['pipe', 'pipe', 'pipe'],
+          })
 
-        // Send input data to Python
-        pythonProcess.stdin.write(JSON.stringify({
-          ...body,
-          apiKey,
-          target_count: body.num_keywords || body.target_count || 50,
-        }))
-        pythonProcess.stdin.end()
+          // Send input data to Python
+          const inputData = JSON.stringify({
+            ...body,
+            apiKey,
+            target_count: body.num_keywords || body.target_count || 50,
+          })
+          console.log('[API:KEYWORDS:STREAM] Sending input:', inputData.length, 'bytes')
+          
+          pythonProcess.stdin.write(inputData)
+          pythonProcess.stdin.end()
 
         // Handle progress updates from stderr
         pythonProcess.stderr.on('data', (data) => {
@@ -126,12 +138,21 @@ export async function POST(request: NextRequest) {
           controller.close()
         })
 
-        pythonProcess.on('error', (error) => {
-          console.error('[API:KEYWORDS:STREAM] Python process error:', error)
-          const errorMessage = `data: ${JSON.stringify({ type: "error", error: error.message })}\n\n`
+          pythonProcess.on('error', (error) => {
+            console.error('[API:KEYWORDS:STREAM] Python process error:', error)
+            const errorMessage = `data: ${JSON.stringify({ type: "error", error: error.message })}\n\n`
+            controller.enqueue(encoder.encode(errorMessage))
+            controller.close()
+          })
+        } catch (error) {
+          console.error('[API:KEYWORDS:STREAM] Stream setup error:', error)
+          const errorMessage = `data: ${JSON.stringify({ 
+            type: "error", 
+            error: error instanceof Error ? error.message : 'Stream setup failed' 
+          })}\n\n`
           controller.enqueue(encoder.encode(errorMessage))
           controller.close()
-        })
+        }
       },
     })
 
