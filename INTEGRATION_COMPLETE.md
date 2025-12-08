@@ -209,7 +209,8 @@ for kw in kws_with_trends:
 - 📈 Trending opportunities from Trends
 - 🌍 Regional interest data
 - 📅 Seasonality for content planning
-- 💯 100% FREE (no API keys)
+- 💯 FREE add-ons (no additional API subscriptions like DataForSEO/SE Ranking)
+- ⚠️  Base system requires Gemini API key for deep research
 
 **Recommendation:**
 - Enable for high-value strategic keyword sets
