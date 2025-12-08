@@ -170,7 +170,7 @@ async def run_generation(input_data: dict) -> dict:
         'generation_time': generation_time,
         'used_company_analysis': analysis_result is not None,
         'generation_date': datetime.now().isoformat(),
-        'pipeline': 'full' if config.include_serp_analysis else 'basic',
+        'pipeline': 'full' if config.enable_serp_analysis else 'basic',
     }
     
     logger.info(f"✅ Generated {len(output.get('keywords', []))} keywords in {generation_time:.1f}s")
