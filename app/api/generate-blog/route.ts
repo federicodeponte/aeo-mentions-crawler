@@ -75,8 +75,8 @@ export async function POST(request: NextRequest): Promise<Response> {
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Gemini API key is required. Please set it in Settings or GEMINI_API_KEY environment variable.' },
-        { status: 400 }
+        { error: 'Gemini API key is not configured. Please contact support.' },
+        { status: 500 }
       )
     }
 

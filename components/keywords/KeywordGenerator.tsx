@@ -299,10 +299,8 @@ export function KeywordGenerator() {
       return
     }
 
-    if (!geminiApiKey) {
-      toast.error('Please set your Gemini API key in Profile settings first')
-      return
-    }
+    // API key is optional - server will use env variable if not provided
+    // This maintains backward compatibility with BYOK users
 
     setIsGenerating(true)
     setResults(null)
@@ -448,19 +446,7 @@ export function KeywordGenerator() {
             </div>
           )}
 
-          {/* API Key Warning */}
-          {!geminiApiKey && (
-            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 space-y-1.5">
-              <p className="text-xs font-medium text-yellow-500">Gemini API Key Required</p>
-              <p className="text-xs text-muted-foreground">
-                Set your API key in{' '}
-                <a href="/settings" className="text-primary hover:underline">
-                  Settings
-                </a>
-                {' '}to generate keywords.
-              </p>
-            </div>
-          )}
+          {/* API key is now configured server-side in .env.local */}
 
           {/* Show company info from context */}
           {hasContext && (
@@ -529,7 +515,7 @@ export function KeywordGenerator() {
 
             <Button
               onClick={handleGenerate}
-              disabled={!hasContext || !geminiApiKey || isGenerating}
+              disabled={!hasContext || isGenerating}
               className="w-full"
               size="lg"
             >

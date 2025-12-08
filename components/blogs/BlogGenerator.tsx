@@ -353,10 +353,7 @@ export function BlogGenerator() {
       return
     }
 
-    if (!geminiApiKey) {
-      toast.error('Please set your Gemini API key in Settings first.')
-      return
-    }
+    // API key is optional - server will use env variable if not provided
 
     // Clear any existing abort controller
     if (abortControllerRef.current) {
@@ -613,19 +610,7 @@ export function BlogGenerator() {
             </div>
           )}
 
-          {/* API Key Warning */}
-          {!geminiApiKey && (
-            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 space-y-1.5">
-              <p className="text-xs font-medium text-yellow-500">Gemini API Key Required</p>
-              <p className="text-xs text-muted-foreground">
-                Set your API key in{' '}
-                <a href="/settings" className="text-primary hover:underline">
-                  Settings
-                </a>
-                {' '}to generate content.
-              </p>
-            </div>
-          )}
+          {/* API key is now configured server-side in .env.local */}
 
           {/* Show company info from context */}
           {hasContext && (
@@ -921,7 +906,7 @@ export function BlogGenerator() {
 
             <Button
               onClick={handleGenerate}
-              disabled={!hasContext || !geminiApiKey || isGenerating || isRefreshing || (!batchMode && !primaryKeyword.trim()) || (batchMode && !batchKeywords.some(k => k.keyword.trim()))}
+              disabled={!hasContext || isGenerating || isRefreshing || (!batchMode && !primaryKeyword.trim()) || (batchMode && !batchKeywords.some(k => k.keyword.trim()))}
               className="w-full"
               size="lg"
             >
@@ -1151,11 +1136,7 @@ export function BlogGenerator() {
                       return
                     }
                     
-                    // Check for API key
-                    if (!geminiApiKey) {
-                      toast.error('Please set your Gemini API key in Settings first')
-                      return
-                    }
+                    // API key is optional - server will use env variable if not provided
                     
                     setIsRefreshing(true)
                     
