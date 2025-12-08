@@ -24,7 +24,7 @@ interface BreadcrumbProps {
 }
 
 const routeLabels: Record<string, string> = {
-  '/go': 'Run',
+  '/keywords': 'Keywords',
   '/log': 'Log',
   '/profile': 'Profile',
 }
@@ -57,7 +57,7 @@ export function Breadcrumb({ items, className, compact = true }: BreadcrumbProps
     return (
       <nav aria-label="Breadcrumb" className={cn('flex items-center gap-1.5', className)}>
         <Link
-          href="/go"
+          href="/keywords"
           className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
           aria-label="Home"
         >
@@ -77,7 +77,7 @@ export function Breadcrumb({ items, className, compact = true }: BreadcrumbProps
       <ol className="flex items-center gap-1.5 flex-wrap">
         <li>
           <Link
-            href="/go"
+            href="/keywords"
             className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Home"
           >

@@ -616,7 +616,7 @@ const handleDownloadXLSX = useCallback(async (e: React.MouseEvent<HTMLButtonElem
                   description="Complete your first batch to see it logged here"
                   action={{
                     label: "Start Running",
-                    onClick: () => router.push('/go'),
+                    onClick: () => router.push('/keywords'),
                     variant: 'default'
                   }}
                   size="md"

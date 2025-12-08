@@ -63,7 +63,7 @@ export function Navbar() {
           <ThemeToggle />
           {isSignedIn ? (
             <Button asChild size="sm" className="bg-green-500 hover:bg-green-600">
-              <Link href="/go">Dashboard 👟</Link>
+              <Link href="/keywords">Dashboard 👟</Link>
             </Button>
           ) : (
             <>
@@ -107,7 +107,7 @@ export function Navbar() {
             <hr className="border-border/50 my-2" />
             {isSignedIn ? (
               <Button asChild className="w-full bg-green-500 hover:bg-green-600">
-                <Link href="/go">Dashboard 👟</Link>
+                <Link href="/keywords">Dashboard 👟</Link>
               </Button>
             ) : (
               <Button asChild className="w-full bg-green-500 hover:bg-green-600">
