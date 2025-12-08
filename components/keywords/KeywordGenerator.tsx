@@ -348,7 +348,10 @@ export function KeywordGenerator() {
       console.log('[KEYWORDS] URL:', companyUrl.trim())
       console.log('[KEYWORDS] Count:', numKeywords)
 
-      const response = await fetch('/api/generate-keywords-stream', {
+      // Use standalone Python streaming server (bypasses Next.js spawn issues)
+      const streamingUrl = process.env.NEXT_PUBLIC_STREAMING_URL || 'http://localhost:8001/generate'
+      
+      const response = await fetch(streamingUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
