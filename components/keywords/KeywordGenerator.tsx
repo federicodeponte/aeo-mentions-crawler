@@ -24,19 +24,96 @@ const LOADING_MESSAGES = [
   '✨ Finalizing recommendations',
 ]
 
+interface ResearchSource {
+  keyword: string
+  quote: string
+  url: string
+  platform: string
+  source_title?: string
+  source_author?: string
+  source_date?: string
+  upvotes?: number
+  comments_count?: number
+}
+
+interface ContentBrief {
+  content_angle: string
+  target_questions: string[]
+  content_gap: string
+  audience_pain_point: string
+  recommended_word_count?: number
+  fs_opportunity_type?: string
+}
+
+interface SERPRanking {
+  position: number
+  url: string
+  title: string
+  description: string
+  domain: string
+  meta_tags?: Record<string, any>
+}
+
+interface CompleteSERPData {
+  organic_results: SERPRanking[]
+  featured_snippet?: {
+    type: string
+    text: string
+    source_url: string
+  }
+  paa_questions?: Array<{
+    question: string
+    answer: string
+    source_url: string
+  }>
+  avg_word_count?: number
+  common_content_types?: string[]
+}
+
+interface GoogleTrendsData {
+  current_interest: number
+  trend_direction: string
+  is_seasonal: boolean
+  rising_related?: string[]
+  top_regions?: string[]
+}
+
 interface Keyword {
   keyword: string
   intent: string // question, commercial, transactional, comparison, informational
   score: number // company-fit score (0-100)
   cluster_name?: string // semantic cluster grouping
   is_question: boolean
-  source: string // ai_generated, research_reddit, research_quora, research_niche, gap_analysis, serp_paa
+  source: string // ai_generated, research_reddit, research_quora, research_niche, gap_analysis, serp_paa, autocomplete
   volume?: number // monthly search volume
   difficulty?: number // keyword difficulty (0-100)
   aeo_opportunity?: number // AEO opportunity score (0-100)
   has_featured_snippet?: boolean
   has_paa?: boolean
   serp_analyzed?: boolean
+  // ENHANCED DATA CAPTURE fields
+  research_data?: {
+    sources: ResearchSource[]
+    total_sources_found: number
+    platforms_searched: string[]
+    most_mentioned_pain_points?: string[]
+  }
+  content_brief?: ContentBrief
+  serp_data?: CompleteSERPData
+  trends_data?: GoogleTrendsData
+  autocomplete_data?: {
+    seed_keyword: string
+    suggestions: string[]
+    question_keywords: string[]
+    long_tail_keywords: string[]
+  }
+  // Quick access fields
+  research_summary?: string
+  research_source_urls?: string[]
+  top_ranking_urls?: string[]
+  featured_snippet_url?: string
+  paa_questions_with_urls?: Array<{question: string; url: string}>
+  citations?: any[]
   // Legacy fields for backward compatibility
   aeo_type?: string
   search_intent?: string
@@ -218,6 +295,7 @@ export function KeywordGenerator() {
   // Results state
   const [results, setResults] = useState<KeywordResults | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set())
 
   // Persistent generation tracking
   const GENERATION_STATE_KEY = 'keyword_generation_state'
@@ -719,7 +797,7 @@ export function KeywordGenerator() {
                 onClick={() => {
                   // Export to CSV with all new OpenKeyword fields
                   const csvContent = [
-                    ['Keyword', 'Intent', 'Score', 'Cluster', 'Source', 'Volume', 'Difficulty', 'AEO Opportunity', 'Featured Snippet', 'PAA', 'Is Question'].join(','),
+                    ['Keyword', 'Intent', 'Score', 'Cluster', 'Source', 'Volume', 'Difficulty', 'AEO Opportunity', 'Featured Snippet', 'PAA', 'Is Question', 'Research Summary', 'Research URLs', 'Content Angle', 'Target Questions', 'Content Gap', 'Audience Pain Point', 'Top SERP URLs', 'Featured Snippet URL', 'PAA Questions', 'Citations', 'Trends Interest', 'Trends Direction'].join(','),
                     ...results.keywords.map(k => [
                       `"${k.keyword}"`,
                       k.intent || k.search_intent || '',
@@ -731,7 +809,20 @@ export function KeywordGenerator() {
                       k.aeo_opportunity || 0,
                       k.has_featured_snippet ? 'Yes' : 'No',
                       k.has_paa ? 'Yes' : 'No',
-                      k.is_question ? 'Yes' : 'No'
+                      k.is_question ? 'Yes' : 'No',
+                      // Enhanced data fields
+                      `"${k.research_summary || ''}"`,
+                      `"${k.research_source_urls?.join(' | ') || ''}"`,
+                      `"${k.content_brief?.content_angle || ''}"`,
+                      `"${k.content_brief?.target_questions?.join('; ') || ''}"`,
+                      `"${k.content_brief?.content_gap || ''}"`,
+                      `"${k.content_brief?.audience_pain_point || ''}"`,
+                      `"${k.top_ranking_urls?.join(' | ') || ''}"`,
+                      `"${k.featured_snippet_url || ''}"`,
+                      `"${k.paa_questions_with_urls?.map(q => q.question).join('; ') || ''}"`,
+                      k.citations?.length || 0,
+                      k.trends_data?.current_interest || '',
+                      k.trends_data?.trend_direction || ''
                     ].join(','))
                   ].join('\n')
                   
@@ -767,12 +858,24 @@ export function KeywordGenerator() {
                     <th className="text-left p-3 font-medium">Difficulty</th>
                     <th className="text-left p-3 font-medium">AEO Opp.</th>
                     <th className="text-left p-3 font-medium">Features</th>
+                    <th className="text-left p-3 font-medium">Details</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {results.keywords.map((keyword, index) => (
-                    <tr key={index} className="border-b border-border last:border-0 hover:bg-muted/30">
-                      <td className="p-3 text-muted-foreground">{index + 1}</td>
+                  {results.keywords.map((keyword, index) => {
+                    const isExpanded = expandedRows.has(index)
+                    const hasEnhancedData = !!(
+                      keyword.research_data?.sources?.length ||
+                      keyword.content_brief ||
+                      keyword.serp_data ||
+                      keyword.trends_data ||
+                      keyword.citations?.length
+                    )
+                    
+                    return (
+                      <>
+                        <tr key={index} className="border-b border-border last:border-0 hover:bg-muted/30">
+                          <td className="p-3 text-muted-foreground">{index + 1}</td>
                       <td className="p-3">
                         <div className="flex items-center gap-2">
                           {keyword.is_question && <span className="text-xs" title="Question keyword">❓</span>}
@@ -858,8 +961,170 @@ export function KeywordGenerator() {
                           {!keyword.has_featured_snippet && !keyword.has_paa && <span className="text-muted-foreground text-xs">-</span>}
                         </div>
                       </td>
+                      <td className="p-3">
+                        {hasEnhancedData ? (
+                          <button
+                            onClick={() => {
+                              const newExpanded = new Set(expandedRows)
+                              if (isExpanded) {
+                                newExpanded.delete(index)
+                              } else {
+                                newExpanded.add(index)
+                              }
+                              setExpandedRows(newExpanded)
+                            }}
+                            className="text-xs px-2 py-1 rounded bg-primary/10 hover:bg-primary/20 text-primary font-medium transition-colors"
+                          >
+                            {isExpanded ? '▼ Hide' : '▶ View'}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
+                      </td>
                     </tr>
-                  ))}
+                    
+                    {/* Expanded Row with Enhanced Data */}
+                    {isExpanded && hasEnhancedData && (
+                      <tr key={`${index}-expanded`} className="bg-muted/20">
+                        <td colSpan={11} className="p-6">
+                          <div className="space-y-6">
+                            
+                            {/* Research Data */}
+                            {keyword.research_data?.sources && keyword.research_data.sources.length > 0 && (
+                              <div className="border border-border rounded-lg p-4 bg-card">
+                                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                                  <span>🔍</span>
+                                  Research Sources ({keyword.research_data.sources.length})
+                                </h4>
+                                <div className="space-y-3">
+                                  {keyword.research_data.sources.slice(0, 3).map((source, i) => (
+                                    <div key={i} className="text-xs border-l-2 border-primary/50 pl-3">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="font-medium">{source.platform}</span>
+                                        {source.upvotes && <span className="text-muted-foreground">▲ {source.upvotes}</span>}
+                                      </div>
+                                      {source.quote && <p className="text-muted-foreground italic mb-1">"{source.quote}"</p>}
+                                      {source.url && (
+                                        <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                                          {source.source_title || 'View source'} →
+                                        </a>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Content Brief */}
+                            {keyword.content_brief && (
+                              <div className="border border-border rounded-lg p-4 bg-card">
+                                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                                  <span>📝</span>
+                                  Content Brief
+                                </h4>
+                                <div className="space-y-2 text-xs">
+                                  {keyword.content_brief.content_angle && (
+                                    <div>
+                                      <strong>Angle:</strong> {keyword.content_brief.content_angle}
+                                    </div>
+                                  )}
+                                  {keyword.content_brief.audience_pain_point && (
+                                    <div>
+                                      <strong>Pain Point:</strong> {keyword.content_brief.audience_pain_point}
+                                    </div>
+                                  )}
+                                  {keyword.content_brief.content_gap && (
+                                    <div>
+                                      <strong>Content Gap:</strong> {keyword.content_brief.content_gap}
+                                    </div>
+                                  )}
+                                  {keyword.content_brief.target_questions && keyword.content_brief.target_questions.length > 0 && (
+                                    <div>
+                                      <strong>Questions to Answer:</strong>
+                                      <ul className="list-disc list-inside ml-2 mt-1 space-y-0.5">
+                                        {keyword.content_brief.target_questions.slice(0, 3).map((q, i) => (
+                                          <li key={i}>{q}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* SERP Data */}
+                            {keyword.serp_data?.organic_results && keyword.serp_data.organic_results.length > 0 && (
+                              <div className="border border-border rounded-lg p-4 bg-card">
+                                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                                  <span>🔎</span>
+                                  Top SERP Results ({keyword.serp_data.organic_results.length})
+                                </h4>
+                                <div className="space-y-2">
+                                  {keyword.serp_data.organic_results.slice(0, 5).map((result, i) => (
+                                    <div key={i} className="text-xs border-l-2 border-green-500/50 pl-3">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="font-medium text-muted-foreground">#{result.position}</span>
+                                        <span className="text-muted-foreground">{result.domain}</span>
+                                      </div>
+                                      <a href={result.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+                                        {result.title}
+                                      </a>
+                                      {result.description && <p className="text-muted-foreground mt-1">{result.description.slice(0, 150)}...</p>}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Trends Data */}
+                            {keyword.trends_data && (
+                              <div className="border border-border rounded-lg p-4 bg-card">
+                                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                                  <span>📊</span>
+                                  Google Trends
+                                </h4>
+                                <div className="grid grid-cols-2 gap-3 text-xs">
+                                  <div>
+                                    <strong>Interest:</strong> {keyword.trends_data.current_interest}/100
+                                  </div>
+                                  <div>
+                                    <strong>Trend:</strong> {keyword.trends_data.trend_direction}
+                                  </div>
+                                  <div>
+                                    <strong>Seasonal:</strong> {keyword.trends_data.is_seasonal ? 'Yes' : 'No'}
+                                  </div>
+                                  {keyword.trends_data.rising_related && keyword.trends_data.rising_related.length > 0 && (
+                                    <div className="col-span-2">
+                                      <strong>Rising:</strong> {keyword.trends_data.rising_related.slice(0, 3).join(', ')}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Citations */}
+                            {keyword.citations && keyword.citations.length > 0 && (
+                              <div className="border border-border rounded-lg p-4 bg-card">
+                                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                                  <span>📚</span>
+                                  Citations ({keyword.citations.length})
+                                </h4>
+                                <div className="space-y-2 text-xs">
+                                  {keyword.citations.slice(0, 3).map((citation, i) => (
+                                    <div key={i} className="border-l-2 border-blue-500/50 pl-3">
+                                      <div className="font-mono text-muted-foreground">{citation.format_apa || citation.source}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                )})}
                 </tbody>
               </table>
             </div>
