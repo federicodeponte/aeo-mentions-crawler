@@ -77,41 +77,216 @@ export default function AEOAnalyticsPage() {
   }
 
   const handleMentionsCheck = async () => {
-    if (!mentionsCompany || !openrouterKey) {
-      setMentionsError('Company name and OpenRouter API key are required')
+    if (!mentionsCompany) {
+      setMentionsError('Company name is required')
       return
     }
 
-    // Build company_analysis from business context
+    // Build company_analysis from business context - properly structured for openanalytics mentions_service
+    
+    // Parse products field (could be string or array)
+    let productsArray = businessContext?.products || []
+    if (typeof productsArray === 'string') {
+      productsArray = productsArray.split(',').map(p => p.trim()).filter(p => p.length > 0)
+    }
+    
+    // Extract services from products (look for service-related keywords)
+    const services = productsArray.filter(p => 
+      p.toLowerCase().includes('service') || 
+      p.toLowerCase().includes('tracking') || 
+      p.toLowerCase().includes('research') ||
+      p.toLowerCase().includes('discovery') ||
+      p.toLowerCase().includes('package')
+    )
+    
+    // Create hyperniche pain points from industry context + geography
+    const industryString = mentionsIndustry || businessContext?.targetIndustries || businessContext?.icp || ''
+    const region = businessContext?.countries?.[0] || 'US'
+    const pain_points = []
+    
+    // Industry-specific pain points
+    if (industryString.toLowerCase().includes('seo') || industryString.toLowerCase().includes('search')) {
+      pain_points.push(
+        'improve search visibility', 
+        'rank higher in search results',
+        'get featured in Google AI Overviews',
+        'optimize for voice search queries'
+      )
+    }
+    if (industryString.toLowerCase().includes('ai') || industryString.toLowerCase().includes('aeo')) {
+      pain_points.push(
+        'optimize for AI search engines', 
+        'improve AI visibility',
+        'get cited by ChatGPT',
+        'rank in Perplexity answers', 
+        'appear in Claude responses',
+        'optimize content for LLM training data'
+      )
+    }
+    if (industryString.toLowerCase().includes('saas') || industryString.toLowerCase().includes('b2b')) {
+      pain_points.push(
+        'generate qualified B2B leads',
+        'reduce customer acquisition cost',
+        'improve product-market fit',
+        'increase trial-to-paid conversion'
+      )
+    }
+    
+    // Geography-specific pain points with enhanced regional targeting
+    if (region === 'US') {
+      pain_points.push(
+        'comply with US data privacy laws', 
+        'target US enterprise customers',
+        'penetrate American B2B markets',
+        'scale across North American regions',
+        'meet US enterprise security requirements'
+      )
+    } else if (['UK', 'GB'].includes(region)) {
+      pain_points.push(
+        'comply with GDPR requirements', 
+        'target British enterprise customers',
+        'penetrate UK B2B markets',
+        'scale across London financial district',
+        'meet UK regulatory compliance'
+      )
+    } else if (['EU', 'Europe'].includes(region)) {
+      pain_points.push(
+        'comply with GDPR requirements', 
+        'target European markets',
+        'navigate EU regulatory landscape',
+        'scale across European Union',
+        'meet European data protection standards'
+      )
+    }
+    
+    // Size-specific pain points (if we can infer company size)
+    if (businessContext?.companyWebsite?.includes('enterprise') || industryString.includes('Enterprise')) {
+      pain_points.push('scale for enterprise customers', 'meet enterprise security requirements')
+    }
+    
+    // Determine product category from industry
+    const product_category = industryString.includes('GEO') || industryString.includes('AEO') 
+      ? 'AI Search Optimization tools' 
+      : industryString.includes('SaaS')
+      ? 'SaaS tools'
+      : businessContext?.productType || 'software tools'
+
+    // Create hyperniche use cases and targeting
+    const use_cases = []
+    const differentiators = []
+    const customer_problems = []
+    
+    // Generate use cases based on industry + pain points
+    if (industryString.toLowerCase().includes('aeo') || industryString.toLowerCase().includes('ai search')) {
+      use_cases.push(
+        'Enterprise AEO strategy implementation',
+        'Multi-platform AI visibility tracking',
+        'Competitive AI mention analysis',
+        'LLM citation optimization'
+      )
+      differentiators.push(
+        '5-LLM tracking capability',
+        'Real-time AI mention monitoring', 
+        'Proprietary shadow demand discovery'
+      )
+      customer_problems.push(
+        'invisible to AI search engines',
+        'competitors dominating AI answers',
+        'losing market share to AI-optimized brands',
+        'unable to track AI platform performance'
+      )
+    }
+    
+    // Add geography-specific targeting with country-specific modifiers
+    const geographicModifiers = []
+    const countrySpecificQueries = []
+    
+    if (region === 'US') {
+      geographicModifiers.push('US-based', 'North American', 'American', 'USA-focused', 'stateside')
+      countrySpecificQueries.push(
+        'how to dominate US market share',
+        'best practices for American enterprise sales',
+        'how to scale in North American markets'
+      )
+    } else if (['UK', 'GB'].includes(region)) {
+      geographicModifiers.push('UK-based', 'British', 'London-based', 'England-focused', 'British-owned')
+      countrySpecificQueries.push(
+        'how to penetrate UK enterprise market',
+        'best practices for British B2B sales',
+        'how to scale in London financial district'
+      )
+    } else if (['EU', 'Europe'].includes(region)) {
+      geographicModifiers.push('European', 'EU-based', 'GDPR-compliant', 'Europe-focused', 'continental')
+      countrySpecificQueries.push(
+        'how to navigate EU regulatory compliance',
+        'best practices for European market entry',
+        'how to scale across European Union'
+      )
+    } else if (['CA', 'Canada'].includes(region)) {
+      geographicModifiers.push('Canadian', 'Canada-based', 'Toronto-focused', 'Montreal-based')
+      countrySpecificQueries.push(
+        'how to dominate Canadian market',
+        'best practices for Canadian enterprise sales'
+      )
+    } else if (['AU', 'Australia'].includes(region)) {
+      geographicModifiers.push('Australian', 'Australia-based', 'Sydney-focused', 'Melbourne-based')
+      countrySpecificQueries.push(
+        'how to penetrate Australian market',
+        'best practices for Australian B2B sales'
+      )
+    }
+
     const companyAnalysis = {
       companyInfo: {
         name: mentionsCompany,
         website: businessContext?.companyWebsite || '',
-        description: businessContext?.valueProposition || businessContext?.productDescription || `${mentionsCompany} is a ${mentionsIndustry || 'company'}`,
-        industry: mentionsIndustry || businessContext?.targetIndustries || businessContext?.icp || '',
+        description: businessContext?.valueProposition || businessContext?.productDescription || `${mentionsCompany} is a ${industryString || 'company'}`,
+        industry: industryString,
         target_audience: businessContext?.icp ? [businessContext.icp] : [],
-        products: businessContext?.products || [],
-        services: [],
-        pain_points: [],
-        use_cases: [],
+        products: productsArray,
+        services: services,
+        pain_points: pain_points,
+        use_cases: use_cases,
         key_features: businessContext?.targetKeywords || [],
         solution_keywords: businessContext?.targetKeywords || [],
         value_propositions: businessContext?.valueProposition ? [businessContext.valueProposition] : [],
-        differentiators: [],
-        customer_problems: [],
-        product_category: businessContext?.productType || undefined,
-        primary_region: businessContext?.countries?.[0] || undefined,
+        differentiators: differentiators,
+        customer_problems: customer_problems,
+        product_category: product_category,
+        primary_region: region,
+        geographic_modifiers: geographicModifiers,
+        country_specific_queries: countrySpecificQueries,
+        // Add more targeting data for hyperniche queries
+        target_company_size: businessContext?.companyWebsite?.includes('enterprise') ? 'enterprise' : 'mid-market',
+        regulatory_requirements: region === 'EU' ? ['GDPR'] : region === 'US' ? ['SOC2', 'CCPA'] : region === 'CA' ? ['PIPEDA'] : region === 'AU' ? ['Privacy Act'] : [],
+        // Language and market-specific targeting
+        market_maturity: region === 'US' ? 'mature' : region === 'UK' ? 'mature' : region === 'EU' ? 'regulated' : 'emerging',
+        business_culture: region === 'US' ? 'aggressive-growth' : region === 'UK' ? 'conservative-traditional' : region === 'EU' ? 'compliance-first' : 'balanced',
       },
       competitors: businessContext?.competitors 
         ? businessContext.competitors.split(',').map(c => ({ name: c.trim() }))
         : []
     }
 
-    // Validate we have products or services
+    // Validate we have products or services, or fall back to generated ones based on company info
     const hasProducts = companyAnalysis.companyInfo.products.length > 0
+    const hasServices = companyAnalysis.companyInfo.services.length > 0
+    const hasDescription = !!companyAnalysis.companyInfo.description
+    const hasIndustry = !!companyAnalysis.companyInfo.industry
     
-    if (!hasProducts) {
-      setMentionsError('Please add products to your Business Context first. This is required to generate relevant queries.')
+    // If no products/services but we have description or industry, auto-generate basic products
+    if (!hasProducts && !hasServices && (hasDescription || hasIndustry)) {
+      const industryBasedProduct = mentionsIndustry || businessContext?.targetIndustries || businessContext?.icp
+      if (industryBasedProduct) {
+        companyAnalysis.companyInfo.products = [`${industryBasedProduct} Solutions`]
+      } else {
+        companyAnalysis.companyInfo.products = [`${mentionsCompany} Services`]
+      }
+    }
+    
+    // Final validation - if still no products/services, show error
+    if (companyAnalysis.companyInfo.products.length === 0 && companyAnalysis.companyInfo.services.length === 0) {
+      setMentionsError('Unable to determine your products or services. Please add products/services to your Business Context or specify an industry for better query generation.')
       return
     }
 
@@ -225,31 +400,6 @@ export default function AEOAnalyticsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="openrouter-key">
-                  OpenRouter API Key *
-                </Label>
-                <Input
-                  id="openrouter-key"
-                  type="password"
-                  placeholder="sk-or-v1-..."
-                  value={openrouterKey}
-                  onChange={(e) => setOpenrouterKey(e.target.value)}
-                  disabled={loadingMentions}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Get your key from{' '}
-                  <a
-                    href="https://openrouter.ai/keys"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    openrouter.ai/keys
-                  </a>
-                </p>
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="mentions-company" className="flex items-center gap-2">
                   Company Name *
                   {businessContext?.companyName === mentionsCompany && (
@@ -291,7 +441,7 @@ export default function AEOAnalyticsPage() {
 
               <Button 
                 onClick={handleMentionsCheck} 
-                disabled={loadingMentions || !mentionsCompany || !openrouterKey} 
+                disabled={loadingMentions || !mentionsCompany} 
                 className="w-full"
               >
                 {loadingMentions && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

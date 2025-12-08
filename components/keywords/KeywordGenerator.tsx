@@ -204,10 +204,24 @@ export function KeywordGenerator() {
   const [numKeywords, setNumKeywords] = useState(50)
   const [geminiApiKey, setGeminiApiKey] = useState<string | null>(null)
   
-  // Progress tracking
+  // Progress tracking with sub-stages
   const [progress, setProgress] = useState(0)
   const [timeRemaining, setTimeRemaining] = useState(0)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Sub-stage tracking
+  const [currentStage, setCurrentStage] = useState('')
+  const [currentSubstage, setCurrentSubstage] = useState('')
+  const [stageProgress, setStageProgress] = useState<Record<string, number>>({
+    company_analysis: 0,
+    configuration: 0,
+    ai_generation: 0,
+    research: 0,
+    serp_analysis: 0,
+    deduplication: 0,
+    clustering: 0,
+    finalization: 0,
+  })
   
   // Rotating message state
   const [messageIndex, setMessageIndex] = useState(0)
@@ -305,7 +319,19 @@ export function KeywordGenerator() {
     setIsGenerating(true)
     setResults(null)
     setProgress(0)
-    setTimeRemaining(70) // Gemini 3.0 Pro Preview + FREE features (Autocomplete + Trends) takes ~70s for 50 keywords
+    setTimeRemaining(480) // Realistic estimate: 8 minutes for full generation
+    setCurrentStage('')
+    setCurrentSubstage('')
+    setStageProgress({
+      company_analysis: 0,
+      configuration: 0,
+      ai_generation: 0,
+      research: 0,
+      serp_analysis: 0,
+      deduplication: 0,
+      clustering: 0,
+      finalization: 0,
+    })
 
     // Save generation state to sessionStorage for persistence
     const generationState = {
@@ -316,24 +342,13 @@ export function KeywordGenerator() {
     }
     sessionStorage.setItem(GENERATION_STATE_KEY, JSON.stringify(generationState))
 
-    // Start progress bar
-    progressIntervalRef.current = setInterval(() => {
-      setProgress(prev => {
-        const newProgress = prev + (95 / 70) // Reach 95% in 70 seconds
-        return Math.min(newProgress, 95)
-      })
-      setTimeRemaining(prev => Math.max(0, prev - 1))
-    }, 1000)
-
     try {
-      console.log('[KEYWORDS] Starting keyword generation...')
+      console.log('[KEYWORDS] Starting streaming keyword generation...')
       console.log('[KEYWORDS] Company:', companyName.trim())
       console.log('[KEYWORDS] URL:', companyUrl.trim())
       console.log('[KEYWORDS] Count:', numKeywords)
-      console.log('[KEYWORDS] Has API key:', !!geminiApiKey)
-      console.log('[KEYWORDS] Has context:', !!businessContext)
 
-      const response = await fetch('/api/generate-keywords', {
+      const response = await fetch('/api/generate-keywords-stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -358,51 +373,91 @@ export function KeywordGenerator() {
         }),
       })
 
-      console.log('[KEYWORDS] Response status:', response.status)
-
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Failed to generate keywords' }))
-        console.error('[KEYWORDS] Error response:', error)
         throw new Error(error.error || error.message || 'Failed to generate keywords')
       }
 
-      const data = await response.json()
-      console.log('[KEYWORDS] Success! Generated', data.keywords?.length || 0, 'keywords')
-      console.log('[KEYWORDS] Response keys:', Object.keys(data))
-      setResults(data)
-      toast.success(`Generated ${data.keywords.length} keywords in ${data.metadata.generation_time.toFixed(1)}s`)
-      
-      // Clear generation state on success
-      sessionStorage.removeItem(GENERATION_STATE_KEY)
-      
-      // Store in localStorage for LOG page
-      const timestamp = new Date().toISOString()
-      const logEntry = {
-        id: `kw-${Date.now()}`,
-        type: 'keywords',
-        timestamp,
-        company: companyName.trim(),
-        url: companyUrl.trim(),
-        language,
-        country,
-        count: data.keywords.length,
-        generationTime: data.metadata.generation_time,
-        keywords: data.keywords,
+      // Handle streaming response
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let finalResult = null
+
+      while (reader) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (!line.trim() || !line.startsWith('data: ')) continue
+
+          try {
+            const data = JSON.parse(line.slice(6))
+
+            if (data.type === 'progress') {
+              // Update progress
+              setProgress(data.progress)
+              setCurrentStage(data.stage)
+              setCurrentSubstage(data.substage || '')
+              setStageProgress(prev => ({
+                ...prev,
+                [data.stage]: data.progress
+              }))
+
+              // Estimate time remaining based on progress
+              const remainingPercent = 100 - data.progress
+              const estimatedTotal = 480 // 8 minutes
+              const remaining = Math.floor((remainingPercent / 100) * estimatedTotal)
+              setTimeRemaining(remaining)
+            } else if (data.type === 'result') {
+              // Final result
+              finalResult = data
+            } else if (data.type === 'error') {
+              throw new Error(data.error || 'Generation failed')
+            }
+          } catch (e) {
+            console.error('[KEYWORDS] Failed to parse SSE message:', line, e)
+          }
+        }
       }
-      
-      const existingLogs = JSON.parse(localStorage.getItem('bulk-gpt-logs') || '[]')
-      existingLogs.unshift(logEntry) // Add to start
-      localStorage.setItem('bulk-gpt-logs', JSON.stringify(existingLogs.slice(0, 50))) // Keep last 50
+
+      if (finalResult) {
+        console.log('[KEYWORDS] Success! Generated', finalResult.keywords?.length || 0, 'keywords')
+        setResults(finalResult)
+        toast.success(`Generated ${finalResult.keywords.length} keywords!`)
+        
+        // Clear generation state on success
+        sessionStorage.removeItem(GENERATION_STATE_KEY)
+        
+        // Store in localStorage for LOG page
+        const timestamp = new Date().toISOString()
+        const logEntry = {
+          id: `kw-${Date.now()}`,
+          type: 'keywords',
+          timestamp,
+          company: companyName.trim(),
+          url: companyUrl.trim(),
+          language,
+          country,
+          count: finalResult.keywords.length,
+          generationTime: finalResult.metadata.generation_time,
+          keywords: finalResult.keywords,
+        }
+        
+        const existingLogs = JSON.parse(localStorage.getItem('bulk-gpt-logs') || '[]')
+        existingLogs.unshift(logEntry)
+        localStorage.setItem('bulk-gpt-logs', JSON.stringify(existingLogs.slice(0, 50)))
+      }
     } catch (error) {
       console.error('Keyword generation error:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to generate keywords')
-      // Clear generation state on error
       sessionStorage.removeItem(GENERATION_STATE_KEY)
     } finally {
       setIsGenerating(false)
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current)
-      }
       setProgress(100)
       setTimeRemaining(0)
     }
@@ -567,18 +622,167 @@ export function KeywordGenerator() {
                 </p>
               </div>
 
-              {/* Progress bar */}
-              <div className="w-full max-w-xs mx-auto space-y-3">
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div
-                    className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-1000 ease-linear"
-                    style={{ width: `${progress}%` }}
-                  />
+              {/* Main Progress bar */}
+              <div className="w-full max-w-md mx-auto space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Overall Progress</span>
+                    <span>{Math.round(progress)}%</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div
+                      className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Sub-process stages */}
+                <div className="space-y-3 text-xs">
+                  {/* Company Analysis */}
+                  <div className={`space-y-1 ${stageProgress.company_analysis > 0 ? 'opacity-100' : 'opacity-40'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <span className={stageProgress.company_analysis === 15 ? '✅' : '🔍'}>
+                        </span>
+                        Company Analysis
+                      </span>
+                      {stageProgress.company_analysis > 0 && (
+                        <span className="text-muted-foreground">{currentStage === 'company_analysis' ? currentSubstage : 'complete'}</span>
+                      )}
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-1">
+                      <div
+                        className="bg-blue-500 h-1 rounded-full transition-all duration-300"
+                        style={{ width: `${(stageProgress.company_analysis / 15) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* AI Generation */}
+                  <div className={`space-y-1 ${stageProgress.ai_generation > 0 ? 'opacity-100' : 'opacity-40'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <span className={stageProgress.ai_generation === 40 ? '✅' : '🤖'}>
+                        </span>
+                        AI Keyword Generation
+                      </span>
+                      {stageProgress.ai_generation > 20 && (
+                        <span className="text-muted-foreground">{currentStage === 'ai_generation' ? currentSubstage : 'complete'}</span>
+                      )}
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-1">
+                      <div
+                        className="bg-purple-500 h-1 rounded-full transition-all duration-300"
+                        style={{ width: `${((stageProgress.ai_generation - 20) / 20) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Research */}
+                  <div className={`space-y-1 ${stageProgress.research > 40 ? 'opacity-100' : 'opacity-40'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <span className={stageProgress.research === 60 ? '✅' : '📚'}>
+                        </span>
+                        Research Phase
+                      </span>
+                      {stageProgress.research > 40 && (
+                        <span className="text-muted-foreground">{currentStage === 'research' ? currentSubstage : 'complete'}</span>
+                      )}
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-1">
+                      <div
+                        className="bg-green-500 h-1 rounded-full transition-all duration-300"
+                        style={{ width: `${((stageProgress.research - 40) / 20) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* SERP Analysis */}
+                  <div className={`space-y-1 ${stageProgress.serp_analysis > 60 ? 'opacity-100' : 'opacity-40'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <span className={stageProgress.serp_analysis === 80 ? '✅' : '🔎'}>
+                        </span>
+                        SERP Analysis
+                      </span>
+                      {stageProgress.serp_analysis > 60 && (
+                        <span className="text-muted-foreground">{currentStage === 'serp_analysis' ? currentSubstage : 'complete'}</span>
+                      )}
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-1">
+                      <div
+                        className="bg-orange-500 h-1 rounded-full transition-all duration-300"
+                        style={{ width: `${((stageProgress.serp_analysis - 60) / 20) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Deduplication */}
+                  <div className={`space-y-1 ${stageProgress.deduplication > 80 ? 'opacity-100' : 'opacity-40'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <span className={stageProgress.deduplication === 90 ? '✅' : '🎯'}>
+                        </span>
+                        Deduplication
+                      </span>
+                      {stageProgress.deduplication > 80 && (
+                        <span className="text-muted-foreground">{currentStage === 'deduplication' ? currentSubstage : 'complete'}</span>
+                      )}
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-1">
+                      <div
+                        className="bg-yellow-500 h-1 rounded-full transition-all duration-300"
+                        style={{ width: `${((stageProgress.deduplication - 80) / 10) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Clustering */}
+                  <div className={`space-y-1 ${stageProgress.clustering > 90 ? 'opacity-100' : 'opacity-40'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <span className={stageProgress.clustering === 95 ? '✅' : '📊'}>
+                        </span>
+                        Clustering
+                      </span>
+                      {stageProgress.clustering > 90 && (
+                        <span className="text-muted-foreground">{currentStage === 'clustering' ? currentSubstage : 'complete'}</span>
+                      )}
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-1">
+                      <div
+                        className="bg-pink-500 h-1 rounded-full transition-all duration-300"
+                        style={{ width: `${((stageProgress.clustering - 90) / 5) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Finalization */}
+                  <div className={`space-y-1 ${stageProgress.finalization > 95 ? 'opacity-100' : 'opacity-40'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <span className={stageProgress.finalization === 100 ? '✅' : '✨'}>
+                        </span>
+                        Finalization
+                      </span>
+                      {stageProgress.finalization > 95 && (
+                        <span className="text-muted-foreground">{currentStage === 'finalization' ? currentSubstage : 'complete'}</span>
+                      )}
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-1">
+                      <div
+                        className="bg-teal-500 h-1 rounded-full transition-all duration-300"
+                        style={{ width: `${((stageProgress.finalization - 95) / 5) * 100}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
                 
-                {/* Navigate away message - FIXED HEIGHT */}
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-center h-[76px] flex flex-col justify-center min-w-[300px]">
-                  <p className="text-xs text-blue-600 dark:text-blue-400 font-medium whitespace-nowrap">
+                {/* Navigate away message */}
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-center">
+                  <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
                     💡 Feel free to navigate away
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
