@@ -290,6 +290,90 @@ export default function AEOAnalyticsPage() {
       return
     }
 
+    // FALLBACK: Generate pain points and use cases if company analysis failed to extract them
+    if (companyAnalysis.companyInfo.pain_points.length === 0 || companyAnalysis.companyInfo.use_cases.length === 0) {
+      console.log('[FALLBACK] Company analysis missing pain points/use cases, generating fallbacks...')
+      
+      const industry = companyAnalysis.companyInfo.industry
+      const description = companyAnalysis.companyInfo.description
+      const products = companyAnalysis.companyInfo.products || []
+      const services = companyAnalysis.companyInfo.services || []
+      
+      // Generate industry-specific pain points if missing
+      if (companyAnalysis.companyInfo.pain_points.length === 0) {
+        const fallbackPainPoints = []
+        
+        if (industry.toLowerCase().includes('seo') || industry.toLowerCase().includes('search') || industry.toLowerCase().includes('marketing')) {
+          fallbackPainPoints.push('improve search rankings', 'increase online visibility', 'boost website traffic')
+        } else if (industry.toLowerCase().includes('ai') || industry.toLowerCase().includes('artificial intelligence')) {
+          fallbackPainPoints.push('implement AI solutions', 'automate processes', 'improve decision making')
+        } else if (industry.toLowerCase().includes('saas') || industry.toLowerCase().includes('software')) {
+          fallbackPainPoints.push('streamline workflows', 'reduce manual tasks', 'increase productivity')
+        } else if (industry.toLowerCase().includes('ecommerce') || industry.toLowerCase().includes('retail')) {
+          fallbackPainPoints.push('increase sales conversion', 'improve customer experience', 'optimize inventory')
+        } else if (industry.toLowerCase().includes('fintech') || industry.toLowerCase().includes('finance')) {
+          fallbackPainPoints.push('manage financial risk', 'improve compliance', 'streamline transactions')
+        }
+        
+        // If we have a description, infer pain points from it
+        if (description && fallbackPainPoints.length < 3) {
+          if (description.includes('visibility') || description.includes('rank')) {
+            fallbackPainPoints.push('improve online visibility')
+          }
+          if (description.includes('automat') || description.includes('AI')) {
+            fallbackPainPoints.push('automate content creation')
+          }
+          if (description.includes('track') || description.includes('monitor')) {
+            fallbackPainPoints.push('monitor brand mentions')
+          }
+        }
+        
+        // Generic fallbacks if still empty
+        if (fallbackPainPoints.length === 0) {
+          fallbackPainPoints.push('improve efficiency', 'reduce costs', 'increase revenue')
+        }
+        
+        companyAnalysis.companyInfo.pain_points = fallbackPainPoints.slice(0, 3)
+        console.log('[FALLBACK] Generated pain points:', companyAnalysis.companyInfo.pain_points)
+      }
+      
+      // Generate use cases if missing
+      if (companyAnalysis.companyInfo.use_cases.length === 0) {
+        const fallbackUseCases = []
+        
+        // Base use cases on products/services
+        products.concat(services).forEach(item => {
+          if (item.toLowerCase().includes('content')) {
+            fallbackUseCases.push('content optimization', 'content creation')
+          } else if (item.toLowerCase().includes('track') || item.toLowerCase().includes('monitor')) {
+            fallbackUseCases.push('performance tracking', 'brand monitoring')
+          } else if (item.toLowerCase().includes('analytics')) {
+            fallbackUseCases.push('data analysis', 'performance measurement')
+          } else {
+            fallbackUseCases.push(`${item.toLowerCase()} implementation`)
+          }
+        })
+        
+        // Generic fallbacks if still empty
+        if (fallbackUseCases.length === 0) {
+          fallbackUseCases.push('business optimization', 'workflow automation', 'performance improvement')
+        }
+        
+        companyAnalysis.companyInfo.use_cases = fallbackUseCases.slice(0, 3)
+        console.log('[FALLBACK] Generated use cases:', companyAnalysis.companyInfo.use_cases)
+      }
+      
+      // Generate customer problems if missing
+      if (companyAnalysis.companyInfo.customer_problems.length === 0) {
+        companyAnalysis.companyInfo.customer_problems = companyAnalysis.companyInfo.pain_points.map(pain => pain.replace('improve', 'struggling to improve').replace('increase', 'need to increase').replace('reduce', 'need to reduce'))
+        console.log('[FALLBACK] Generated customer problems:', companyAnalysis.companyInfo.customer_problems)
+      }
+    }
+
+    // Add debug identifier to track if enhanced data is being used
+    companyAnalysis.companyInfo.debug_source = 'frontend_enhanced_v2'
+    console.log('[DEBUG] Final company analysis being sent:', companyAnalysis)
+
     setLoadingMentions(true)
     setMentionsError(null)
     setMentionsResult(null)

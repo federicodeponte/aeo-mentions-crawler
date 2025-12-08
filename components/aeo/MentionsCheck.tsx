@@ -181,6 +181,61 @@ export function MentionsCheck() {
       }
     }
     
+    // FALLBACK: Generate pain points and use cases if company analysis failed to extract them
+    if (companyAnalysis.companyInfo.pain_points.length === 0 || companyAnalysis.companyInfo.use_cases.length === 0) {
+      console.log('[FALLBACK] MentionsCheck: Company analysis missing pain points/use cases, generating fallbacks...')
+      
+      const industryStr = industry || businessContext?.targetIndustries || businessContext?.icp || ''
+      const description = companyAnalysis.companyInfo.description
+      const products = companyAnalysis.companyInfo.products || []
+      const services = companyAnalysis.companyInfo.services || []
+      
+      // Generate industry-specific pain points if missing
+      if (companyAnalysis.companyInfo.pain_points.length === 0) {
+        const fallbackPainPoints = []
+        
+        if (industryStr.toLowerCase().includes('seo') || industryStr.toLowerCase().includes('search') || industryStr.toLowerCase().includes('marketing')) {
+          fallbackPainPoints.push('improve search rankings', 'increase online visibility', 'boost website traffic')
+        } else if (industryStr.toLowerCase().includes('ai') || industryStr.toLowerCase().includes('artificial intelligence')) {
+          fallbackPainPoints.push('implement AI solutions', 'automate processes', 'improve decision making')
+        } else if (industryStr.toLowerCase().includes('saas') || industryStr.toLowerCase().includes('software')) {
+          fallbackPainPoints.push('streamline workflows', 'reduce manual tasks', 'increase productivity')
+        }
+        
+        // Generic fallbacks if still empty
+        if (fallbackPainPoints.length === 0) {
+          fallbackPainPoints.push('improve efficiency', 'reduce costs', 'increase revenue')
+        }
+        
+        companyAnalysis.companyInfo.pain_points = fallbackPainPoints.slice(0, 3)
+        console.log('[FALLBACK] MentionsCheck Generated pain points:', companyAnalysis.companyInfo.pain_points)
+      }
+      
+      // Generate use cases if missing
+      if (companyAnalysis.companyInfo.use_cases.length === 0) {
+        const fallbackUseCases = []
+        
+        // Base use cases on products/services
+        products.concat(services).forEach(item => {
+          if (item.toLowerCase().includes('content')) {
+            fallbackUseCases.push('content optimization', 'content creation')
+          } else if (item.toLowerCase().includes('track') || item.toLowerCase().includes('monitor')) {
+            fallbackUseCases.push('performance tracking', 'brand monitoring')
+          } else if (item.toLowerCase().includes('analytics')) {
+            fallbackUseCases.push('data analysis', 'performance measurement')
+          }
+        })
+        
+        // Generic fallbacks if still empty
+        if (fallbackUseCases.length === 0) {
+          fallbackUseCases.push('business optimization', 'workflow automation', 'performance improvement')
+        }
+        
+        companyAnalysis.companyInfo.use_cases = fallbackUseCases.slice(0, 3)
+        console.log('[FALLBACK] MentionsCheck Generated use cases:', companyAnalysis.companyInfo.use_cases)
+      }
+    }
+
     // Final validation - if still no products/services, show error
     if (companyAnalysis.companyInfo.products.length === 0 && companyAnalysis.companyInfo.services.length === 0) {
       setError('Unable to determine your products or services. Please add products/services to your Business Context or specify an industry for better query generation.')

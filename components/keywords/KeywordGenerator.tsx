@@ -281,8 +281,8 @@ export function KeywordGenerator() {
   const [country, setCountry] = useState('US')
   const [numKeywords, setNumKeywords] = useState(50)
   const [geminiApiKey, setGeminiApiKey] = useState<string | null>(null)
-  const [enableGoogleTrends, setEnableGoogleTrends] = useState(false)
-  const [enableAutocomplete, setEnableAutocomplete] = useState(false)
+  const [enableGoogleTrends, setEnableGoogleTrends] = useState(true)  // Default enabled
+  const [enableAutocomplete, setEnableAutocomplete] = useState(true)  // Default enabled
   
   // Simulated progress tracking (for UX engagement)
   const [progress, setProgress] = useState(0)

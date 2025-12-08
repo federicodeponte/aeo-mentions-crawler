@@ -9,7 +9,7 @@ import { logAnalytics, logError } from "@/lib/utils/logger"
  * Only allows relative paths starting with a single /
  */
 function sanitizeRedirectPath(path: string | null | undefined): string {
-  if (!path) return '/go'
+  if (!path) return '/keywords'
   
   // Decode in case it's URL encoded
   let decoded = path
@@ -33,7 +33,7 @@ function sanitizeRedirectPath(path: string | null | undefined): string {
     decoded.startsWith('/\\') ||
     decoded.includes('://')
   ) {
-    return '/go'
+    return '/keywords'
   }
   
   return decoded
