@@ -309,15 +309,15 @@ export function KeywordGenerator() {
       const state = JSON.parse(savedState)
       const elapsed = Math.floor((Date.now() - state.startTime) / 1000)
       
-      // Only restore if less than 2 minutes elapsed (reasonable timeout)
-      if (elapsed < 120) {
+      // Only restore if less than 8 minutes elapsed (reasonable timeout for 5-7 min generation)
+      if (elapsed < 480) {
         setIsGenerating(true)
         setLanguage(state.language)
         setCountry(state.country)
         setNumKeywords(state.numKeywords)
         
-        // Calculate current progress
-        const currentProgress = Math.min((elapsed / 70) * 95, 95)
+        // Calculate current progress (based on 360 sec average = 6 min)
+        const currentProgress = Math.min((elapsed / 360) * 95, 95)
         
         setProgress(currentProgress)
         toast.info('Resuming keyword generation...')
@@ -429,36 +429,87 @@ export function KeywordGenerator() {
         throw new Error(error.error || error.message || 'Failed to generate keywords')
       }
 
-      // Simulate realistic 7-stage progress (for UX engagement)
+      // Simulate realistic progress (for UX engagement) - matches actual 5-7 minute generation time
       const stages = [
-        { name: 'company_analysis', label: 'Analyzing company', duration: 15, end: 15 },
-        { name: 'configuration', label: 'Setting up', duration: 5, end: 20 },
-        { name: 'ai_generation', label: 'Generating keywords', duration: 60, end: 40 },
-        { name: 'research', label: 'Researching forums', duration: 30, end: 60 },
-        { name: 'serp_analysis', label: 'Analyzing SERP', duration: 30, end: 80 },
-        { name: 'deduplication', label: 'Removing duplicates', duration: 15, end: 90 },
-        { name: 'clustering', label: 'Clustering keywords', duration: 10, end: 95 },
+        { 
+          name: 'company_analysis', 
+          label: '1/7: Analyzing company context', 
+          substages: ['Extracting products/services', 'Identifying target audience', 'Finding differentiators'],
+          duration: 30, 
+          end: 10 
+        },
+        { 
+          name: 'configuration', 
+          label: '2/7: Configuring generation', 
+          substages: ['Setting up parameters', 'Loading context', 'Preparing tools'],
+          duration: 20, 
+          end: 15 
+        },
+        { 
+          name: 'ai_generation', 
+          label: '3/7: AI keyword generation', 
+          substages: ['Gemini deep research', 'Google Search grounding', 'Hyper-niche variations'],
+          duration: 120, 
+          end: 40 
+        },
+        { 
+          name: 'research', 
+          label: '4/7: Research & enrichment', 
+          substages: ['Scraping Reddit/Quora', 'Extracting quotes', 'Building research data'],
+          duration: 90, 
+          end: 60 
+        },
+        { 
+          name: 'serp_analysis', 
+          label: '5/7: SERP analysis', 
+          substages: ['Analyzing top 10 results', 'Extracting meta tags', 'Identifying content gaps'],
+          duration: 60, 
+          end: 75 
+        },
+        { 
+          name: 'deduplication', 
+          label: '6/7: Deduplication & scoring', 
+          substages: ['Removing duplicates', 'Semantic clustering', 'Calculating scores'],
+          duration: 30, 
+          end: 85 
+        },
+        { 
+          name: 'clustering', 
+          label: '7/7: Final clustering', 
+          substages: ['Grouping keywords', 'Assigning clusters', 'Sorting by relevance'],
+          duration: 20, 
+          end: 95 
+        },
       ]
 
       let currentProgress = 0
       let stageIndex = 0
+      let substageIndex = 0
       
       const progressInterval = setInterval(() => {
         if (stageIndex < stages.length) {
           const stage = stages[stageIndex]
-          setCurrentStage(stage.name)
-          setCurrentSubstage(stage.label)
+          setCurrentStage(stage.label)
           
-          currentProgress += (stage.end - currentProgress) / 10
+          // Cycle through substages for this stage
+          if (stage.substages && stage.substages.length > 0) {
+            setCurrentSubstage(stage.substages[substageIndex % stage.substages.length])
+            substageIndex++
+          } else {
+            setCurrentSubstage('')
+          }
+          
+          currentProgress += (stage.end - currentProgress) / 15
           setProgress(Math.min(currentProgress, stage.end))
           
-          if (currentProgress >= stage.end - 1) {
+          if (currentProgress >= stage.end - 0.5) {
             stageIndex++
+            substageIndex = 0 // Reset substage for next stage
           }
         } else {
-          setProgress(prev => Math.min(prev + 0.5, 95))
+          setProgress(prev => Math.min(prev + 0.3, 95))
         }
-      }, 500)
+      }, 800) // Slower interval to match longer generation time
 
       // Get JSON response
       const result = await response.json()
@@ -691,40 +742,46 @@ export function KeywordGenerator() {
               </div>
 
               {/* Engaging 7-stage progress (simulated) */}
-              <div className="space-y-4">
-                <div className="text-center space-y-2">
-                  <p className="text-sm font-medium text-foreground">
-                    {currentSubstage || 'Generating keywords'}{dots}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    This may take a few minutes
+              <div className="space-y-6">
+                {/* Current Stage & Substage */}
+                <div className="text-center space-y-3">
+                  <div className="space-y-1">
+                    <p className="text-lg font-bold text-foreground">
+                      {currentStage || 'Starting...'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {currentSubstage || 'Initializing'}{dots}
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground/80">
+                    ⏱️ Generation takes ~5-7 minutes
                   </p>
                 </div>
 
                 {/* Overall progress bar */}
                 <div className="w-full max-w-md mx-auto space-y-2">
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Overall Progress</span>
-                    <span>{Math.round(progress)}%</span>
+                    <span className="font-medium">Overall Progress</span>
+                    <span className="font-mono">{Math.round(progress)}%</span>
                   </div>
-                  <div className="w-full bg-muted rounded-full h-2">
+                  <div className="w-full bg-muted rounded-full h-3">
                     <div
-                      className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-500"
+                      className="bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 h-3 rounded-full transition-all duration-500 shadow-sm"
                       style={{ width: `${progress}%` }}
                     />
                   </div>
                 </div>
 
-                {/* 7-stage breakdown */}
+                {/* 7-stage breakdown with updated ranges (matching 5-7 min total) */}
                 <div className="w-full max-w-md mx-auto space-y-2 text-xs">
                   {[
-                    { key: 'company_analysis', icon: '🔍', label: 'Company Analysis', range: [0, 15] },
-                    { key: 'configuration', icon: '⚙️', label: 'Configuration', range: [15, 20] },
-                    { key: 'ai_generation', icon: '🤖', label: 'AI Generation', range: [20, 40] },
-                    { key: 'research', icon: '📚', label: 'Research', range: [40, 60] },
-                    { key: 'serp_analysis', icon: '🔎', label: 'SERP Analysis', range: [60, 80] },
-                    { key: 'deduplication', icon: '🎯', label: 'Deduplication', range: [80, 90] },
-                    { key: 'clustering', icon: '📊', label: 'Clustering', range: [90, 95] },
+                    { key: 'company_analysis', icon: '🔍', label: '1. Company Analysis', range: [0, 10] },
+                    { key: 'configuration', icon: '⚙️', label: '2. Configuration', range: [10, 15] },
+                    { key: 'ai_generation', icon: '🤖', label: '3. AI Generation', range: [15, 40] },
+                    { key: 'research', icon: '📚', label: '4. Research & Enrichment', range: [40, 60] },
+                    { key: 'serp_analysis', icon: '🔎', label: '5. SERP Analysis', range: [60, 75] },
+                    { key: 'deduplication', icon: '🎯', label: '6. Deduplication & Scoring', range: [75, 85] },
+                    { key: 'clustering', icon: '📊', label: '7. Final Clustering', range: [85, 95] },
                   ].map((stage) => {
                     const [start, end] = stage.range
                     const isActive = progress >= start && progress < end
@@ -734,15 +791,17 @@ export function KeywordGenerator() {
                     return (
                       <div 
                         key={stage.key}
-                        className={`flex items-center gap-2 transition-opacity ${
-                          isActive ? 'opacity-100' : isComplete ? 'opacity-60' : 'opacity-30'
+                        className={`flex items-center gap-2 p-2 rounded-md transition-all ${
+                          isActive ? 'bg-primary/10 opacity-100 scale-100' : 
+                          isComplete ? 'opacity-60 scale-95' : 
+                          'opacity-30 scale-95'
                         }`}
                       >
-                        <span className="text-base">{isComplete ? '✅' : stage.icon}</span>
-                        <span className="flex-1">{stage.label}</span>
-                        <div className="w-24 bg-muted rounded-full h-1">
+                        <span className="text-base">{isComplete ? '✅' : isActive ? '⏳' : stage.icon}</span>
+                        <span className={`flex-1 ${isActive ? 'font-medium' : ''}`}>{stage.label}</span>
+                        <div className="w-20 bg-muted rounded-full h-1.5">
                           <div
-                            className={`h-1 rounded-full transition-all duration-500 ${
+                            className={`h-1.5 rounded-full transition-all duration-500 ${
                               isComplete ? 'bg-green-500' : 'bg-blue-500'
                             }`}
                             style={{ width: `${stageProgress}%` }}
