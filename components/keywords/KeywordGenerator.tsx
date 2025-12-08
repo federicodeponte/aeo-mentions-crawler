@@ -10,7 +10,6 @@ import { Sparkles, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useContextStorage } from '@/hooks/useContextStorage'
 import { toast } from 'sonner'
@@ -653,53 +652,6 @@ export function KeywordGenerator() {
                 className="text-sm"
                 disabled={isGenerating}
               />
-            </div>
-
-            {/* FREE Add-ons Section */}
-            <div className="space-y-3 p-4 bg-muted/30 rounded-lg border border-border/50">
-              <Label className="text-xs font-semibold text-foreground">
-                FREE Add-ons (Optional)
-              </Label>
-              
-              <div className="space-y-3">
-                <label className="flex items-start space-x-3 cursor-pointer group">
-                  <Checkbox
-                    checked={enableAutocomplete}
-                    onCheckedChange={(checked) => setEnableAutocomplete(checked as boolean)}
-                    disabled={isGenerating}
-                    className="mt-0.5"
-                  />
-                  <div className="flex-1 space-y-1">
-                    <div className="text-sm font-medium group-hover:text-foreground transition-colors">
-                      🔤 Google Autocomplete
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Real user queries, question keywords, long-tail variations (+10-20s)
-                    </div>
-                  </div>
-                </label>
-
-                <label className="flex items-start space-x-3 cursor-pointer group">
-                  <Checkbox
-                    checked={enableGoogleTrends}
-                    onCheckedChange={(checked) => setEnableGoogleTrends(checked as boolean)}
-                    disabled={isGenerating}
-                    className="mt-0.5"
-                  />
-                  <div className="flex-1 space-y-1">
-                    <div className="text-sm font-medium group-hover:text-foreground transition-colors">
-                      📊 Google Trends
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Seasonality, rising queries, regional interest (+20-30s, rate limited)
-                    </div>
-                  </div>
-                </label>
-              </div>
-
-              <div className="text-xs text-muted-foreground pt-2 border-t border-border/50">
-                💡 Recommended for strategic keyword sets (&lt;20 keywords)
-              </div>
             </div>
 
             <Button
