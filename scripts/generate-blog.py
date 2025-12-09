@@ -308,23 +308,41 @@ async def generate_blog(input_data: dict) -> dict:
         citations_data = parallel_results.get('citations', {})
         citations = []
         if isinstance(citations_data, dict):
-            # Extract citation list if available
-            citations_html = citations_data.get('citations_html', '')
-            # Parse citations from HTML or get structured data
-            if 'citation_list' in citations_data:
-                citations = citations_data['citation_list']
+            # Extract citation list if available (Pydantic CitationList object)
+            citations_list_obj = citations_data.get('citations_list')
+            if citations_list_obj:
+                # Handle Pydantic CitationList model
+                if hasattr(citations_list_obj, 'to_dict_list'):
+                    citations = citations_list_obj.to_dict_list()
+                elif hasattr(citations_list_obj, 'citations'):
+                    # Fallback: extract citations attribute
+                    citations = [c.model_dump() if hasattr(c, 'model_dump') else c for c in citations_list_obj.citations]
+                elif isinstance(citations_list_obj, list):
+                    citations = citations_list_obj
         
         # Extract internal links (Stage 5)
         internal_links_data = parallel_results.get('internal_links', {})
         internal_links = []
         if isinstance(internal_links_data, dict):
-            internal_links_html = internal_links_data.get('internal_links_html', '')
-            if 'links' in internal_links_data:
-                internal_links = internal_links_data['links']
+            # Extract internal links list (Pydantic InternalLinkList object)
+            links_list_obj = internal_links_data.get('internal_links_list')
+            if links_list_obj:
+                # Handle Pydantic InternalLinkList model
+                if hasattr(links_list_obj, 'to_dict_list'):
+                    internal_links = links_list_obj.to_dict_list()
+                elif hasattr(links_list_obj, 'links'):
+                    # Fallback: extract links attribute
+                    internal_links = [l.model_dump() if hasattr(l, 'model_dump') else l for l in links_list_obj.links]
+                elif isinstance(links_list_obj, list):
+                    internal_links = links_list_obj
         
         # Extract TOC (Stage 6)
         toc_data = parallel_results.get('toc', {})
-        toc = toc_data if isinstance(toc_data, dict) else {}
+        if isinstance(toc_data, dict):
+            # Try toc_dict first (actual TOC data), fallback to toc itself
+            toc = toc_data.get('toc_dict', toc_data)
+        else:
+            toc = {}
         
         # Extract metadata (Stage 7)
         metadata_extra = parallel_results.get('metadata', {})
@@ -340,8 +358,20 @@ async def generate_blog(input_data: dict) -> dict:
         faq_items = []
         paa_items = []
         if isinstance(faq_paa_data, dict):
-            faq_items = faq_paa_data.get('faq_items', [])
-            paa_items = faq_paa_data.get('paa_items', [])
+            # Handle Pydantic FAQList and PAAList objects
+            faq_items_obj = faq_paa_data.get('faq_items', [])
+            paa_items_obj = faq_paa_data.get('paa_items', [])
+            
+            # Convert Pydantic objects to dicts
+            if hasattr(faq_items_obj, 'to_dict_list'):
+                faq_items = faq_items_obj.to_dict_list()
+            elif isinstance(faq_items_obj, list):
+                faq_items = faq_items_obj
+            
+            if hasattr(paa_items_obj, 'to_dict_list'):
+                paa_items = paa_items_obj.to_dict_list()
+            elif isinstance(paa_items_obj, list):
+                paa_items = paa_items_obj
         
         # Extract image data (Stage 9)
         image_data = parallel_results.get('image', {})
