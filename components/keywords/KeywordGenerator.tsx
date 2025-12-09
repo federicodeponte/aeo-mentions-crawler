@@ -384,16 +384,6 @@ export function KeywordGenerator() {
     setProgress(0)
     setCurrentStage('')
     setCurrentSubstage('')
-    setStageProgress({
-      company_analysis: 0,
-      configuration: 0,
-      ai_generation: 0,
-      research: 0,
-      serp_analysis: 0,
-      deduplication: 0,
-      clustering: 0,
-      finalization: 0,
-    })
 
     // Save generation state to sessionStorage for persistence
     const generationState = {
