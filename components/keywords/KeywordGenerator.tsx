@@ -11,7 +11,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useContextStorage } from '@/hooks/useContextStorage'
+import { useMobile } from '@/hooks/useMobile'
+import { cn } from '@/lib/utils'
+import { textSizes, containerPadding } from '@/lib/utils/responsive-utils'
 import { toast } from 'sonner'
 
 const LOADING_MESSAGES = [
@@ -311,6 +315,10 @@ export function KeywordGenerator() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set())
 
+  // Mobile detection and tab state
+  const { isMobile } = useMobile()
+  const [mobileActiveTab, setMobileActiveTab] = useState<string>('input')
+
   // Persistent generation tracking
   const GENERATION_STATE_KEY = 'keyword_generation_state'
 
@@ -376,6 +384,13 @@ export function KeywordGenerator() {
     }
   }, [])
   
+  // Auto-switch mobile tab to Results when generation starts
+  useEffect(() => {
+    if (isMobile && isGenerating) {
+      setMobileActiveTab('results')
+    }
+  }, [isMobile, isGenerating])
+
   // Get company info from context
   const companyName = businessContext.companyName || ''
   const companyUrl = businessContext.companyWebsite || ''
@@ -592,8 +607,10 @@ export function KeywordGenerator() {
 
   return (
     <div className="h-full flex">
-      {/* Left Panel - Input Form */}
-      <div className="w-96 border-r border-border p-6 overflow-auto">
+      {/* Desktop: Two-panel layout */}
+      <div className="hidden md:flex h-full flex-1">
+        {/* Left Panel - Input Form */}
+        <div className="w-96 border-r border-border p-6 overflow-auto">
         <div className="space-y-6">
           <div>
             <h2 className="text-lg font-semibold mb-1">Generate Keywords</h2>
@@ -715,10 +732,10 @@ export function KeywordGenerator() {
             </Button>
           </div>
         </div>
-      </div>
+        </div>
 
-      {/* Right Panel - Results Table */}
-      <div className="flex-1 flex flex-col overflow-hidden p-6">
+        {/* Right Panel - Results Table */}
+        <div className="flex-1 flex flex-col overflow-hidden p-6">
         {isGenerating && !results && (
           <div className="h-full flex items-center justify-center">
             <div className="text-center space-y-4 max-w-3xl w-full px-4">
@@ -1283,6 +1300,266 @@ export function KeywordGenerator() {
             </div>
           </div>
         )}
+        </div>
+      </div>
+
+      {/* Mobile: Tab layout */}
+      <div className="md:hidden h-full flex flex-col min-h-0 overflow-hidden">
+        <Tabs value={mobileActiveTab} onValueChange={setMobileActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <TabsList className={cn(
+            "flex-shrink-0 w-full rounded-none border-b border-border/40",
+            "bg-gradient-to-b from-secondary/30 to-secondary/15"
+          )}>
+            <TabsTrigger 
+              value="input" 
+              className="flex-1 data-[state=active]:bg-background/60 data-[state=active]:shadow-sm"
+            >
+              <span className={textSizes.xs}>Input</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="results" 
+              className={cn(
+                "flex-1 flex items-center gap-2",
+                "data-[state=active]:bg-background/60 data-[state=active]:shadow-sm"
+              )}
+            >
+              <span className={textSizes.xs}>Results</span>
+              {results && (
+                <span className="inline-flex items-center justify-center rounded-md bg-primary/20 px-1.5 py-0.5 text-xs font-medium text-primary">
+                  {results.keywords?.length || 0}
+                </span>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="input" className="flex-1 flex flex-col min-h-0 overflow-hidden mt-0">
+            <div className={cn("flex-1 overflow-auto", containerPadding.md)}>
+              <div className="space-y-6">
+                <div>
+                  <h2 className={cn("font-semibold mb-1", textSizes.sm)}>Generate Keywords</h2>
+                  <p className={cn("text-muted-foreground", textSizes.xs)}>
+                    AI-powered AEO keyword research for maximum AI visibility
+                  </p>
+                </div>
+
+                {/* AEO Explanation */}
+                <div className="bg-gradient-to-r from-purple-500/5 to-blue-500/5 border-l-4 border-purple-500 rounded-r-lg p-4 space-y-1">
+                  <p className={cn("font-semibold text-foreground flex items-center gap-2", textSizes.xs)}>
+                    <span className="text-lg">🤖</span>
+                    AEO (Answer Engine Optimization)
+                  </p>
+                  <p className={cn("text-muted-foreground leading-relaxed", "text-[10px] sm:text-xs")}>
+                    Optimized for AI platforms like Perplexity, ChatGPT, Claude & Gemini. 
+                    Focus on conversational queries, questions, and natural language patterns.
+                  </p>
+                </div>
+
+                {/* Company Context Display */}
+                {!hasContext && (
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 space-y-1.5">
+                    <p className={cn("font-medium text-blue-500", textSizes.xs)}>No Company Context Set</p>
+                    <p className={cn("text-muted-foreground", "text-[10px] sm:text-xs")}>
+                      Go to{' '}
+                      <a href="/context" className="text-primary hover:underline">
+                        Business Context
+                      </a>{' '}
+                      to set up your company details for personalized keyword generation.
+                    </p>
+                  </div>
+                )}
+
+                {hasContext && (
+                  <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 space-y-2">
+                    <p className={cn("font-medium text-primary/90", textSizes.xs)}>Using Company Context</p>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className={cn("text-muted-foreground", "text-[10px] sm:text-xs")}>Company:</span>
+                        <span className={cn("font-medium truncate max-w-[200px]", "text-[10px] sm:text-xs")}>{companyName}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className={cn("text-muted-foreground", "text-[10px] sm:text-xs")}>URL:</span>
+                        <span className={cn("font-medium truncate max-w-[200px]", "text-[10px] sm:text-xs")}>{companyUrl}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Configuration Options */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label className={cn("font-medium", textSizes.xs)}>Language</Label>
+                      <SearchableSelect
+                        value={language}
+                        onValueChange={setLanguage}
+                        options={LANGUAGES}
+                        placeholder="Select language"
+                        className="mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className={cn("font-medium", textSizes.xs)}>Country</Label>
+                      <SearchableSelect
+                        value={country}
+                        onValueChange={setCountry}
+                        options={COUNTRIES}
+                        placeholder="Select country"
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className={cn("font-medium", textSizes.xs)}>Number of Keywords</Label>
+                    <input
+                      type="number"
+                      min="10"
+                      max="200"
+                      step="10"
+                      value={numKeywords}
+                      onChange={(e) => setNumKeywords(parseInt(e.target.value) || 50)}
+                      className={cn(
+                        "flex h-8 sm:h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors",
+                        "file:border-0 file:bg-transparent file:text-sm file:font-medium",
+                        "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                        "disabled:cursor-not-allowed disabled:opacity-50 mt-1",
+                        textSizes.xs
+                      )}
+                    />
+                  </div>
+                </div>
+
+                {/* Generate Button */}
+                <Button
+                  onClick={handleGenerate}
+                  disabled={isGenerating || !companyName.trim() || !companyUrl.trim()}
+                  className="w-full"
+                  size="lg"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <span className={textSizes.xs}>Generating Keywords...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      <span className={textSizes.xs}>Generate Keywords</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="results" className="flex-1 flex flex-col min-h-0 overflow-hidden mt-0">
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {isGenerating && !results && (
+                <div className="h-full flex items-center justify-center">
+                  <div className={cn("text-center space-y-4 max-w-md", containerPadding.md)}>
+                    {/* Progress indicator for mobile */}
+                    <div className="relative w-16 h-16 mx-auto">
+                      <div className="absolute inset-0 w-16 h-16 rounded-full border-2 border-primary/20 animate-[spin_3s_linear_infinite]" />
+                      <div className="absolute inset-1 w-14 h-14 rounded-full border-2 border-t-primary/40 border-r-primary/40 border-b-transparent border-l-transparent animate-[spin_2s_linear_infinite_reverse]" />
+                      <div className="w-16 h-16 flex items-center justify-center">
+                        <Sparkles className="h-7 w-7 text-primary animate-pulse" />
+                      </div>
+                    </div>
+
+                    {/* Current stage display */}
+                    <div className="space-y-2">
+                      <p className={cn("font-medium text-foreground", textSizes.xs)}>
+                        {currentStage}
+                      </p>
+                      {currentSubstage && (
+                        <p className={cn("text-muted-foreground", "text-[10px] sm:text-xs")}>
+                          {currentSubstage}
+                        </p>
+                      )}
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div
+                          className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-1000 ease-linear"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!isGenerating && !results && (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center space-y-3">
+                    <Sparkles className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+                    <p className={cn("text-muted-foreground", textSizes.xs)}>
+                      Click "Generate Keywords" to see results here
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {results && (
+                <div className="flex-1 overflow-y-auto">
+                  <div className={containerPadding.sm}>
+                    <div className="mb-4">
+                      <h3 className={cn("font-semibold", textSizes.sm)}>Generated Keywords</h3>
+                      <p className={cn("text-muted-foreground", "text-[10px] sm:text-xs")}>
+                        {results.keywords?.length || 0} AEO-optimized keywords for {results.metadata?.company_name}
+                      </p>
+                    </div>
+
+                    {/* Mobile Card View */}
+                    <div className="space-y-3">
+                      {results.keywords?.map((keyword, index) => (
+                        <div key={index} className="border border-border rounded-lg p-3 space-y-2">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                {keyword.is_question && <span className="text-xs" title="Question keyword">❓</span>}
+                                <span className={cn("font-medium", textSizes.xs)}>{keyword.keyword}</span>
+                              </div>
+                              <span className={cn(
+                                "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-1",
+                                (keyword.intent || keyword.search_intent) === 'question' || (keyword.intent || keyword.search_intent) === 'informational' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
+                                (keyword.intent || keyword.search_intent) === 'commercial' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                                (keyword.intent || keyword.search_intent) === 'transactional' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' :
+                                (keyword.intent || keyword.search_intent) === 'comparison' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' :
+                                'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+                              )}>
+                                {keyword.intent || keyword.search_intent || 'informational'}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {keyword.content_brief && (
+                            <div className="space-y-2 pt-2 border-t border-border/50">
+                              <p className={cn("text-muted-foreground", "text-[10px] sm:text-xs")}>
+                                <strong>Content Angle:</strong> {keyword.content_brief.content_angle}
+                              </p>
+                              {keyword.content_brief.target_questions && keyword.content_brief.target_questions.length > 0 && (
+                                <div>
+                                  <p className={cn("text-muted-foreground font-medium", "text-[10px] sm:text-xs")}>Target Questions:</p>
+                                  <ul className="mt-1 space-y-1">
+                                    {keyword.content_brief.target_questions.slice(0, 2).map((question, i) => (
+                                      <li key={i} className={cn("text-muted-foreground", "text-[9px] sm:text-xs")}>
+                                        • {question}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )

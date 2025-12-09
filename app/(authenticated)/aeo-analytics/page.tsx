@@ -6,10 +6,114 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Loader2, Activity, Target, Info } from 'lucide-react'
 import { HealthResults } from '@/components/aeo/HealthResults'
 import { MentionsResults } from '@/components/aeo/MentionsResults'
 import { useContextStorage } from '@/hooks/useContextStorage'
+
+const LANGUAGES = [
+  { value: 'en', label: '🇬🇧 English' },
+  { value: 'es', label: '🇪🇸 Spanish' },
+  { value: 'fr', label: '🇫🇷 French' },
+  { value: 'de', label: '🇩🇪 German' },
+  { value: 'it', label: '🇮🇹 Italian' },
+  { value: 'pt', label: '🇵🇹 Portuguese' },
+  { value: 'nl', label: '🇳🇱 Dutch' },
+  { value: 'pl', label: '🇵🇱 Polish' },
+  { value: 'ru', label: '🇷🇺 Russian' },
+  { value: 'ja', label: '🇯🇵 Japanese' },
+  { value: 'zh', label: '🇨🇳 Chinese' },
+  { value: 'ko', label: '🇰🇷 Korean' },
+  { value: 'ar', label: '🇸🇦 Arabic' },
+  { value: 'hi', label: '🇮🇳 Hindi' },
+  { value: 'tr', label: '🇹🇷 Turkish' },
+  { value: 'sv', label: '🇸🇪 Swedish' },
+  { value: 'no', label: '🇳🇴 Norwegian' },
+  { value: 'da', label: '🇩🇰 Danish' },
+  { value: 'fi', label: '🇫🇮 Finnish' },
+  { value: 'cs', label: '🇨🇿 Czech' },
+  { value: 'hu', label: '🇭🇺 Hungarian' },
+  { value: 'ro', label: '🇷🇴 Romanian' },
+  { value: 'uk', label: '🇺🇦 Ukrainian' },
+  { value: 'el', label: '🇬🇷 Greek' },
+  { value: 'he', label: '🇮🇱 Hebrew' },
+  { value: 'id', label: '🇮🇩 Indonesian' },
+  { value: 'th', label: '🇹🇭 Thai' },
+  { value: 'vi', label: '🇻🇳 Vietnamese' },
+  { value: 'bg', label: '🇧🇬 Bulgarian' },
+  { value: 'hr', label: '🇭🇷 Croatian' },
+  { value: 'sk', label: '🇸🇰 Slovak' },
+  { value: 'sl', label: '🇸🇮 Slovenian' },
+  { value: 'lt', label: '🇱🇹 Lithuanian' },
+  { value: 'lv', label: '🇱🇻 Latvian' },
+  { value: 'et', label: '🇪🇪 Estonian' },
+  { value: 'sr', label: '🇷🇸 Serbian' },
+  { value: 'bn', label: '🇧🇩 Bengali' },
+  { value: 'fa', label: '🇮🇷 Persian' },
+  { value: 'ur', label: '🇵🇰 Urdu' },
+  { value: 'ms', label: '🇲🇾 Malay' },
+  { value: 'tl', label: '🇵🇭 Filipino' },
+  { value: 'sw', label: '🇰🇪 Swahili' },
+  { value: 'af', label: '🇿🇦 Afrikaans' },
+]
+
+const COUNTRIES = [
+  { value: 'US', label: '🇺🇸 United States' },
+  { value: 'GB', label: '🇬🇧 United Kingdom' },
+  { value: 'CA', label: '🇨🇦 Canada' },
+  { value: 'AU', label: '🇦🇺 Australia' },
+  { value: 'DE', label: '🇩🇪 Germany' },
+  { value: 'FR', label: '🇫🇷 France' },
+  { value: 'ES', label: '🇪🇸 Spain' },
+  { value: 'IT', label: '🇮🇹 Italy' },
+  { value: 'NL', label: '🇳🇱 Netherlands' },
+  { value: 'BE', label: '🇧🇪 Belgium' },
+  { value: 'CH', label: '🇨🇭 Switzerland' },
+  { value: 'AT', label: '🇦🇹 Austria' },
+  { value: 'SE', label: '🇸🇪 Sweden' },
+  { value: 'NO', label: '🇳🇴 Norway' },
+  { value: 'DK', label: '🇩🇰 Denmark' },
+  { value: 'FI', label: '🇫🇮 Finland' },
+  { value: 'PL', label: '🇵🇱 Poland' },
+  { value: 'CZ', label: '🇨🇿 Czech Republic' },
+  { value: 'HU', label: '🇭🇺 Hungary' },
+  { value: 'RO', label: '🇷🇴 Romania' },
+  { value: 'GR', label: '🇬🇷 Greece' },
+  { value: 'PT', label: '🇵🇹 Portugal' },
+  { value: 'IE', label: '🇮🇪 Ireland' },
+  { value: 'BR', label: '🇧🇷 Brazil' },
+  { value: 'MX', label: '🇲🇽 Mexico' },
+  { value: 'AR', label: '🇦🇷 Argentina' },
+  { value: 'CL', label: '🇨🇱 Chile' },
+  { value: 'CO', label: '🇨🇴 Colombia' },
+  { value: 'PE', label: '🇵🇪 Peru' },
+  { value: 'VE', label: '🇻🇪 Venezuela' },
+  { value: 'UY', label: '🇺🇾 Uruguay' },
+  { value: 'JP', label: '🇯🇵 Japan' },
+  { value: 'CN', label: '🇨🇳 China' },
+  { value: 'KR', label: '🇰🇷 South Korea' },
+  { value: 'IN', label: '🇮🇳 India' },
+  { value: 'SG', label: '🇸🇬 Singapore' },
+  { value: 'HK', label: '🇭🇰 Hong Kong' },
+  { value: 'TW', label: '🇹🇼 Taiwan' },
+  { value: 'MY', label: '🇲🇾 Malaysia' },
+  { value: 'TH', label: '🇹🇭 Thailand' },
+  { value: 'ID', label: '🇮🇩 Indonesia' },
+  { value: 'PH', label: '🇵🇭 Philippines' },
+  { value: 'VN', label: '🇻🇳 Vietnam' },
+  { value: 'BD', label: '🇧🇩 Bangladesh' },
+  { value: 'PK', label: '🇵🇰 Pakistan' },
+  { value: 'AE', label: '🇦🇪 UAE' },
+  { value: 'SA', label: '🇸🇦 Saudi Arabia' },
+  { value: 'IL', label: '🇮🇱 Israel' },
+  { value: 'TR', label: '🇹🇷 Turkey' },
+  { value: 'EG', label: '🇪🇬 Egypt' },
+  { value: 'ZA', label: '🇿🇦 South Africa' },
+  { value: 'NG', label: '🇳🇬 Nigeria' },
+  { value: 'KE', label: '🇰🇪 Kenya' },
+  { value: 'NZ', label: '🇳🇿 New Zealand' },
+]
 
 type CheckType = 'health' | 'mentions' | null
 
@@ -19,8 +123,10 @@ export default function AEOAnalyticsPage() {
   // Input states
   const [healthUrl, setHealthUrl] = useState(businessContext?.companyWebsite || '')
   const [mentionsCompany, setMentionsCompany] = useState(businessContext?.companyName || '')
-  const [mentionsIndustry, setMentionsIndustry] = useState(businessContext?.targetIndustries || businessContext?.icp || '')
-  const [openrouterKey, setOpenrouterKey] = useState('')
+  
+  // Geographic targeting state
+  const [language, setLanguage] = useState('en')
+  const [country, setCountry] = useState('US')
   
   // Loading states
   const [loadingHealth, setLoadingHealth] = useState(false)
@@ -77,11 +183,22 @@ export default function AEOAnalyticsPage() {
   }
 
   const handleMentionsCheck = async () => {
+    console.log('[DEBUG:MENTIONS] 🚀 Mentions check button clicked')
+    console.log('[DEBUG:MENTIONS] Company name:', mentionsCompany)
+    console.log('[DEBUG:MENTIONS] Language:', language)
+    console.log('[DEBUG:MENTIONS] Country:', country)
+    
     if (!mentionsCompany) {
+      console.log('[DEBUG:MENTIONS] ❌ Missing company name, aborting')
       setMentionsError('Company name is required')
       return
     }
 
+    // Note: OpenRouter API key is provided via environment variables
+
+    console.log('[DEBUG:MENTIONS] 📋 Building company analysis from business context...')
+    console.log('[DEBUG:MENTIONS] 📋 Business context:', businessContext)
+    
     // Build company_analysis from business context - properly structured for openanalytics mentions_service
     
     // Parse products field (could be string or array)
@@ -100,8 +217,8 @@ export default function AEOAnalyticsPage() {
     )
     
     // Create hyperniche pain points from industry context + geography
-    const industryString = mentionsIndustry || businessContext?.targetIndustries || businessContext?.icp || ''
-    const region = businessContext?.countries?.[0] || 'US'
+    const industryString = businessContext?.targetIndustries || businessContext?.icp || ''
+    const region = country
     const pain_points = []
     
     // Industry-specific pain points
@@ -274,94 +391,143 @@ export default function AEOAnalyticsPage() {
     const hasDescription = !!companyAnalysis.companyInfo.description
     const hasIndustry = !!companyAnalysis.companyInfo.industry
     
-    // If no products/services but we have description or industry, auto-generate basic products
-    if (!hasProducts && !hasServices && (hasDescription || hasIndustry)) {
-      const industryBasedProduct = mentionsIndustry || businessContext?.targetIndustries || businessContext?.icp
+    // If no products/services, auto-generate basic products (always provide fallback)
+    if (!hasProducts && !hasServices) {
+      console.log('[DEBUG:MENTIONS] 🔧 No products/services found, generating fallback...')
+      const industryBasedProduct = businessContext?.targetIndustries || businessContext?.icp
       if (industryBasedProduct) {
         companyAnalysis.companyInfo.products = [`${industryBasedProduct} Solutions`]
+        console.log('[DEBUG:MENTIONS] 🔧 Generated industry-based product:', companyAnalysis.companyInfo.products)
       } else {
-        companyAnalysis.companyInfo.products = [`${mentionsCompany} Services`]
+        // Always generate a generic fallback product
+        companyAnalysis.companyInfo.products = [`${mentionsCompany} Services`, `${mentionsCompany} Solutions`]
+        console.log('[DEBUG:MENTIONS] 🔧 Generated generic products:', companyAnalysis.companyInfo.products)
       }
     }
     
     // Final validation - if still no products/services, show error
+    console.log('[DEBUG:MENTIONS] 🔍 Final validation - products:', companyAnalysis.companyInfo.products)
+    console.log('[DEBUG:MENTIONS] 🔍 Final validation - services:', companyAnalysis.companyInfo.services)
+    
     if (companyAnalysis.companyInfo.products.length === 0 && companyAnalysis.companyInfo.services.length === 0) {
+      console.log('[DEBUG:MENTIONS] ❌ Validation failed - no products or services found')
       setMentionsError('Unable to determine your products or services. Please add products/services to your Business Context or specify an industry for better query generation.')
       return
     }
+    
+    console.log('[DEBUG:MENTIONS] ✅ Validation passed - proceeding to API call')
 
-    // FALLBACK: Generate pain points and use cases if company analysis failed to extract them
-    if (companyAnalysis.companyInfo.pain_points.length === 0 || companyAnalysis.companyInfo.use_cases.length === 0) {
-      console.log('[FALLBACK] Company analysis missing pain points/use cases, generating fallbacks...')
+    // ENHANCED GEOGRAPHIC TARGETING: Always enhance pain points with geographic modifiers
+    // This ensures even existing rich company data gets geography-aware queries
+    if (true) { // Always enhance, not just when missing
+      console.log('[ENHANCE] Adding geographic targeting to existing pain points...')
       
       const industry = companyAnalysis.companyInfo.industry
       const description = companyAnalysis.companyInfo.description
       const products = companyAnalysis.companyInfo.products || []
       const services = companyAnalysis.companyInfo.services || []
       
-      // Generate industry-specific pain points if missing
-      if (companyAnalysis.companyInfo.pain_points.length === 0) {
-        const fallbackPainPoints = []
+      // Store original pain points for enhancement
+      const originalPainPoints = [...companyAnalysis.companyInfo.pain_points]
+      let enhancedPainPoints = []
+      
+      // If we have existing pain points, enhance them with geographic targeting
+      if (originalPainPoints.length > 0) {
+        console.log('[ENHANCE] Existing pain points found, adding geographic variations:', originalPainPoints)
         
+        // Take existing pain points and add geographic/platform variations
+        originalPainPoints.forEach(painPoint => {
+          // Add the original pain point
+          enhancedPainPoints.push(painPoint)
+          
+          // Add geography-specific variations
+          const region = country
+          enhancedPainPoints.push(`${painPoint} for ${region}-based companies`)
+          enhancedPainPoints.push(`${painPoint} with ChatGPT for ${region} businesses`)
+          enhancedPainPoints.push(`${painPoint} with Perplexity for ${region} companies`)
+        })
+        
+        console.log('[ENHANCE] Enhanced pain points with geographic targeting:', enhancedPainPoints)
+      } else {
+        console.log('[FALLBACK] No existing pain points, generating industry-based ones...')
         if (industry.toLowerCase().includes('seo') || industry.toLowerCase().includes('search') || industry.toLowerCase().includes('marketing')) {
-          fallbackPainPoints.push('improve search rankings', 'increase online visibility', 'boost website traffic')
+          enhancedPainPoints.push('improve search rankings', 'increase online visibility', 'boost website traffic')
         } else if (industry.toLowerCase().includes('ai') || industry.toLowerCase().includes('artificial intelligence')) {
-          fallbackPainPoints.push('implement AI solutions', 'automate processes', 'improve decision making')
+          enhancedPainPoints.push('implement AI solutions', 'automate processes', 'improve decision making')
         } else if (industry.toLowerCase().includes('saas') || industry.toLowerCase().includes('software')) {
-          fallbackPainPoints.push('streamline workflows', 'reduce manual tasks', 'increase productivity')
+          enhancedPainPoints.push('streamline workflows', 'reduce manual tasks', 'increase productivity')
         } else if (industry.toLowerCase().includes('ecommerce') || industry.toLowerCase().includes('retail')) {
-          fallbackPainPoints.push('increase sales conversion', 'improve customer experience', 'optimize inventory')
+          enhancedPainPoints.push('increase sales conversion', 'improve customer experience', 'optimize inventory')
         } else if (industry.toLowerCase().includes('fintech') || industry.toLowerCase().includes('finance')) {
-          fallbackPainPoints.push('manage financial risk', 'improve compliance', 'streamline transactions')
+          enhancedPainPoints.push('manage financial risk', 'improve compliance', 'streamline transactions')
         }
         
         // If we have a description, infer pain points from it
-        if (description && fallbackPainPoints.length < 3) {
+        if (description && enhancedPainPoints.length < 6) {
           if (description.includes('visibility') || description.includes('rank')) {
-            fallbackPainPoints.push('improve online visibility')
+            enhancedPainPoints.push('improve online visibility')
           }
           if (description.includes('automat') || description.includes('AI')) {
-            fallbackPainPoints.push('automate content creation')
+            enhancedPainPoints.push('automate content creation')
           }
           if (description.includes('track') || description.includes('monitor')) {
-            fallbackPainPoints.push('monitor brand mentions')
+            enhancedPainPoints.push('monitor brand mentions')
           }
         }
         
         // Generic fallbacks if still empty
-        if (fallbackPainPoints.length === 0) {
-          fallbackPainPoints.push('improve efficiency', 'reduce costs', 'increase revenue')
+        if (enhancedPainPoints.length === 0) {
+          enhancedPainPoints.push('improve efficiency', 'reduce costs', 'increase revenue')
         }
-        
-        companyAnalysis.companyInfo.pain_points = fallbackPainPoints.slice(0, 3)
-        console.log('[FALLBACK] Generated pain points:', companyAnalysis.companyInfo.pain_points)
       }
       
-      // Generate use cases if missing
-      if (companyAnalysis.companyInfo.use_cases.length === 0) {
-        const fallbackUseCases = []
+      // Update the company analysis with enhanced pain points
+      companyAnalysis.companyInfo.pain_points = enhancedPainPoints.slice(0, 8) // Allow more pain points for better targeting
+      console.log('[ENHANCE] Final enhanced pain points:', companyAnalysis.companyInfo.pain_points)
+      
+      // ENHANCED USE CASES: Always enhance with geographic targeting
+      const originalUseCases = [...companyAnalysis.companyInfo.use_cases]
+      let enhancedUseCases = []
+      
+      if (originalUseCases.length > 0) {
+        console.log('[ENHANCE] Existing use cases found, adding geographic variations:', originalUseCases)
+        
+        // Take existing use cases and add geographic/platform variations
+        originalUseCases.forEach(useCase => {
+          // Add the original use case
+          enhancedUseCases.push(useCase)
+          
+          // Add geography-specific variations
+          const region = country
+          enhancedUseCases.push(`${useCase} for ${region} enterprises`)
+          enhancedUseCases.push(`${useCase} with AI platforms for ${region} companies`)
+        })
+        
+        console.log('[ENHANCE] Enhanced use cases with geographic targeting:', enhancedUseCases)
+      } else {
+        console.log('[FALLBACK] No existing use cases, generating based on products/services...')
         
         // Base use cases on products/services
         products.concat(services).forEach(item => {
           if (item.toLowerCase().includes('content')) {
-            fallbackUseCases.push('content optimization', 'content creation')
+            enhancedUseCases.push('content optimization', 'content creation')
           } else if (item.toLowerCase().includes('track') || item.toLowerCase().includes('monitor')) {
-            fallbackUseCases.push('performance tracking', 'brand monitoring')
+            enhancedUseCases.push('performance tracking', 'brand monitoring')
           } else if (item.toLowerCase().includes('analytics')) {
-            fallbackUseCases.push('data analysis', 'performance measurement')
+            enhancedUseCases.push('data analysis', 'performance measurement')
           } else {
-            fallbackUseCases.push(`${item.toLowerCase()} implementation`)
+            enhancedUseCases.push(`${item.toLowerCase()} implementation`)
           }
         })
         
         // Generic fallbacks if still empty
-        if (fallbackUseCases.length === 0) {
-          fallbackUseCases.push('business optimization', 'workflow automation', 'performance improvement')
+        if (enhancedUseCases.length === 0) {
+          enhancedUseCases.push('business optimization', 'workflow automation', 'performance improvement')
         }
-        
-        companyAnalysis.companyInfo.use_cases = fallbackUseCases.slice(0, 3)
-        console.log('[FALLBACK] Generated use cases:', companyAnalysis.companyInfo.use_cases)
       }
+      
+      companyAnalysis.companyInfo.use_cases = enhancedUseCases.slice(0, 6) // Allow more use cases
+      console.log('[ENHANCE] Final enhanced use cases:', companyAnalysis.companyInfo.use_cases)
       
       // Generate customer problems if missing
       if (companyAnalysis.companyInfo.customer_problems.length === 0) {
@@ -371,13 +537,15 @@ export default function AEOAnalyticsPage() {
     }
 
     // Add debug identifier to track if enhanced data is being used
-    companyAnalysis.companyInfo.debug_source = 'frontend_enhanced_v2'
+    companyAnalysis.companyInfo.debug_source = 'frontend_enhanced_v3_geographic_always'
     console.log('[DEBUG] Final company analysis being sent:', companyAnalysis)
 
+    console.log('[DEBUG:MENTIONS] 🔄 Setting loading state and clearing errors...')
     setLoadingMentions(true)
     setMentionsError(null)
     setMentionsResult(null)
 
+    console.log('[DEBUG:MENTIONS] 📡 Making fetch request to /api/aeo/mentions-check...')
     try {
       const response = await fetch('/api/aeo/mentions-check', {
         method: 'POST',
@@ -385,25 +553,30 @@ export default function AEOAnalyticsPage() {
         body: JSON.stringify({
           company_name: mentionsCompany,
           company_analysis: companyAnalysis,
-          language: 'english',
-          country: businessContext?.countries?.[0] || 'US',
+          language: LANGUAGES.find(l => l.value === language)?.label.split(' ')[1] || 'english',
+          country: country,
           num_queries: 10,
           mode: 'fast',
-          api_key: openrouterKey,
         }),
       })
 
+      console.log('[DEBUG:MENTIONS] ✅ Fetch request completed, status:', response.status)
       const data = await response.json()
+      console.log('[DEBUG:MENTIONS] 📥 Response data received:', data)
 
       if (!response.ok) {
+        console.log('[DEBUG:MENTIONS] ❌ Response not OK, throwing error')
         throw new Error(data.error || data.message || 'Mentions check failed')
       }
 
+      console.log('[DEBUG:MENTIONS] 🎉 Setting mentions result and switching to mentions tab')
       setMentionsResult(data)
       setActiveResultsTab('mentions')
     } catch (err) {
+      console.log('[DEBUG:MENTIONS] 💥 Error caught:', err)
       setMentionsError(err instanceof Error ? err.message : 'Failed to check mentions')
     } finally {
+      console.log('[DEBUG:MENTIONS] 🏁 Finally block - setting loading to false')
       setLoadingMentions(false)
     }
   }
@@ -503,18 +676,28 @@ export default function AEOAnalyticsPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="mentions-industry">
-                  Industry (Optional)
-                </Label>
-                <Input
-                  id="mentions-industry"
-                  type="text"
-                  placeholder="B2B SaaS"
-                  value={mentionsIndustry}
-                  onChange={(e) => setMentionsIndustry(e.target.value)}
-                  disabled={loadingMentions}
-                />
+              {/* Geographic Targeting Controls */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Language</Label>
+                  <SearchableSelect
+                    options={LANGUAGES}
+                    value={language}
+                    onChange={setLanguage}
+                    placeholder="Select language..."
+                    disabled={loadingMentions}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Country</Label>
+                  <SearchableSelect
+                    options={COUNTRIES}
+                    value={country}
+                    onChange={setCountry}
+                    placeholder="Select country..."
+                    disabled={loadingMentions}
+                  />
+                </div>
               </div>
 
               {mentionsError && (
