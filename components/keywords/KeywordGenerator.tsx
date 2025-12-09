@@ -452,13 +452,10 @@ export function KeywordGenerator() {
 
       // Linear progress calculation
       // Total duration: ~360 seconds (6 minutes), interval: 800ms
-      // Total intervals: ~450, progress per interval: 95/450 ≈ 0.21%
-      const TOTAL_DURATION_SEC = 360
+      // Progress per interval: ~0.25% (more visible updates)
       const INTERVAL_MS = 800
-      const TOTAL_INTERVALS = Math.ceil((TOTAL_DURATION_SEC * 1000) / INTERVAL_MS)
-      const PROGRESS_PER_INTERVAL = 95 / TOTAL_INTERVALS
+      const PROGRESS_PER_INTERVAL = 0.25 // ~0.25% per interval = visible movement
       
-      let currentProgress = 0
       let stageIndex = 0
       let substageIndex = 0
       
@@ -471,38 +468,41 @@ export function KeywordGenerator() {
       }
       
       progressInterval = setInterval(() => {
-        // Linear progress increment
-        currentProgress = Math.min(currentProgress + PROGRESS_PER_INTERVAL, 95)
-        setProgress(currentProgress)
-        
-        // Update stage based on current progress
-        if (stageIndex < stages.length) {
-          const stage = stages[stageIndex]
+        // Use functional form to read current state
+        setProgress((prevProgress) => {
+          const newProgress = Math.min(prevProgress + PROGRESS_PER_INTERVAL, 95)
           
-          // Check if we should advance to next stage
-          if (currentProgress >= stage.end) {
-            stageIndex++
-            substageIndex = 0
-          }
-          
-          // Update current stage display
+          // Update stage based on new progress
           if (stageIndex < stages.length) {
-            const currentStage = stages[stageIndex]
-            setCurrentStage(currentStage.label)
+            const stage = stages[stageIndex]
             
-            // Cycle through substages
-            if (currentStage.substages && currentStage.substages.length > 0) {
-              setCurrentSubstage(currentStage.substages[substageIndex % currentStage.substages.length])
-              substageIndex++
-            } else {
-              setCurrentSubstage('')
+            // Check if we should advance to next stage
+            if (newProgress >= stage.end) {
+              stageIndex++
+              substageIndex = 0
             }
+            
+            // Update current stage display
+            if (stageIndex < stages.length) {
+              const currentStage = stages[stageIndex]
+              setCurrentStage(currentStage.label)
+              
+              // Cycle through substages
+              if (currentStage.substages && currentStage.substages.length > 0) {
+                setCurrentSubstage(currentStage.substages[substageIndex % currentStage.substages.length])
+                substageIndex++
+              } else {
+                setCurrentSubstage('')
+              }
+            }
+          } else {
+            // Final stage
+            setCurrentStage('7/7: Finalizing results')
+            setCurrentSubstage('Preparing output')
           }
-        } else {
-          // Final stage
-          setCurrentStage('7/7: Finalizing results')
-          setCurrentSubstage('Preparing output')
-        }
+          
+          return newProgress
+        })
       }, INTERVAL_MS)
 
       // Make the API call while progress animates
