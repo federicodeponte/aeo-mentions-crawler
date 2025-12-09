@@ -57,7 +57,13 @@ export async function POST(request: NextRequest): Promise<Response> {
       // Local development: Use subprocess to call Python script
       return new Promise((resolve) => {
       const pythonScriptPath = path.join(process.cwd(), 'scripts', 'generate-keywords.py')
-      const pythonProcess = spawn('python3', [pythonScriptPath])
+      // Pass environment variables to Python subprocess (including SERANKING_API_KEY from .env.local)
+      const pythonProcess = spawn('python3', [pythonScriptPath], {
+        env: {
+          ...process.env, // Inherit all environment variables
+          SERANKING_API_KEY: process.env.SERANKING_API_KEY, // Explicitly pass SERanking key
+        }
+      })
 
       let pythonOutput = ''
       let pythonError = ''
