@@ -291,6 +291,7 @@ export function KeywordGenerator() {
   // Refs for stage tracking (persist across renders)
   const stageIndexRef = useRef(0)
   const substageIndexRef = useRef(0)
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
   
   // Dots animation state
   const [dots, setDots] = useState('')
@@ -354,6 +355,16 @@ export function KeywordGenerator() {
       clearInterval(dotTimer)
     }
   }, [isGenerating])
+
+  // Cleanup progress interval on unmount
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+        progressIntervalRef.current = null
+      }
+    }
+  }, [])
   
   // Get company info from context
   const companyName = businessContext.companyName || ''
@@ -393,106 +404,89 @@ export function KeywordGenerator() {
     }
     sessionStorage.setItem(GENERATION_STATE_KEY, JSON.stringify(generationState))
 
-    let progressInterval: NodeJS.Timeout | null = null
+    // Estimated time: ~6 minutes (360 seconds) for keyword generation
+    const estimatedTime = 360
+    setProgress(0)
 
-    try {
-      console.log('[KEYWORDS] Starting streaming keyword generation...')
-      console.log('[KEYWORDS] Company:', companyName.trim())
-      console.log('[KEYWORDS] URL:', companyUrl.trim())
-      console.log('[KEYWORDS] Count:', numKeywords)
+    // Stage definitions
+    const stages = [
+      { 
+        name: 'company_analysis', 
+        label: '1/7: Analyzing company context', 
+        substages: ['Extracting products/services', 'Identifying target audience', 'Finding differentiators'],
+        duration: 30, 
+        end: 10 
+      },
+      { 
+        name: 'configuration', 
+        label: '2/7: Configuring generation', 
+        substages: ['Setting up parameters', 'Loading context', 'Preparing tools'],
+        duration: 20, 
+        end: 15 
+      },
+      { 
+        name: 'ai_generation', 
+        label: '3/7: AI keyword generation', 
+        substages: ['Gemini deep research', 'Google Search grounding', 'Hyper-niche variations'],
+        duration: 120, 
+        end: 40 
+      },
+      { 
+        name: 'research', 
+        label: '4/7: Research & enrichment', 
+        substages: ['Scraping Reddit/Quora', 'Extracting quotes', 'Building research data'],
+        duration: 90, 
+        end: 60 
+      },
+      { 
+        name: 'serp_analysis', 
+        label: '5/7: SERP analysis', 
+        substages: ['Analyzing top 10 results', 'Extracting meta tags', 'Identifying content gaps'],
+        duration: 60, 
+        end: 75 
+      },
+      { 
+        name: 'deduplication', 
+        label: '6/7: Deduplication & scoring', 
+        substages: ['Removing duplicates', 'Semantic clustering', 'Calculating scores'],
+        duration: 30, 
+        end: 85 
+      },
+      { 
+        name: 'clustering', 
+        label: '7/7: Final clustering', 
+        substages: ['Grouping keywords', 'Assigning clusters', 'Sorting by relevance'],
+        duration: 20, 
+        end: 95 
+      },
+    ]
 
-      // Start progress simulation immediately (for UX engagement)
-      const stages = [
-        { 
-          name: 'company_analysis', 
-          label: '1/7: Analyzing company context', 
-          substages: ['Extracting products/services', 'Identifying target audience', 'Finding differentiators'],
-          duration: 30, 
-          end: 10 
-        },
-        { 
-          name: 'configuration', 
-          label: '2/7: Configuring generation', 
-          substages: ['Setting up parameters', 'Loading context', 'Preparing tools'],
-          duration: 20, 
-          end: 15 
-        },
-        { 
-          name: 'ai_generation', 
-          label: '3/7: AI keyword generation', 
-          substages: ['Gemini deep research', 'Google Search grounding', 'Hyper-niche variations'],
-          duration: 120, 
-          end: 40 
-        },
-        { 
-          name: 'research', 
-          label: '4/7: Research & enrichment', 
-          substages: ['Scraping Reddit/Quora', 'Extracting quotes', 'Building research data'],
-          duration: 90, 
-          end: 60 
-        },
-        { 
-          name: 'serp_analysis', 
-          label: '5/7: SERP analysis', 
-          substages: ['Analyzing top 10 results', 'Extracting meta tags', 'Identifying content gaps'],
-          duration: 60, 
-          end: 75 
-        },
-        { 
-          name: 'deduplication', 
-          label: '6/7: Deduplication & scoring', 
-          substages: ['Removing duplicates', 'Semantic clustering', 'Calculating scores'],
-          duration: 30, 
-          end: 85 
-        },
-        { 
-          name: 'clustering', 
-          label: '7/7: Final clustering', 
-          substages: ['Grouping keywords', 'Assigning clusters', 'Sorting by relevance'],
-          duration: 20, 
-          end: 95 
-        },
-      ]
-
-      // Reset refs
-      stageIndexRef.current = 0
-      substageIndexRef.current = 0
-      
-      // Linear progress calculation
-      const INTERVAL_MS = 800
-      const PROGRESS_PER_INTERVAL = 0.5 // 0.5% per interval = more visible movement
-      
-      // Initialize first stage immediately
-      if (stages.length > 0) {
-        setCurrentStage(stages[0].label)
-        if (stages[0].substages && stages[0].substages.length > 0) {
-          setCurrentSubstage(stages[0].substages[0])
-        }
+    // Reset refs
+    stageIndexRef.current = 0
+    substageIndexRef.current = 0
+    
+    // Initialize first stage immediately
+    if (stages.length > 0) {
+      setCurrentStage(stages[0].label)
+      if (stages[0].substages && stages[0].substages.length > 0) {
+        setCurrentSubstage(stages[0].substages[0])
       }
-      
-      // Start progress interval - SIMPLE AND WORKING
-      let tickCount = 0
-      progressInterval = setInterval(() => {
-        tickCount++
-        setProgress((prev) => {
-          const next = Math.min(prev + PROGRESS_PER_INTERVAL, 95)
-          
-          // Log every 5 ticks (~4 seconds)
-          if (tickCount % 5 === 0) {
-            console.log('[PROGRESS]', next.toFixed(1) + '%')
-          }
-          
-          // Check if we need to advance stage
-          if (stageIndexRef.current < stages.length && next >= stages[stageIndexRef.current].end) {
-            stageIndexRef.current++
-            substageIndexRef.current = 0
-            console.log('[PROGRESS] Stage', stageIndexRef.current, stages[stageIndexRef.current]?.label)
-          }
-          
-          return next
-        })
+    }
+
+    // Start progress tracking (matching analytics/blogs pattern exactly)
+    progressIntervalRef.current = setInterval(() => {
+      setProgress((prev) => {
+        const newProgress = prev + (95 / estimatedTime) // 95% in 360 seconds = ~0.264% per second
+        const rounded = Math.min(newProgress, 95)
         
-        // Update stage display AFTER progress update
+        // Update stages based on progress
+        if (stageIndexRef.current < stages.length && rounded >= stages[stageIndexRef.current].end) {
+          stageIndexRef.current++
+          substageIndexRef.current = 0
+          console.log('[PROGRESS] Stage', stageIndexRef.current, stages[stageIndexRef.current]?.label)
+        }
+        
+        // Update current stage display
         if (stageIndexRef.current < stages.length) {
           const stage = stages[stageIndexRef.current]
           setCurrentStage(stage.label)
@@ -507,9 +501,16 @@ export function KeywordGenerator() {
           setCurrentStage('7/7: Finalizing results')
           setCurrentSubstage('Preparing output')
         }
-      }, INTERVAL_MS)
-      
-      console.log('[PROGRESS] Started - updating every', INTERVAL_MS, 'ms')
+        
+        return rounded
+      })
+    }, 1000) // Update every 1 second (matching analytics/blogs)
+
+    try {
+      console.log('[KEYWORDS] Starting keyword generation...')
+      console.log('[KEYWORDS] Company:', companyName.trim())
+      console.log('[KEYWORDS] URL:', companyUrl.trim())
+      console.log('[KEYWORDS] Count:', numKeywords)
 
       // Make the API call while progress animates
       const response = await fetch('/api/generate-keywords', {
@@ -540,20 +541,15 @@ export function KeywordGenerator() {
       })
 
       if (!response.ok) {
-        clearInterval(progressInterval)
         const error = await response.json().catch(() => ({ error: 'Failed to generate keywords' }))
         throw new Error(error.error || error.message || 'Failed to generate keywords')
       }
 
       // Get JSON response
       const result = await response.json()
-      clearInterval(progressInterval)
 
       console.log('[KEYWORDS] Success! Generated', result.keywords?.length || 0, 'keywords')
       
-      // Show results IMMEDIATELY (even if faster than simulated progress)
-      setProgress(100)
-      setIsGenerating(false)
       setResults(result)
       toast.success(`Generated ${result.keywords.length} keywords!`)
       
@@ -579,13 +575,17 @@ export function KeywordGenerator() {
       existingLogs.unshift(logEntry)
       localStorage.setItem('bulk-gpt-logs', JSON.stringify(existingLogs.slice(0, 50)))
     } catch (error) {
-      if (progressInterval) clearInterval(progressInterval)
       console.error('Keyword generation error:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to generate keywords')
       sessionStorage.removeItem(GENERATION_STATE_KEY)
     } finally {
-      setIsGenerating(false)
+      // Clean up progress interval (matching analytics/blogs pattern)
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+        progressIntervalRef.current = null
+      }
       setProgress(100)
+      setIsGenerating(false)
     }
   }, [companyName, companyUrl, language, country, numKeywords, geminiApiKey, businessContext])
 
@@ -754,13 +754,10 @@ export function KeywordGenerator() {
                     </div>
                     <div className="w-full bg-muted rounded-full h-2 overflow-hidden shadow-inner">
                       <div
-                        key={`progress-${Math.floor(progress)}`}
-                        className="bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-300 ease-linear"
+                        className="bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-1000 ease-linear"
                         style={{ 
-                          width: `${Math.max(0, Math.min(100, progress))}%`,
-                          willChange: 'width'
+                          width: `${Math.max(0, Math.min(100, progress))}%`
                         }}
-                        data-progress={progress.toFixed(1)}
                       />
                     </div>
                   </div>
