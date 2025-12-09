@@ -11,10 +11,10 @@ export default function HomePage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
-    // DEV MODE: Skip auth and go straight to /keywords for UI development
+    // DEV MODE: Skip auth and go straight to /go for UI development
     if (process.env.NEXT_PUBLIC_DEV_MODE === 'true') {
-      console.log('[DEV MODE] Redirecting to /keywords without auth')
-      router.push('/keywords')
+      console.log('[DEV MODE] Redirecting to /go without auth')
+      router.push('/go')
       return
     }
 
@@ -31,7 +31,7 @@ export default function HomePage() {
         if (user) {
           // User is authenticated, redirect to app
           setIsAuthenticated(true)
-          router.push('/keywords')
+          router.push('/go')
         } else {
           // Not authenticated, show landing page
           setIsLoading(false)

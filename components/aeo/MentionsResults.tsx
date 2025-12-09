@@ -125,102 +125,102 @@ export function MentionsResults({ result, companyName }: MentionsResultsProps) {
   })
 
   return (
-    <div className="space-y-8">
-      {/* Score Overview */}
+    <div className="space-y-6">
+      {/* Score Card */}
       <Card className="p-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-sm font-medium text-muted-foreground">
-              AEO Visibility Score
+              AI Visibility Score
             </h3>
-            <div className="flex items-center gap-3 mt-2">
-              <span className="text-3xl font-bold">
-                {result.visibility}%
-              </span>
-              <Badge className={getBandColor(result.band)}>
-                {result.band}
-              </Badge>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-4xl font-bold">{result.visibility}</span>
+              <span className="text-muted-foreground">/100</span>
             </div>
           </div>
-          <div className="text-right">
-            <div className="w-20">
-              <Progress value={result.visibility} />
-            </div>
-          </div>
+          <Badge className={getBandColor(result.band)}>
+            {result.band}
+          </Badge>
         </div>
-        <div className="grid grid-cols-3 gap-4 mt-6">
+
+        <Progress value={result.visibility} className="h-2 mb-4" />
+
+        <div className="grid grid-cols-3 gap-4 text-sm">
           <div>
-            <div className="text-lg font-semibold">{result.presence_rate.toFixed(1)}%</div>
-            <div className="text-xs text-muted-foreground">Presence Rate</div>
+            <div className="text-muted-foreground">Total Mentions</div>
+            <div className="text-xl font-semibold">{result.mentions}</div>
           </div>
           <div>
-            <div className="text-lg font-semibold">{result.quality_score.toFixed(1)}/10</div>
-            <div className="text-xs text-muted-foreground">Avg Quality</div>
+            <div className="text-muted-foreground">Presence Rate</div>
+            <div className="text-xl font-semibold">{result.presence_rate.toFixed(1)}%</div>
           </div>
           <div>
-            <div className="text-lg font-semibold">{result.mentions}</div>
-            <div className="text-xs text-muted-foreground">Total Mentions</div>
+            <div className="text-muted-foreground">Quality Score</div>
+            <div className="text-xl font-semibold">{result.quality_score.toFixed(1)}/10</div>
           </div>
         </div>
       </Card>
 
-      {/* Platform Performance */}
+      {/* Platform Stats */}
       {result.platform_stats && (
-        <Card className="p-6">
-          <h3 className="text-sm font-medium text-muted-foreground mb-4">
-            Platform Performance
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {Object.entries(result.platform_stats).map(([platform, stats]: [string, any]) => (
-              <div key={platform} className="border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium capitalize">{platform}</span>
-                  <Badge variant="outline" className="text-xs">
-                    {stats.responses}
-                  </Badge>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Mentions</span>
-                    <span className="text-sm font-medium">{stats.mentions}</span>
+        <Card>
+          <CardHeader>
+            <CardTitle>Platform Performance</CardTitle>
+            <CardDescription>Visibility across AI platforms</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              {Object.entries(result.platform_stats).map(([platform, stats]: [string, any]) => (
+                <div key={platform} className="border rounded-lg p-4">
+                  <div className="font-semibold capitalize mb-2">{platform}</div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Mentions</span>
+                      <span className="font-medium">{stats.mentions}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Quality</span>
+                      <span className="font-medium">{stats.quality_score.toFixed(1)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Responses</span>
+                      <span className="font-medium">{stats.responses}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Quality</span>
-                    <span className="text-sm font-medium">{stats.quality_score.toFixed(1)}/10</span>
-                  </div>
-                  <Progress value={(stats.quality_score / 10) * 100} className="h-2" />
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </CardContent>
         </Card>
       )}
 
-      {/* Export Actions */}
-      <div className="flex gap-2">
+      {/* Export Buttons */}
+      <div className="flex gap-3">
         <Button 
           variant="outline" 
+          className="flex-1" 
           onClick={handleExportPDF}
           disabled={exportingPDF}
         >
           {exportingPDF ? (
-            <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <FileText className="mr-2 w-4 h-4" />
+            <FileText className="mr-2 h-4 w-4" />
           )}
-          {exportingPDF ? 'Exporting...' : 'Export PDF'}
+          {exportingPDF ? 'Generating PDF...' : 'Export PDF Report'}
         </Button>
         <Button 
           variant="outline" 
+          className="flex-1"
           onClick={handleExportExcel}
           disabled={exportingExcel}
         >
           {exportingExcel ? (
-            <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <Download className="mr-2 w-4 h-4" />
+            <Download className="mr-2 h-4 w-4" />
           )}
-          {exportingExcel ? 'Exporting...' : 'Export Excel'}
+          {exportingExcel ? 'Generating Excel...' : 'Export Excel Data'}
         </Button>
       </div>
 
@@ -264,35 +264,35 @@ export function MentionsResults({ result, companyName }: MentionsResultsProps) {
 
       {/* Query Results */}
       <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="mb-3 text-left">Query Results ({sortedResults.length})</CardTitle>
-          <CardDescription className="text-left">
+        <CardHeader>
+          <CardTitle>Query Results ({sortedResults.length})</CardTitle>
+          <CardDescription>
             Detailed AI responses for each query × platform combination
           </CardDescription>
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent>
           <Accordion type="multiple" value={expandedResults} onValueChange={setExpandedResults}>
             {sortedResults.map((qr: any, idx: number) => (
-              <AccordionItem key={idx} value={`result-${idx}`} className="border rounded-lg mb-2">
-                <AccordionTrigger className="hover:no-underline px-4 py-3 text-left">
+              <AccordionItem key={idx} value={`result-${idx}`}>
+                <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center justify-between w-full pr-4">
-                    <div className="flex items-center gap-3 text-left">
-                      <Badge variant={qr.capped_mentions > 0 ? 'default' : 'outline'} className="shrink-0">
+                    <div className="flex items-center gap-3">
+                      <Badge variant={qr.capped_mentions > 0 ? 'default' : 'outline'}>
                         {qr.platform}
                       </Badge>
-                      <span className="font-medium text-left truncate">{qr.query}</span>
+                      <span className="font-medium">{qr.query}</span>
                     </div>
-                    <div className="flex items-center gap-3 text-sm shrink-0 ml-4">
+                    <div className="flex items-center gap-3 text-sm">
                       <span className="text-muted-foreground">
-                        {qr.capped_mentions || qr.mentions || 0} mention{(qr.capped_mentions || qr.mentions || 0) !== 1 ? 's' : ''}
+                        {qr.capped_mentions} mention{qr.capped_mentions !== 1 ? 's' : ''}
                       </span>
                       <span className="font-medium">
-                        Q: {(qr.quality_score || 0).toFixed(1)}
+                        Q: {qr.quality_score.toFixed(1)}
                       </span>
                     </div>
                   </div>
                 </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4">
+                <AccordionContent>
                   <div className="space-y-4 pt-2">
                     {/* AI Response */}
                     <div className="rounded-lg bg-muted/50 p-4">
@@ -300,7 +300,7 @@ export function MentionsResults({ result, companyName }: MentionsResultsProps) {
                         AI Response:
                       </h4>
                       <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                        {qr.response_text || qr.response || 'No response recorded'}
+                        {qr.response_text || 'No response recorded'}
                       </div>
                     </div>
                     
@@ -308,19 +308,19 @@ export function MentionsResults({ result, companyName }: MentionsResultsProps) {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       <div className="rounded-lg border bg-card p-3">
                         <div className="text-xs text-muted-foreground">Mentions</div>
-                        <div className="text-lg font-semibold">{qr.raw_mentions || qr.mentions || qr.capped_mentions || 0}</div>
+                        <div className="text-lg font-semibold">{qr.raw_mentions}</div>
                       </div>
                       <div className="rounded-lg border bg-card p-3">
                         <div className="text-xs text-muted-foreground">Quality</div>
-                        <div className="text-lg font-semibold">{(qr.quality_score || 0).toFixed(1)}</div>
+                        <div className="text-lg font-semibold">{qr.quality_score.toFixed(1)}</div>
                       </div>
                       <div className="rounded-lg border bg-card p-3">
                         <div className="text-xs text-muted-foreground">Type</div>
-                        <div className="text-sm font-medium capitalize">{qr.mention_type || 'N/A'}</div>
+                        <div className="text-sm font-medium capitalize">{qr.mention_type}</div>
                       </div>
                       <div className="rounded-lg border bg-card p-3">
                         <div className="text-xs text-muted-foreground">Dimension</div>
-                        <div className="text-sm font-medium capitalize">{qr.dimension || 'N/A'}</div>
+                        <div className="text-sm font-medium capitalize">{qr.dimension}</div>
                       </div>
                     </div>
 

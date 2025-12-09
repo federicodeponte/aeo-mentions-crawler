@@ -28,7 +28,7 @@ interface KeywordRequest {
 export async function POST(request: NextRequest): Promise<Response> {
   try {
     const body: KeywordRequest = await request.json()
-    const { company_name, company_url, apiKey: clientApiKey } = body
+    const { company_name, company_url, apiKey } = body
 
     if (!company_name) {
       return NextResponse.json(
@@ -37,13 +37,10 @@ export async function POST(request: NextRequest): Promise<Response> {
       )
     }
 
-    // Use client-provided API key or fallback to server env variable
-    const apiKey = clientApiKey || process.env.GEMINI_API_KEY
-
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Gemini API key is not configured. Please contact support.' },
-        { status: 500 }
+        { error: 'Gemini API key is required. Please set it in Settings.' },
+        { status: 400 }
       )
     }
 
@@ -57,13 +54,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       // Local development: Use subprocess to call Python script
       return new Promise((resolve) => {
       const pythonScriptPath = path.join(process.cwd(), 'scripts', 'generate-keywords.py')
-      // Pass environment variables to Python subprocess (including SERANKING_API_KEY from .env.local)
-      const pythonProcess = spawn('python3', [pythonScriptPath], {
-        env: {
-          ...process.env, // Inherit all environment variables
-          SERANKING_API_KEY: process.env.SERANKING_API_KEY, // Explicitly pass SERanking key
-        }
-      })
+      const pythonProcess = spawn('python3', [pythonScriptPath])
 
       let pythonOutput = ''
       let pythonError = ''

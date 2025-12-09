@@ -13,8 +13,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
-# Add blog-writer (openblog) to path
-blog_writer_path = Path(__file__).parent.parent / 'python-services' / 'blog-writer'
+# Add blog-writer to path
+blog_writer_path = Path(__file__).parent.parent.parent / 'services' / 'blog-writer'
 sys.path.insert(0, str(blog_writer_path))
 
 from pipeline.core.workflow_engine import WorkflowEngine
@@ -301,95 +301,6 @@ async def generate_blog(input_data: dict) -> dict:
         if aeo_score is None and hasattr(context, 'aeo_score'):
             aeo_score = context.aeo_score
         
-        # Extract enhanced data from parallel_results (stages 4-9)
-        parallel_results = getattr(context, 'parallel_results', {}) or {}
-        
-        # Extract citations data (Stage 4)
-        citations_data = parallel_results.get('citations', {})
-        citations = []
-        if isinstance(citations_data, dict):
-            # Extract citation list if available (Pydantic CitationList object)
-            citations_list_obj = citations_data.get('citations_list')
-            if citations_list_obj:
-                # Handle Pydantic CitationList model
-                if hasattr(citations_list_obj, 'to_dict_list'):
-                    citations = citations_list_obj.to_dict_list()
-                elif hasattr(citations_list_obj, 'citations'):
-                    # Fallback: extract citations attribute
-                    citations = [c.model_dump() if hasattr(c, 'model_dump') else c for c in citations_list_obj.citations]
-                elif isinstance(citations_list_obj, list):
-                    citations = citations_list_obj
-        
-        # Extract internal links (Stage 5)
-        internal_links_data = parallel_results.get('internal_links', {})
-        internal_links = []
-        if isinstance(internal_links_data, dict):
-            # Extract internal links list (Pydantic InternalLinkList object)
-            links_list_obj = internal_links_data.get('internal_links_list')
-            if links_list_obj:
-                # Handle Pydantic InternalLinkList model
-                if hasattr(links_list_obj, 'to_dict_list'):
-                    internal_links = links_list_obj.to_dict_list()
-                elif hasattr(links_list_obj, 'links'):
-                    # Fallback: extract links attribute
-                    internal_links = [l.model_dump() if hasattr(l, 'model_dump') else l for l in links_list_obj.links]
-                elif isinstance(links_list_obj, list):
-                    internal_links = links_list_obj
-        
-        # Extract TOC (Stage 6)
-        toc_data = parallel_results.get('toc', {})
-        if isinstance(toc_data, dict):
-            # Try toc_dict first (actual TOC data), fallback to toc itself
-            toc = toc_data.get('toc_dict', toc_data)
-        else:
-            toc = {}
-        
-        # Extract metadata (Stage 7)
-        metadata_extra = parallel_results.get('metadata', {})
-        if isinstance(metadata_extra, dict):
-            read_time = metadata_extra.get('read_time', calculate_read_time(word_count))
-            publication_date = metadata_extra.get('publication_date', '')
-        else:
-            read_time = calculate_read_time(word_count)
-            publication_date = ''
-        
-        # Extract FAQ/PAA (Stage 8)
-        faq_paa_data = parallel_results.get('faq_paa', {})
-        faq_items = []
-        paa_items = []
-        if isinstance(faq_paa_data, dict):
-            # Handle Pydantic FAQList and PAAList objects
-            faq_items_obj = faq_paa_data.get('faq_items', [])
-            paa_items_obj = faq_paa_data.get('paa_items', [])
-            
-            # Convert Pydantic objects to dicts
-            if hasattr(faq_items_obj, 'to_dict_list'):
-                faq_items = faq_items_obj.to_dict_list()
-            elif isinstance(faq_items_obj, list):
-                faq_items = faq_items_obj
-            
-            if hasattr(paa_items_obj, 'to_dict_list'):
-                paa_items = paa_items_obj.to_dict_list()
-            elif isinstance(paa_items_obj, list):
-                paa_items = paa_items_obj
-        
-        # Extract image data (Stage 9)
-        image_data = parallel_results.get('image', {})
-        image_url = ''
-        image_alt_text = ''
-        image_prompt = ''
-        if isinstance(image_data, dict):
-            image_url = image_data.get('image_url', '')
-            image_alt_text = image_data.get('image_alt_text', '')
-            image_prompt = image_data.get('image_prompt', '')
-        
-        # Extract meta tags from structured_data
-        meta_title = ''
-        meta_description = ''
-        if context.structured_data:
-            meta_title = getattr(context.structured_data, 'Meta_Title', '') or ''
-            meta_description = getattr(context.structured_data, 'Meta_Description', '') or ''
-        
         result = {
             "success": True,
             "job_id": job_id,
@@ -397,28 +308,11 @@ async def generate_blog(input_data: dict) -> dict:
             "slug": generate_slug(headline) if headline else generate_slug(request.primary_keyword),
             "html_content": html_content,
             "word_count": word_count,
-            "read_time_minutes": read_time,
+            "read_time_minutes": calculate_read_time(word_count),
             "language": request.language,
             "country": request.country,
             "aeo_score": aeo_score,
             "duration_seconds": duration,
-            
-            # Enhanced data (NEW)
-            "meta_title": meta_title,
-            "meta_description": meta_description,
-            "citations": citations,
-            "citations_count": len(citations),
-            "internal_links": internal_links,
-            "internal_links_count": len(internal_links),
-            "toc": toc,
-            "faq": faq_items,
-            "faq_count": len(faq_items),
-            "paa": paa_items,
-            "paa_count": len(paa_items),
-            "image_url": image_url,
-            "image_alt_text": image_alt_text,
-            "image_prompt": image_prompt,
-            "publication_date": publication_date,
         }
         
         return result
