@@ -762,10 +762,10 @@ export function KeywordGenerator() {
                           </div>
                           <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
                             <div
-                              className={`h-1.5 rounded-full transition-all duration-500 ${
+                              className={`h-1.5 rounded-full ${
                                 isComplete ? 'bg-green-500' : 
-                                isActive ? 'bg-gradient-to-r from-blue-500 to-cyan-500 animate-pulse' : 
-                                'bg-muted-foreground/20'
+                                isActive ? 'bg-gradient-to-r from-blue-500 to-cyan-500 animate-pulse transition-[width] duration-[800ms] ease-linear' : 
+                                'bg-muted-foreground/20 transition-all duration-500'
                               }`}
                               style={{ width: `${isComplete ? 100 : stageProgress}%` }}
                             />
