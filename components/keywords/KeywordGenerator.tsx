@@ -1128,19 +1128,28 @@ export function KeywordGenerator() {
                                               {source.platform && (
                                                 <span className="font-medium">{source.platform}</span>
                                               )}
-                                              {source.title && (
+                                              {source.title && source.url ? (
+                                                <a
+                                                  href={source.url}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="text-primary hover:underline ml-1 break-words"
+                                                >
+                                                  {source.platform ? ': ' : ''}{source.title}
+                                                </a>
+                                              ) : source.title ? (
                                                 <span className="text-muted-foreground">
                                                   {source.platform ? ': ' : ''}{source.title}
                                                 </span>
-                                              )}
-                                              {source.url && (
+                                              ) : null}
+                                              {source.url && !source.title && (
                                                 <a 
                                                   href={source.url} 
                                                   target="_blank" 
                                                   rel="noopener noreferrer" 
-                                                  className="text-primary hover:underline ml-1"
+                                                  className="text-primary hover:underline ml-1 break-all"
                                                 >
-                                                  →
+                                                  {source.url}
                                                 </a>
                                               )}
                                               {source.position && (
