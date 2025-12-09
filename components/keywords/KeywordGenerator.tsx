@@ -930,6 +930,7 @@ export function KeywordGenerator() {
                       keyword.content_brief ||
                       keyword.serp_data ||
                       keyword.trends_data ||
+                      keyword.autocomplete_data ||
                       keyword.citations?.length
                     )
                     
@@ -1201,6 +1202,43 @@ export function KeywordGenerator() {
                                   {keyword.trends_data.rising_related && keyword.trends_data.rising_related.length > 0 && (
                                     <div className="col-span-2">
                                       <strong>Rising:</strong> {keyword.trends_data.rising_related.slice(0, 3).join(', ')}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Autocomplete Data */}
+                            {keyword.autocomplete_data && (
+                              <div className="border border-border rounded-lg p-4 bg-card">
+                                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                                  <span>🔤</span>
+                                  Google Autocomplete
+                                </h4>
+                                <div className="space-y-2 text-xs">
+                                  {keyword.autocomplete_data.seed_keyword && (
+                                    <div>
+                                      <strong>Seed:</strong> {keyword.autocomplete_data.seed_keyword}
+                                    </div>
+                                  )}
+                                  {keyword.autocomplete_data.question_keywords && keyword.autocomplete_data.question_keywords.length > 0 && (
+                                    <div>
+                                      <strong>Question Keywords:</strong>
+                                      <ul className="list-disc list-inside ml-2 mt-1 space-y-0.5">
+                                        {keyword.autocomplete_data.question_keywords.slice(0, 5).map((q, i) => (
+                                          <li key={i}>{q}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                  {keyword.autocomplete_data.long_tail_keywords && keyword.autocomplete_data.long_tail_keywords.length > 0 && (
+                                    <div>
+                                      <strong>Long-tail Variations:</strong>
+                                      <ul className="list-disc list-inside ml-2 mt-1 space-y-0.5">
+                                        {keyword.autocomplete_data.long_tail_keywords.slice(0, 5).map((lt, i) => (
+                                          <li key={i}>{lt}</li>
+                                        ))}
+                                      </ul>
                                     </div>
                                   )}
                                 </div>
