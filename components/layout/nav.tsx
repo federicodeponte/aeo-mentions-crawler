@@ -6,7 +6,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@/lib/supabase/client'
@@ -24,14 +24,37 @@ import { cn } from '@/lib/utils'
 import { Logo } from '@/components/brand/Logo'
 import { useTheme } from 'next-themes'
 
+// Custom hook to safely use navigation hooks
+function useClientNavigation() {
+  const [router, setRouter] = useState<any>(null)
+  const [pathname, setPathname] = useState('')
+
+  useEffect(() => {
+    // Use window.location for navigation instead of Next.js hooks to avoid context issues
+    if (typeof window !== 'undefined') {
+      // Create a mock router that uses window.location
+      const mockRouter = {
+        push: (url: string) => {
+          window.location.href = url
+        },
+        refresh: () => {
+          window.location.reload()
+        }
+      }
+      
+      setRouter(mockRouter)
+      setPathname(window.location.pathname)
+    }
+  }, [])
+
+  return { router, pathname }
+}
+
 export function Nav() {
   const [_hasMounted, setHasMounted] = useState(false)
   const { theme, setTheme } = useTheme()
   const { userEmail, userAvatar } = useAuth()
-  
-  // Only use navigation hooks on client side to prevent SSR context errors
-  const router = typeof window !== 'undefined' ? useRouter() : null
-  const pathname = typeof window !== 'undefined' ? usePathname() : ''
+  const { router, pathname } = useClientNavigation()
 
   // Prevent hydration mismatch for CSS transitions
   useEffect(() => {
