@@ -11,11 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SearchableSelect } from '@/components/ui/searchable-select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useContextStorage } from '@/hooks/useContextStorage'
-import { useMobile } from '@/hooks/useMobile'
-import { cn } from '@/lib/utils'
-import { textSizes, containerPadding } from '@/lib/utils/responsive-utils'
 import { toast } from 'sonner'
 
 const LOADING_MESSAGES = [
@@ -27,106 +23,19 @@ const LOADING_MESSAGES = [
   '✨ Finalizing recommendations',
 ]
 
-interface ResearchSource {
-  keyword: string
-  quote: string
-  url: string
-  platform: string
-  source_title?: string
-  source_author?: string
-  source_date?: string
-  upvotes?: number
-  comments_count?: number
-}
-
-interface ContentBriefSource {
-  type: string
-  platform?: string
-  url?: string
-  title?: string
-  quote?: string
-  position?: number
-}
-
-interface ContentBrief {
-  content_angle: string
-  target_questions: string[]
-  content_gap: string
-  audience_pain_point: string
-  recommended_word_count?: number
-  fs_opportunity_type?: string
-  sources?: ContentBriefSource[]
-}
-
-interface SERPRanking {
-  position: number
-  url: string
-  title: string
-  description: string
-  domain: string
-  meta_tags?: Record<string, any>
-}
-
-interface CompleteSERPData {
-  organic_results: SERPRanking[]
-  featured_snippet?: {
-    type: string
-    text: string
-    source_url: string
-  }
-  paa_questions?: Array<{
-    question: string
-    answer: string
-    source_url: string
-  }>
-  avg_word_count?: number
-  common_content_types?: string[]
-}
-
-interface GoogleTrendsData {
-  current_interest: number
-  trend_direction: string
-  is_seasonal: boolean
-  rising_related?: string[]
-  top_regions?: string[]
-}
-
 interface Keyword {
   keyword: string
   intent: string // question, commercial, transactional, comparison, informational
   score: number // company-fit score (0-100)
   cluster_name?: string // semantic cluster grouping
   is_question: boolean
-  source: string // ai_generated, research_reddit, research_quora, research_niche, gap_analysis, serp_paa, autocomplete
+  source: string // ai_generated, research_reddit, research_quora, research_niche, gap_analysis, serp_paa
   volume?: number // monthly search volume
   difficulty?: number // keyword difficulty (0-100)
-  aeo_opportunity?: number | null // AEO opportunity score (0-100), null if not analyzed
-  has_featured_snippet?: boolean | null // null if not analyzed
-  has_paa?: boolean | null // null if not analyzed
-  serp_analyzed?: boolean // Whether SERP analysis was run for this keyword
-  // ENHANCED DATA CAPTURE fields
-  research_data?: {
-    sources: ResearchSource[]
-    total_sources_found: number
-    platforms_searched: string[]
-    most_mentioned_pain_points?: string[]
-  }
-  content_brief?: ContentBrief
-  serp_data?: CompleteSERPData
-  trends_data?: GoogleTrendsData
-  autocomplete_data?: {
-    seed_keyword: string
-    suggestions: string[]
-    question_keywords: string[]
-    long_tail_keywords: string[]
-  }
-  // Quick access fields
-  research_summary?: string
-  research_source_urls?: string[]
-  top_ranking_urls?: string[]
-  featured_snippet_url?: string
-  paa_questions_with_urls?: Array<{question: string; url: string}>
-  citations?: any[]
+  aeo_opportunity?: number // AEO opportunity score (0-100)
+  has_featured_snippet?: boolean
+  has_paa?: boolean
+  serp_analyzed?: boolean
   // Legacy fields for backward compatibility
   aeo_type?: string
   search_intent?: string
@@ -294,30 +203,19 @@ export function KeywordGenerator() {
   const [country, setCountry] = useState('US')
   const [numKeywords, setNumKeywords] = useState(50)
   const [geminiApiKey, setGeminiApiKey] = useState<string | null>(null)
-  const [enableGoogleTrends, setEnableGoogleTrends] = useState(true)  // Default enabled
-  const [enableAutocomplete, setEnableAutocomplete] = useState(true)  // Default enabled
   
-  // Simulated progress tracking (for UX engagement)
+  // Progress tracking
   const [progress, setProgress] = useState(0)
-  const [currentStage, setCurrentStage] = useState('')
-  const [currentSubstage, setCurrentSubstage] = useState('')
-  
-  // Refs for stage tracking (persist across renders)
-  const stageIndexRef = useRef(0)
-  const substageIndexRef = useRef(0)
+  const [timeRemaining, setTimeRemaining] = useState(0)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
   
-  // Dots animation state
+  // Rotating message state
+  const [messageIndex, setMessageIndex] = useState(0)
   const [dots, setDots] = useState('')
   
   // Results state
   const [results, setResults] = useState<KeywordResults | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
-  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set())
-
-  // Mobile detection and tab state
-  const { isMobile } = useMobile()
-  const [mobileActiveTab, setMobileActiveTab] = useState<string>('input')
 
   // Persistent generation tracking
   const GENERATION_STATE_KEY = 'keyword_generation_state'
@@ -331,18 +229,30 @@ export function KeywordGenerator() {
       const state = JSON.parse(savedState)
       const elapsed = Math.floor((Date.now() - state.startTime) / 1000)
       
-      // Only restore if less than 6 minutes elapsed (reasonable timeout for 4-5 min generation)
-      if (elapsed < 360) {
+      // Only restore if less than 2 minutes elapsed (reasonable timeout)
+      if (elapsed < 120) {
         setIsGenerating(true)
         setLanguage(state.language)
         setCountry(state.country)
         setNumKeywords(state.numKeywords)
         
-        // Calculate current progress (based on 270 sec average = 4.5 min after parallelization)
-        const currentProgress = Math.min((elapsed / 270) * 95, 95)
+        // Calculate current progress
+        const currentProgress = Math.min((elapsed / 70) * 95, 95)
+        const remainingTime = Math.max(0, 70 - elapsed)
         
         setProgress(currentProgress)
+        setTimeRemaining(remainingTime)
+        
         toast.info('Resuming keyword generation...')
+        
+        // Continue progress bar
+        progressIntervalRef.current = setInterval(() => {
+          setProgress(prev => {
+            const newProgress = prev + (95 / 70)
+            return Math.min(newProgress, 95)
+          })
+          setTimeRemaining(prev => Math.max(0, prev - 1))
+        }, 1000)
       } else {
         // Expired, clear it
         sessionStorage.removeItem(GENERATION_STATE_KEY)
@@ -361,36 +271,24 @@ export function KeywordGenerator() {
     }
   }, [])
 
-  // Dots animation effect
+  // Rotating messages effect
   useEffect(() => {
     if (!isGenerating) return
+
+    const messageTimer = setInterval(() => {
+      setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length)
+    }, 2000)
 
     const dotTimer = setInterval(() => {
       setDots((prev) => (prev.length >= 3 ? '' : prev + '.'))
     }, 400)
 
     return () => {
+      clearInterval(messageTimer)
       clearInterval(dotTimer)
     }
   }, [isGenerating])
-
-  // Cleanup progress interval on unmount
-  useEffect(() => {
-    return () => {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current)
-        progressIntervalRef.current = null
-      }
-    }
-  }, [])
   
-  // Auto-switch mobile tab to Results when generation starts
-  useEffect(() => {
-    if (isMobile && isGenerating) {
-      setMobileActiveTab('results')
-    }
-  }, [isMobile, isGenerating])
-
   // Get company info from context
   const companyName = businessContext.companyName || ''
   const companyUrl = businessContext.companyWebsite || ''
@@ -401,14 +299,15 @@ export function KeywordGenerator() {
       return
     }
 
-    // API key is optional - server will use env variable if not provided
-    // This maintains backward compatibility with BYOK users
+    if (!geminiApiKey) {
+      toast.error('Please set your Gemini API key in Profile settings first')
+      return
+    }
 
     setIsGenerating(true)
     setResults(null)
     setProgress(0)
-    setCurrentStage('')
-    setCurrentSubstage('')
+    setTimeRemaining(70) // Gemini 3.0 Pro Preview + FREE features (Autocomplete + Trends) takes ~70s for 50 keywords
 
     // Save generation state to sessionStorage for persistence
     const generationState = {
@@ -419,116 +318,23 @@ export function KeywordGenerator() {
     }
     sessionStorage.setItem(GENERATION_STATE_KEY, JSON.stringify(generationState))
 
-    // Estimated time: ~4-5 minutes (270 seconds) after parallelization improvements
-    // Research, SERanking, and Autocomplete now run in parallel (saves ~40-60s)
-    const estimatedTime = 270
-    setProgress(0)
-
-    // Stage definitions
-    const stages = [
-      { 
-        name: 'company_analysis', 
-        label: '1/7: Analyzing company context', 
-        substages: ['Extracting products/services', 'Identifying target audience', 'Finding differentiators'],
-        duration: 30, 
-        end: 10 
-      },
-      { 
-        name: 'configuration', 
-        label: '2/7: Configuring generation', 
-        substages: ['Setting up parameters', 'Loading context', 'Preparing tools'],
-        duration: 20, 
-        end: 15 
-      },
-      { 
-        name: 'ai_generation', 
-        label: '3/7: AI keyword generation', 
-        substages: ['Gemini deep research', 'Google Search grounding', 'Hyper-niche variations'],
-        duration: 120, 
-        end: 40 
-      },
-      { 
-        name: 'research', 
-        label: '4/7: Research & enrichment', 
-        substages: ['Scraping Reddit/Quora', 'Extracting quotes', 'Building research data'],
-        duration: 90, 
-        end: 60 
-      },
-      { 
-        name: 'serp_analysis', 
-        label: '5/7: SERP analysis', 
-        substages: ['Analyzing top 10 results', 'Extracting meta tags', 'Identifying content gaps'],
-        duration: 60, 
-        end: 75 
-      },
-      { 
-        name: 'deduplication', 
-        label: '6/7: Deduplication & scoring', 
-        substages: ['Removing duplicates', 'Semantic clustering', 'Calculating scores'],
-        duration: 30, 
-        end: 85 
-      },
-      { 
-        name: 'clustering', 
-        label: '7/7: Final clustering', 
-        substages: ['Grouping keywords', 'Assigning clusters', 'Sorting by relevance'],
-        duration: 20, 
-        end: 95 
-      },
-    ]
-
-    // Reset refs
-    stageIndexRef.current = 0
-    substageIndexRef.current = 0
-    
-    // Initialize first stage immediately
-    if (stages.length > 0) {
-      setCurrentStage(stages[0].label)
-      if (stages[0].substages && stages[0].substages.length > 0) {
-        setCurrentSubstage(stages[0].substages[0])
-      }
-    }
-
-    // Start progress tracking (matching analytics/blogs pattern exactly)
+    // Start progress bar
     progressIntervalRef.current = setInterval(() => {
-      setProgress((prev) => {
-        const newProgress = prev + (95 / estimatedTime) // 95% in 270 seconds = ~0.352% per second
-        const rounded = Math.min(newProgress, 95)
-        
-        // Update stages based on progress
-        if (stageIndexRef.current < stages.length && rounded >= stages[stageIndexRef.current].end) {
-          stageIndexRef.current++
-          substageIndexRef.current = 0
-          console.log('[PROGRESS] Stage', stageIndexRef.current, stages[stageIndexRef.current]?.label)
-        }
-        
-        // Update current stage display
-        if (stageIndexRef.current < stages.length) {
-          const stage = stages[stageIndexRef.current]
-          setCurrentStage(stage.label)
-          if (stage.substages && stage.substages.length > 0) {
-            const subIdx = substageIndexRef.current % stage.substages.length
-            setCurrentSubstage(stage.substages[subIdx])
-            substageIndexRef.current++
-          } else {
-            setCurrentSubstage('')
-          }
-        } else {
-          setCurrentStage('7/7: Finalizing results')
-          setCurrentSubstage('Preparing output')
-        }
-        
-        return rounded
+      setProgress(prev => {
+        const newProgress = prev + (95 / 70) // Reach 95% in 70 seconds
+        return Math.min(newProgress, 95)
       })
-    }, 1000) // Update every 1 second (matching analytics/blogs)
+      setTimeRemaining(prev => Math.max(0, prev - 1))
+    }, 1000)
 
     try {
       console.log('[KEYWORDS] Starting keyword generation...')
       console.log('[KEYWORDS] Company:', companyName.trim())
       console.log('[KEYWORDS] URL:', companyUrl.trim())
       console.log('[KEYWORDS] Count:', numKeywords)
+      console.log('[KEYWORDS] Has API key:', !!geminiApiKey)
+      console.log('[KEYWORDS] Has context:', !!businessContext)
 
-      // Make the API call while progress animates
       const response = await fetch('/api/generate-keywords', {
         method: 'POST',
         headers: {
@@ -540,9 +346,7 @@ export function KeywordGenerator() {
           language,
           country,
           num_keywords: numKeywords,
-          // FREE add-ons
-          enable_google_trends: enableGoogleTrends,
-          enable_autocomplete: enableAutocomplete,
+          apiKey: geminiApiKey,
           // Pass all rich context
           description: businessContext.productDescription,
           products: businessContext.products,
@@ -556,18 +360,19 @@ export function KeywordGenerator() {
         }),
       })
 
+      console.log('[KEYWORDS] Response status:', response.status)
+
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Failed to generate keywords' }))
+        console.error('[KEYWORDS] Error response:', error)
         throw new Error(error.error || error.message || 'Failed to generate keywords')
       }
 
-      // Get JSON response
-      const result = await response.json()
-
-      console.log('[KEYWORDS] Success! Generated', result.keywords?.length || 0, 'keywords')
-      
-      setResults(result)
-      toast.success(`Generated ${result.keywords.length} keywords!`)
+      const data = await response.json()
+      console.log('[KEYWORDS] Success! Generated', data.keywords?.length || 0, 'keywords')
+      console.log('[KEYWORDS] Response keys:', Object.keys(data))
+      setResults(data)
+      toast.success(`Generated ${data.keywords.length} keywords in ${data.metadata.generation_time.toFixed(1)}s`)
       
       // Clear generation state on success
       sessionStorage.removeItem(GENERATION_STATE_KEY)
@@ -582,35 +387,33 @@ export function KeywordGenerator() {
         url: companyUrl.trim(),
         language,
         country,
-        count: result.keywords.length,
-        generationTime: result.metadata.generation_time,
-        keywords: result.keywords,
+        count: data.keywords.length,
+        generationTime: data.metadata.generation_time,
+        keywords: data.keywords,
       }
       
       const existingLogs = JSON.parse(localStorage.getItem('bulk-gpt-logs') || '[]')
-      existingLogs.unshift(logEntry)
-      localStorage.setItem('bulk-gpt-logs', JSON.stringify(existingLogs.slice(0, 50)))
+      existingLogs.unshift(logEntry) // Add to start
+      localStorage.setItem('bulk-gpt-logs', JSON.stringify(existingLogs.slice(0, 50))) // Keep last 50
     } catch (error) {
       console.error('Keyword generation error:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to generate keywords')
+      // Clear generation state on error
       sessionStorage.removeItem(GENERATION_STATE_KEY)
     } finally {
-      // Clean up progress interval (matching analytics/blogs pattern)
+      setIsGenerating(false)
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current)
-        progressIntervalRef.current = null
       }
       setProgress(100)
-      setIsGenerating(false)
+      setTimeRemaining(0)
     }
   }, [companyName, companyUrl, language, country, numKeywords, geminiApiKey, businessContext])
 
   return (
     <div className="h-full flex">
-      {/* Desktop: Two-panel layout */}
-      <div className="hidden md:flex h-full flex-1">
-        {/* Left Panel - Input Form */}
-        <div className="w-96 border-r border-border p-6 overflow-auto">
+      {/* Left Panel - Input Form */}
+      <div className="w-96 border-r border-border p-6 overflow-auto">
         <div className="space-y-6">
           <div>
             <h2 className="text-lg font-semibold mb-1">Generate Keywords</h2>
@@ -645,7 +448,19 @@ export function KeywordGenerator() {
             </div>
           )}
 
-          {/* API key is now configured server-side in .env.local */}
+          {/* API Key Warning */}
+          {!geminiApiKey && (
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 space-y-1.5">
+              <p className="text-xs font-medium text-yellow-500">Gemini API Key Required</p>
+              <p className="text-xs text-muted-foreground">
+                Set your API key in{' '}
+                <a href="/settings" className="text-primary hover:underline">
+                  Settings
+                </a>
+                {' '}to generate keywords.
+              </p>
+            </div>
+          )}
 
           {/* Show company info from context */}
           {hasContext && (
@@ -714,7 +529,7 @@ export function KeywordGenerator() {
 
             <Button
               onClick={handleGenerate}
-              disabled={!hasContext || isGenerating}
+              disabled={!hasContext || !geminiApiKey || isGenerating}
               className="w-full"
               size="lg"
             >
@@ -732,13 +547,13 @@ export function KeywordGenerator() {
             </Button>
           </div>
         </div>
-        </div>
+      </div>
 
-        {/* Right Panel - Results Table */}
-        <div className="flex-1 flex flex-col overflow-hidden p-6">
-        {isGenerating && !results && (
+      {/* Right Panel - Results Table */}
+      <div className="flex-1 flex flex-col overflow-hidden p-6">
+        {isGenerating && (
           <div className="h-full flex items-center justify-center">
-            <div className="text-center space-y-4 max-w-3xl w-full px-4">
+            <div className="text-center space-y-4 max-w-md">
               {/* Animated icon */}
               <div className="relative w-16 h-16 mx-auto">
                 {/* Outer ring */}
@@ -751,101 +566,52 @@ export function KeywordGenerator() {
                 </div>
               </div>
 
-              {/* Engaging 7-stage progress (simulated) */}
-              <div className="space-y-8">
-                {/* Current Stage - Clean and Minimal */}
-                <div className="text-center space-y-4">
-                  <div className="space-y-2">
-                    <p className="text-2xl font-bold text-foreground">
-                      {currentStage || 'Starting...'}
-                    </p>
-                    <p className="text-sm text-muted-foreground/80">
-                      {currentSubstage || 'Initializing'}{dots}
-                    </p>
-                  </div>
-                  
-                  {/* Overall progress bar - bigger and cleaner */}
-                  <div className="w-full max-w-2xl mx-auto space-y-3">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">⏱️ ~4-5 minutes</span>
-                      <span className="font-mono font-semibold text-foreground">{Math.round(progress)}%</span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden shadow-inner">
-                      <div
-                        className="bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-1000 ease-linear"
-                        style={{ 
-                          width: `${Math.max(0, Math.min(100, progress))}%`
-                        }}
-                      />
-                    </div>
-                  </div>
+              {/* Message with rotation */}
+              <div className="space-y-2">
+                <div className="h-16 flex items-center justify-center px-6">
+                  <span
+                    key={messageIndex}
+                    className="text-sm font-medium text-foreground animate-[fadeIn_0.3s_ease-in-out] text-center whitespace-nowrap"
+                  >
+                    {LOADING_MESSAGES[messageIndex]}{dots}
+                  </span>
                 </div>
+                <p className="text-xs text-muted-foreground text-center h-5">
+                  ~{timeRemaining}s remaining
+                </p>
+              </div>
 
-                {/* 7-stage breakdown - clean and minimal */}
-                <div className="w-full max-w-xl mx-auto space-y-1.5">
-                  {[
-                    { key: 'company_analysis', icon: '🔍', label: 'Company Analysis', range: [0, 10], duration: '~30s' },
-                    { key: 'configuration', icon: '⚙️', label: 'Configuration', range: [10, 15], duration: '~20s' },
-                    { key: 'ai_generation', icon: '🤖', label: 'AI Generation', range: [15, 40], duration: '~2min' },
-                    { key: 'research', icon: '📚', label: 'Research & Enrichment', range: [40, 60], duration: '~90s' },
-                    { key: 'serp_analysis', icon: '🔎', label: 'SERP Analysis', range: [60, 75], duration: '~1min' },
-                    { key: 'deduplication', icon: '🎯', label: 'Deduplication', range: [75, 85], duration: '~30s' },
-                    { key: 'clustering', icon: '📊', label: 'Final Clustering', range: [85, 95], duration: '~20s' },
-                  ].map((stage, idx) => {
-                    const [start, end] = stage.range
-                    const isActive = progress >= start && progress < end
-                    const isComplete = progress >= end
-                    const stageProgress = Math.min(Math.max(((progress - start) / (end - start)) * 100, 0), 100)
-                    
-                    return (
-                      <div 
-                        key={stage.key}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 ${
-                          isActive ? 'bg-primary/10 border border-primary/20' : 
-                          isComplete ? 'opacity-50' : 
-                          'opacity-30'
-                        }`}
-                      >
-                        <span className="text-lg shrink-0">
-                          {isComplete ? '✅' : isActive ? '⏳' : stage.icon}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-baseline justify-between gap-2 mb-1">
-                            <span className={`text-xs ${isActive ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
-                              {idx + 1}. {stage.label}
-                            </span>
-                            {isActive && (
-                              <span className="text-xs text-muted-foreground font-mono">
-                                {stage.duration}
-                              </span>
-                            )}
-                          </div>
-                          <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-                            <div
-                              className={`h-1.5 rounded-full ${
-                                isComplete ? 'bg-green-500' : 
-                                isActive ? 'bg-gradient-to-r from-blue-500 to-cyan-500 animate-pulse transition-[width] duration-[800ms] ease-linear' : 
-                                'bg-muted-foreground/20 transition-all duration-500'
-                              }`}
-                              style={{ width: `${isComplete ? 100 : stageProgress}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
+              {/* Progress bar */}
+              <div className="w-full max-w-xs mx-auto space-y-3">
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div
+                    className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-1000 ease-linear"
+                    style={{ width: `${progress}%` }}
+                  />
                 </div>
-
-                {/* Navigate away message - minimal */}
-                <div className="border border-border/50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-muted-foreground">
-                    💡 Feel free to navigate away — Results saved in{' '}
+                
+                {/* Navigate away message - FIXED HEIGHT */}
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-center h-[76px] flex flex-col justify-center min-w-[300px]">
+                  <p className="text-xs text-blue-600 dark:text-blue-400 font-medium whitespace-nowrap">
+                    💡 Feel free to navigate away
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Results will be saved in the{' '}
                     <a href="/log" className="text-primary hover:underline font-medium">
                       LOG
                     </a>
+                    {' '}tab
                   </p>
                 </div>
               </div>
+
+              {/* Add keyframes */}
+              <style jsx global>{`
+                @keyframes fadeIn {
+                  from { opacity: 0; transform: translateY(-4px); }
+                  to { opacity: 1; transform: translateY(0); }
+                }
+              `}</style>
             </div>
           </div>
         )}
@@ -876,7 +642,7 @@ export function KeywordGenerator() {
                 onClick={() => {
                   // Export to CSV with all new OpenKeyword fields
                   const csvContent = [
-                    ['Keyword', 'Intent', 'Score', 'Cluster', 'Source', 'Volume', 'Difficulty', 'AEO Opportunity', 'Featured Snippet', 'PAA', 'Is Question', 'Research Summary', 'Research URLs', 'Content Angle', 'Target Questions', 'Content Gap', 'Audience Pain Point', 'Top SERP URLs', 'Featured Snippet URL', 'PAA Questions', 'Citations', 'Trends Interest', 'Trends Direction'].join(','),
+                    ['Keyword', 'Intent', 'Score', 'Cluster', 'Source', 'Volume', 'Difficulty', 'AEO Opportunity', 'Featured Snippet', 'PAA', 'Is Question'].join(','),
                     ...results.keywords.map(k => [
                       `"${k.keyword}"`,
                       k.intent || k.search_intent || '',
@@ -885,23 +651,10 @@ export function KeywordGenerator() {
                       k.source || 'ai_generated',
                       k.volume || 0,
                       k.difficulty || 0,
-                      (k.aeo_opportunity !== undefined && k.aeo_opportunity !== null) ? k.aeo_opportunity : '',
-                      (k.has_featured_snippet === true) ? 'Yes' : (k.has_featured_snippet === false) ? 'No' : '',
-                      (k.has_paa === true) ? 'Yes' : (k.has_paa === false) ? 'No' : '',
-                      k.is_question ? 'Yes' : 'No',
-                      // Enhanced data fields
-                      `"${k.research_summary || ''}"`,
-                      `"${k.research_source_urls?.join(' | ') || ''}"`,
-                      `"${k.content_brief?.content_angle || ''}"`,
-                      `"${k.content_brief?.target_questions?.join('; ') || ''}"`,
-                      `"${k.content_brief?.content_gap || ''}"`,
-                      `"${k.content_brief?.audience_pain_point || ''}"`,
-                      `"${k.top_ranking_urls?.join(' | ') || ''}"`,
-                      `"${k.featured_snippet_url || ''}"`,
-                      `"${k.paa_questions_with_urls?.map(q => q.question).join('; ') || ''}"`,
-                      k.citations?.length || 0,
-                      k.trends_data?.current_interest || '',
-                      k.trends_data?.trend_direction || ''
+                      k.aeo_opportunity || 0,
+                      k.has_featured_snippet ? 'Yes' : 'No',
+                      k.has_paa ? 'Yes' : 'No',
+                      k.is_question ? 'Yes' : 'No'
                     ].join(','))
                   ].join('\n')
                   
@@ -937,25 +690,12 @@ export function KeywordGenerator() {
                     <th className="text-left p-3 font-medium">Difficulty</th>
                     <th className="text-left p-3 font-medium">AEO Opp.</th>
                     <th className="text-left p-3 font-medium">Features</th>
-                    <th className="text-left p-3 font-medium">Details</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {results.keywords.map((keyword, index) => {
-                    const isExpanded = expandedRows.has(index)
-                    const hasEnhancedData = !!(
-                      keyword.research_data?.sources?.length ||
-                      keyword.content_brief ||
-                      keyword.serp_data ||
-                      keyword.trends_data ||
-                      keyword.autocomplete_data ||
-                      keyword.citations?.length
-                    )
-                    
-                    return (
-                      <>
-                        <tr key={index} className="border-b border-border last:border-0 hover:bg-muted/30">
-                          <td className="p-3 text-muted-foreground">{index + 1}</td>
+                  {results.keywords.map((keyword, index) => (
+                    <tr key={index} className="border-b border-border last:border-0 hover:bg-muted/30">
+                      <td className="p-3 text-muted-foreground">{index + 1}</td>
                       <td className="p-3">
                         <div className="flex items-center gap-2">
                           {keyword.is_question && <span className="text-xs" title="Question keyword">❓</span>}
@@ -1022,7 +762,7 @@ export function KeywordGenerator() {
                         )}
                       </td>
                       <td className="p-3">
-                        {keyword.aeo_opportunity !== undefined && keyword.aeo_opportunity !== null && keyword.aeo_opportunity > 0 ? (
+                        {keyword.aeo_opportunity !== undefined && keyword.aeo_opportunity > 0 ? (
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                             keyword.aeo_opportunity >= 70 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
                             keyword.aeo_opportunity >= 50 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
@@ -1031,535 +771,23 @@ export function KeywordGenerator() {
                             {keyword.aeo_opportunity}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground text-xs" title={keyword.serp_analyzed === false ? "SERP analysis not run for this keyword" : "No AEO opportunity data"}>-</span>
+                          <span className="text-muted-foreground text-xs">-</span>
                         )}
                       </td>
                       <td className="p-3">
                         <div className="flex gap-1">
-                          {keyword.has_featured_snippet === true && <span className="text-sm" title="Featured Snippet">🌟</span>}
-                          {keyword.has_paa === true && <span className="text-sm" title="People Also Ask">💬</span>}
-                          {(keyword.has_featured_snippet !== true && keyword.has_paa !== true) && (
-                            <span className="text-muted-foreground text-xs" title={keyword.serp_analyzed === false ? "SERP analysis not run" : "No featured snippet or PAA"}>-</span>
-                          )}
+                          {keyword.has_featured_snippet && <span className="text-sm" title="Featured Snippet">🌟</span>}
+                          {keyword.has_paa && <span className="text-sm" title="People Also Ask">💬</span>}
+                          {!keyword.has_featured_snippet && !keyword.has_paa && <span className="text-muted-foreground text-xs">-</span>}
                         </div>
                       </td>
-                      <td className="p-3">
-                        {hasEnhancedData ? (
-                          <button
-                            onClick={() => {
-                              const newExpanded = new Set(expandedRows)
-                              if (isExpanded) {
-                                newExpanded.delete(index)
-                              } else {
-                                newExpanded.add(index)
-                              }
-                              setExpandedRows(newExpanded)
-                            }}
-                            className="text-xs px-2 py-1 rounded bg-primary/10 hover:bg-primary/20 text-primary font-medium transition-colors"
-                          >
-                            {isExpanded ? '▼ Hide' : '▶ View'}
-                          </button>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">-</span>
-                        )}
-                      </td>
                     </tr>
-                    
-                    {/* Expanded Row with Enhanced Data */}
-                    {isExpanded && hasEnhancedData && (
-                      <tr key={`${index}-expanded`} className="bg-muted/20">
-                        <td colSpan={11} className="p-6">
-                          <div className="space-y-6">
-                            
-                            {/* Research Data */}
-                            {keyword.research_data?.sources && keyword.research_data.sources.length > 0 && (
-                              <div className="border border-border rounded-lg p-4 bg-card">
-                                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                                  <span>🔍</span>
-                                  Research Sources ({keyword.research_data.sources.length})
-                                </h4>
-                                <div className="space-y-3">
-                                  {keyword.research_data.sources.slice(0, 3).map((source, i) => (
-                                    <div key={i} className="text-xs border-l-2 border-primary/50 pl-3">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <span className="font-medium">{source.platform}</span>
-                                        {source.upvotes && <span className="text-muted-foreground">▲ {source.upvotes}</span>}
-                                      </div>
-                                      {source.quote && <p className="text-muted-foreground italic mb-1">"{source.quote}"</p>}
-                                      {source.url && (
-                                        <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                                          {source.source_title || 'View source'} →
-                                        </a>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            
-                            {/* Content Brief */}
-                            {keyword.content_brief && (
-                              <div className="border border-border rounded-lg p-4 bg-card">
-                                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                                  <span>📝</span>
-                                  Content Brief
-                                </h4>
-                                <div className="space-y-2 text-xs">
-                                  {keyword.content_brief.content_angle && (
-                                    <div>
-                                      <strong>Angle:</strong> {keyword.content_brief.content_angle}
-                                    </div>
-                                  )}
-                                  {keyword.content_brief.audience_pain_point && (
-                                    <div>
-                                      <strong>Pain Point:</strong> {keyword.content_brief.audience_pain_point}
-                                    </div>
-                                  )}
-                                  {keyword.content_brief.content_gap && (
-                                    <div>
-                                      <strong>Content Gap:</strong> {keyword.content_brief.content_gap}
-                                    </div>
-                                  )}
-                                  {keyword.content_brief.target_questions && keyword.content_brief.target_questions.length > 0 && (
-                                    <div>
-                                      <strong>Questions to Answer:</strong>
-                                      <ul className="list-disc list-inside ml-2 mt-1 space-y-0.5">
-                                        {keyword.content_brief.target_questions.slice(0, 3).map((q, i) => (
-                                          <li key={i}>{q}</li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  )}
-                                  {keyword.content_brief.sources && keyword.content_brief.sources.length > 0 && (
-                                    <div className="mt-3 pt-3 border-t border-border">
-                                      <strong className="text-xs text-muted-foreground">Sources:</strong>
-                                      <div className="mt-2 space-y-1.5">
-                                        {keyword.content_brief.sources.map((source, i) => (
-                                          <div key={i} className="text-xs flex items-start gap-2">
-                                            <span className="text-muted-foreground shrink-0">
-                                              {source.type === 'research' && '🔍'}
-                                              {source.type === 'serp' && '🔎'}
-                                              {source.type === 'paa' && '❓'}
-                                              {source.type === 'trends' && '📊'}
-                                            </span>
-                                            <div className="flex-1 min-w-0">
-                                              {source.platform && (
-                                                <span className="font-medium">{source.platform}</span>
-                                              )}
-                                              {source.title && source.url ? (
-                                                <a
-                                                  href={source.url}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="text-primary hover:underline ml-1 break-words"
-                                                >
-                                                  {source.platform ? ': ' : ''}{source.title}
-                                                </a>
-                                              ) : source.title ? (
-                                                <span className="text-muted-foreground">
-                                                  {source.platform ? ': ' : ''}{source.title}
-                                                </span>
-                                              ) : null}
-                                              {source.url && !source.title && (
-                                                <a 
-                                                  href={source.url} 
-                                                  target="_blank" 
-                                                  rel="noopener noreferrer" 
-                                                  className="text-primary hover:underline ml-1 break-all"
-                                                >
-                                                  {source.url}
-                                                </a>
-                                              )}
-                                              {source.position && (
-                                                <span className="text-muted-foreground ml-1">
-                                                  (Position {source.position})
-                                                </span>
-                                              )}
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                            
-                            {/* SERP Data */}
-                            {keyword.serp_data?.organic_results && keyword.serp_data.organic_results.length > 0 && (
-                              <div className="border border-border rounded-lg p-4 bg-card">
-                                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                                  <span>🔎</span>
-                                  Top SERP Results ({keyword.serp_data.organic_results.length})
-                                </h4>
-                                <div className="space-y-2">
-                                  {keyword.serp_data.organic_results.slice(0, 5).map((result, i) => (
-                                    <div key={i} className="text-xs border-l-2 border-green-500/50 pl-3">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <span className="font-medium text-muted-foreground">#{result.position}</span>
-                                        <span className="text-muted-foreground">{result.domain}</span>
-                                      </div>
-                                      <a href={result.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
-                                        {result.title}
-                                      </a>
-                                      {result.description && <p className="text-muted-foreground mt-1">{result.description.slice(0, 150)}...</p>}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            
-                            {/* Trends Data */}
-                            {keyword.trends_data && (
-                              <div className="border border-border rounded-lg p-4 bg-card">
-                                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                                  <span>📊</span>
-                                  Google Trends
-                                </h4>
-                                <div className="grid grid-cols-2 gap-3 text-xs">
-                                  <div>
-                                    <strong>Interest:</strong> {keyword.trends_data.current_interest}/100
-                                  </div>
-                                  <div>
-                                    <strong>Trend:</strong> {keyword.trends_data.trend_direction}
-                                  </div>
-                                  <div>
-                                    <strong>Seasonal:</strong> {keyword.trends_data.is_seasonal ? 'Yes' : 'No'}
-                                  </div>
-                                  {keyword.trends_data.rising_related && keyword.trends_data.rising_related.length > 0 && (
-                                    <div className="col-span-2">
-                                      <strong>Rising:</strong> {keyword.trends_data.rising_related.slice(0, 3).join(', ')}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                            
-                            {/* Autocomplete Data */}
-                            {keyword.autocomplete_data && (
-                              <div className="border border-border rounded-lg p-4 bg-card">
-                                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                                  <span>🔤</span>
-                                  Google Autocomplete
-                                </h4>
-                                <div className="space-y-2 text-xs">
-                                  {keyword.autocomplete_data.seed_keyword && (
-                                    <div>
-                                      <strong>Seed:</strong> {keyword.autocomplete_data.seed_keyword}
-                                    </div>
-                                  )}
-                                  {keyword.autocomplete_data.question_keywords && keyword.autocomplete_data.question_keywords.length > 0 && (
-                                    <div>
-                                      <strong>Question Keywords:</strong>
-                                      <ul className="list-disc list-inside ml-2 mt-1 space-y-0.5">
-                                        {keyword.autocomplete_data.question_keywords.slice(0, 5).map((q, i) => (
-                                          <li key={i}>{q}</li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  )}
-                                  {keyword.autocomplete_data.long_tail_keywords && keyword.autocomplete_data.long_tail_keywords.length > 0 && (
-                                    <div>
-                                      <strong>Long-tail Variations:</strong>
-                                      <ul className="list-disc list-inside ml-2 mt-1 space-y-0.5">
-                                        {keyword.autocomplete_data.long_tail_keywords.slice(0, 5).map((lt, i) => (
-                                          <li key={i}>{lt}</li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                            
-                            {/* Citations */}
-                            {keyword.citations && keyword.citations.length > 0 && (
-                              <div className="border border-border rounded-lg p-4 bg-card">
-                                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                                  <span>📚</span>
-                                  Citations ({keyword.citations.length})
-                                </h4>
-                                <div className="space-y-2 text-xs">
-                                  {keyword.citations.slice(0, 3).map((citation, i) => (
-                                    <div key={i} className="border-l-2 border-blue-500/50 pl-3">
-                                      <div className="font-mono text-muted-foreground">{citation.format_apa || citation.source}</div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </>
-                )})}
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
         )}
-        </div>
-      </div>
-
-      {/* Mobile: Tab layout */}
-      <div className="md:hidden h-full flex flex-col min-h-0 overflow-hidden">
-        <Tabs value={mobileActiveTab} onValueChange={setMobileActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <TabsList className={cn(
-            "flex-shrink-0 w-full rounded-none border-b border-border/40",
-            "bg-gradient-to-b from-secondary/30 to-secondary/15"
-          )}>
-            <TabsTrigger 
-              value="input" 
-              className="flex-1 data-[state=active]:bg-background/60 data-[state=active]:shadow-sm"
-            >
-              <span className={textSizes.xs}>Input</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="results" 
-              className={cn(
-                "flex-1 flex items-center gap-2",
-                "data-[state=active]:bg-background/60 data-[state=active]:shadow-sm"
-              )}
-            >
-              <span className={textSizes.xs}>Results</span>
-              {results && (
-                <span className="inline-flex items-center justify-center rounded-md bg-primary/20 px-1.5 py-0.5 text-xs font-medium text-primary">
-                  {results.keywords?.length || 0}
-                </span>
-              )}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="input" className="flex-1 flex flex-col min-h-0 overflow-hidden mt-0">
-            <div className={cn("flex-1 overflow-auto", containerPadding.md)}>
-              <div className="space-y-6">
-                <div>
-                  <h2 className={cn("font-semibold mb-1", textSizes.sm)}>Generate Keywords</h2>
-                  <p className={cn("text-muted-foreground", textSizes.xs)}>
-                    AI-powered AEO keyword research for maximum AI visibility
-                  </p>
-                </div>
-
-                {/* AEO Explanation */}
-                <div className="bg-gradient-to-r from-purple-500/5 to-blue-500/5 border-l-4 border-purple-500 rounded-r-lg p-4 space-y-1">
-                  <p className={cn("font-semibold text-foreground flex items-center gap-2", textSizes.xs)}>
-                    <span className="text-lg">🤖</span>
-                    AEO (Answer Engine Optimization)
-                  </p>
-                  <p className={cn("text-muted-foreground leading-relaxed", "text-[10px] sm:text-xs")}>
-                    Optimized for AI platforms like Perplexity, ChatGPT, Claude & Gemini. 
-                    Focus on conversational queries, questions, and natural language patterns.
-                  </p>
-                </div>
-
-                {/* Company Context Display */}
-                {!hasContext && (
-                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 space-y-1.5">
-                    <p className={cn("font-medium text-blue-500", textSizes.xs)}>No Company Context Set</p>
-                    <p className={cn("text-muted-foreground", "text-[10px] sm:text-xs")}>
-                      Go to{' '}
-                      <a href="/context" className="text-primary hover:underline">
-                        Business Context
-                      </a>{' '}
-                      to set up your company details for personalized keyword generation.
-                    </p>
-                  </div>
-                )}
-
-                {hasContext && (
-                  <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 space-y-2">
-                    <p className={cn("font-medium text-primary/90", textSizes.xs)}>Using Company Context</p>
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className={cn("text-muted-foreground", "text-[10px] sm:text-xs")}>Company:</span>
-                        <span className={cn("font-medium truncate max-w-[200px]", "text-[10px] sm:text-xs")}>{companyName}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className={cn("text-muted-foreground", "text-[10px] sm:text-xs")}>URL:</span>
-                        <span className={cn("font-medium truncate max-w-[200px]", "text-[10px] sm:text-xs")}>{companyUrl}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Configuration Options */}
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <Label className={cn("font-medium", textSizes.xs)}>Language</Label>
-                      <SearchableSelect
-                        value={language}
-                        onValueChange={setLanguage}
-                        options={LANGUAGES}
-                        placeholder="Select language"
-                        className="mt-1"
-                      />
-                    </div>
-
-                    <div>
-                      <Label className={cn("font-medium", textSizes.xs)}>Country</Label>
-                      <SearchableSelect
-                        value={country}
-                        onValueChange={setCountry}
-                        options={COUNTRIES}
-                        placeholder="Select country"
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className={cn("font-medium", textSizes.xs)}>Number of Keywords</Label>
-                    <input
-                      type="number"
-                      min="10"
-                      max="200"
-                      step="10"
-                      value={numKeywords}
-                      onChange={(e) => setNumKeywords(parseInt(e.target.value) || 50)}
-                      className={cn(
-                        "flex h-8 sm:h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors",
-                        "file:border-0 file:bg-transparent file:text-sm file:font-medium",
-                        "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                        "disabled:cursor-not-allowed disabled:opacity-50 mt-1",
-                        textSizes.xs
-                      )}
-                    />
-                  </div>
-                </div>
-
-                {/* Generate Button */}
-                <Button
-                  onClick={handleGenerate}
-                  disabled={isGenerating || !companyName.trim() || !companyUrl.trim()}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      <span className={textSizes.xs}>Generating Keywords...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      <span className={textSizes.xs}>Generate Keywords</span>
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="results" className="flex-1 flex flex-col min-h-0 overflow-hidden mt-0">
-            <div className="flex-1 flex flex-col overflow-hidden">
-              {isGenerating && !results && (
-                <div className="h-full flex items-center justify-center">
-                  <div className={cn("text-center space-y-4 max-w-md", containerPadding.md)}>
-                    {/* Progress indicator for mobile */}
-                    <div className="relative w-16 h-16 mx-auto">
-                      <div className="absolute inset-0 w-16 h-16 rounded-full border-2 border-primary/20 animate-[spin_3s_linear_infinite]" />
-                      <div className="absolute inset-1 w-14 h-14 rounded-full border-2 border-t-primary/40 border-r-primary/40 border-b-transparent border-l-transparent animate-[spin_2s_linear_infinite_reverse]" />
-                      <div className="w-16 h-16 flex items-center justify-center">
-                        <Sparkles className="h-7 w-7 text-primary animate-pulse" />
-                      </div>
-                    </div>
-
-                    {/* Current stage display */}
-                    <div className="space-y-2">
-                      <p className={cn("font-medium text-foreground", textSizes.xs)}>
-                        {currentStage}
-                      </p>
-                      {currentSubstage && (
-                        <p className={cn("text-muted-foreground", "text-[10px] sm:text-xs")}>
-                          {currentSubstage}
-                        </p>
-                      )}
-                      <div className="w-full bg-muted rounded-full h-2">
-                        <div
-                          className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-1000 ease-linear"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {!isGenerating && !results && (
-                <div className="h-full flex items-center justify-center">
-                  <div className="text-center space-y-3">
-                    <Sparkles className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
-                    <p className={cn("text-muted-foreground", textSizes.xs)}>
-                      Click "Generate Keywords" to see results here
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {results && (
-                <div className="flex-1 overflow-y-auto">
-                  <div className={containerPadding.sm}>
-                    <div className="mb-4">
-                      <h3 className={cn("font-semibold", textSizes.sm)}>Generated Keywords</h3>
-                      <p className={cn("text-muted-foreground", "text-[10px] sm:text-xs")}>
-                        {results.keywords?.length || 0} AEO-optimized keywords for {results.metadata?.company_name}
-                      </p>
-                    </div>
-
-                    {/* Mobile Card View */}
-                    <div className="space-y-3">
-                      {results.keywords?.map((keyword, index) => (
-                        <div key={index} className="border border-border rounded-lg p-3 space-y-2">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                {keyword.is_question && <span className="text-xs" title="Question keyword">❓</span>}
-                                <span className={cn("font-medium", textSizes.xs)}>{keyword.keyword}</span>
-                              </div>
-                              <span className={cn(
-                                "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-1",
-                                (keyword.intent || keyword.search_intent) === 'question' || (keyword.intent || keyword.search_intent) === 'informational' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
-                                (keyword.intent || keyword.search_intent) === 'commercial' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                                (keyword.intent || keyword.search_intent) === 'transactional' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' :
-                                (keyword.intent || keyword.search_intent) === 'comparison' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' :
-                                'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
-                              )}>
-                                {keyword.intent || keyword.search_intent || 'informational'}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {keyword.content_brief && (
-                            <div className="space-y-2 pt-2 border-t border-border/50">
-                              <p className={cn("text-muted-foreground", "text-[10px] sm:text-xs")}>
-                                <strong>Content Angle:</strong> {keyword.content_brief.content_angle}
-                              </p>
-                              {keyword.content_brief.target_questions && keyword.content_brief.target_questions.length > 0 && (
-                                <div>
-                                  <p className={cn("text-muted-foreground font-medium", "text-[10px] sm:text-xs")}>Target Questions:</p>
-                                  <ul className="mt-1 space-y-1">
-                                    {keyword.content_brief.target_questions.slice(0, 2).map((question, i) => (
-                                      <li key={i} className={cn("text-muted-foreground", "text-[9px] sm:text-xs")}>
-                                        • {question}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
       </div>
     </div>
   )

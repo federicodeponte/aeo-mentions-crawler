@@ -1,13 +1,1 @@
-{
-  "functions": {
-    "api/python/*.py": {
-      "runtime": "python3.9",
-      "maxDuration": 300,
-      "memory": 1024
-    }
-  },
-  "env": {
-    "GEMINI_API_KEY": "@gemini-api-key",
-    "SERANKING_API_KEY": "@seranking-api-key"
-  }
-}
+{}

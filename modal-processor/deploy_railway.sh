@@ -22,9 +22,9 @@ echo "✅ Railway CLI ready"
 
 # Set environment variables
 echo "📝 Setting environment variables..."
-railway variables set GEMINI_API_KEY=***REMOVED***
+railway variables set GEMINI_API_KEY=$GEMINI_API_KEY
 railway variables set SUPABASE_URL=https://***PROJECT-REF-REMOVED***.supabase.co
-railway variables set SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRodXJnZWh2anFyZG1yamF5Y3pmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzY4NjY4MSwiZXhwIjoyMDc5MjYyNjgxfQ.iFAqYJ9B13W1Yq1PxwE0Bn1AtpQqAERl6waSIAeMn7I
+railway variables set SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
 railway variables set NEXT_PUBLIC_SUPABASE_URL=https://***PROJECT-REF-REMOVED***.supabase.co
 echo "✅ Environment variables set"
 

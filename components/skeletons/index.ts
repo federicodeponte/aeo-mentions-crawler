@@ -7,6 +7,4 @@ export { TableSkeleton } from './TableSkeleton'
 export { FileListSkeleton } from './FileListSkeleton'
 export { StatsSkeleton } from './StatsSkeleton'
 export { ProgressSkeleton } from './ProgressSkeleton'
-export { ChartSkeleton } from './ChartSkeleton'
-export { WidgetSkeleton } from './WidgetSkeleton'
 

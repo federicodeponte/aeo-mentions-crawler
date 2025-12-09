@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Analytics Button Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .button {
+            padding: 12px 24px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .button:disabled {
+            background: #ccc;
+            color: #888;
+            cursor: not-allowed;
+        }
+        .button:not(:disabled) {
+            background: #007bff;
+            color: white;
+        }
+        .button:not(:disabled):hover {
+            background: #0056b3;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.no-context {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .status.using-context {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .context-form {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // Simulate the useContextStorage hook behavior
+        function useContextStorage() {
+            const [businessContext, setBusinessContext] = React.useState(() => {
+                const stored = localStorage.getItem('bulk-gpt-business-context');
+                return stored ? JSON.parse(stored) : {};
+            });
+
+            const hasContext = Object.keys(businessContext).some(key => {
+                const value = businessContext[key];
+                return value !== undefined && value !== '' && (Array.isArray(value) ? value.length > 0 : true);
+            });
+
+            const updateContext = (newContext) => {
+                setBusinessContext(newContext);
+                localStorage.setItem('bulk-gpt-business-context', JSON.stringify(newContext));
+            };
+
+            return {
+                businessContext,
+                hasContext,
+                updateContext
+            };
+        }
+
+        // Test component that mimics the analytics page behavior
+        function AnalyticsButtonTest() {
+            const { businessContext, hasContext, updateContext } = useContextStorage();
+            const [loading, setLoading] = React.useState(false);
+
+            const handleButtonClick = () => {
+                alert('Analytics button clicked! (Test mode)');
+            };
+
+            const handleAddContext = () => {
+                const newContext = {
+                    companyName: 'Test Company',
+                    companyWebsite: 'https://test.com',
+                    products: ['Test Product 1', 'Test Product 2'],
+                    valueProposition: 'We solve test problems'
+                };
+                updateContext(newContext);
+            };
+
+            const handleClearContext = () => {
+                updateContext({});
+            };
+
+            return React.createElement('div', { className: 'container' },
+                React.createElement('h1', null, '🧪 Analytics Button Fix Test'),
+                
+                React.createElement('div', { className: 'status ' + (hasContext ? 'using-context' : 'no-context') },
+                    hasContext 
+                        ? '✅ Using Company Context' 
+                        : '❌ No Company Context Set'
+                ),
+                
+                React.createElement('div', null,
+                    React.createElement('h3', null, 'Current Context:'),
+                    React.createElement('pre', { style: { background: '#f8f9fa', padding: '10px', borderRadius: '4px', fontSize: '12px' } },
+                        JSON.stringify(businessContext, null, 2)
+                    )
+                ),
+                
+                React.createElement('div', { className: 'context-form' },
+                    React.createElement('h3', null, 'Test Context Management:'),
+                    React.createElement('button', { 
+                        className: 'button',
+                        style: { background: '#28a745', marginRight: '10px', width: 'auto' },
+                        onClick: handleAddContext 
+                    }, '➕ Add Test Context'),
+                    React.createElement('button', { 
+                        className: 'button',
+                        style: { background: '#dc3545', width: 'auto' },
+                        onClick: handleClearContext 
+                    }, '🗑️ Clear Context')
+                ),
+                
+                React.createElement('hr'),
+                
+                React.createElement('h3', null, 'Analytics Button Test:'),
+                
+                React.createElement('p', null, 
+                    React.createElement('strong', null, 'Expected behavior:'),
+                    React.createElement('br'),
+                    '• Button should be DISABLED when hasContext = false',
+                    React.createElement('br'),
+                    '• Button should be ENABLED when hasContext = true',
+                    React.createElement('br'),
+                    '• This matches keywords page behavior'
+                ),
+                
+                React.createElement('button', {
+                    className: 'button',
+                    disabled: !hasContext || loading,
+                    onClick: handleButtonClick
+                },
+                    loading ? '⏳ Running Analytics...' : '🎯 Run Full Analytics'
+                ),
+                
+                React.createElement('div', { style: { marginTop: '20px', fontSize: '14px' } },
+                    React.createElement('strong', null, 'Button State Debug:'),
+                    React.createElement('br'),
+                    `hasContext: ${hasContext}`,
+                    React.createElement('br'),
+                    `loading: ${loading}`,
+                    React.createElement('br'),
+                    `disabled: ${!hasContext || loading}`,
+                    React.createElement('br'),
+                    `Button should be: ${(!hasContext || loading) ? 'DISABLED ❌' : 'ENABLED ✅'}`
+                )
+            );
+        }
+
+        // Render the test component
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(React.createElement(AnalyticsButtonTest));
+    </script>
+</body>
+</html>

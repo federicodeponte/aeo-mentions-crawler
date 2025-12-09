@@ -130,11 +130,6 @@ async def run_generation(input_data: dict) -> dict:
         logger.info("⚠️  Using manual company context (consider enabling company analysis for better results)")
     
     # STEP 3: Configure generation (FULL PIPELINE)
-    # Handle both camelCase (from UI) and snake_case (legacy) for trends/autocomplete
-    enable_google_trends = input_data.get('enableGoogleTrends', input_data.get('enable_google_trends', False))
-    enable_autocomplete = input_data.get('enableAutocomplete', input_data.get('enable_autocomplete', False))
-    autocomplete_expansion_limit = input_data.get('autocompleteExpansionLimit', input_data.get('autocomplete_limit', 50))
-    
     config = GenerationConfig(
         target_count=int(target_count),
         language=input_data.get('language', 'english'),
@@ -144,12 +139,7 @@ async def run_generation(input_data: dict) -> dict:
         min_score=40,
         # ENABLE FULL PIPELINE (uses DataForSEO or Gemini)
         enable_serp_analysis=True,   # Get SERP features, AEO opportunities
-        serp_sample_size=int(target_count),  # Analyze ALL keywords for AEO opportunity and features
         enable_volume_lookup=True,   # Get search volume + difficulty
-        # Google Trends & Autocomplete (FREE add-ons, optional)
-        enable_google_trends=enable_google_trends,
-        enable_autocomplete=enable_autocomplete,
-        autocomplete_expansion_limit=autocomplete_expansion_limit,
         # Note: If no DataForSEO API key, Gemini SERP analyzer is used automatically
     )
     
@@ -158,25 +148,12 @@ async def run_generation(input_data: dict) -> dict:
     logger.info("   ✓ SE Ranking competitor gap analysis")
     logger.info("   ✓ SERP analysis for AEO opportunities")
     logger.info("   ✓ Volume + difficulty lookup")
-    if config.enable_autocomplete:
-        logger.info("   ✓ Google Autocomplete (real user queries)")
-    if config.enable_google_trends:
-        logger.info("   ✓ Google Trends (seasonality, rising queries)")
     
     # STEP 4: Generate keywords
-    # Get SERanking API key from environment (optional)
-    seranking_api_key = os.getenv('SERANKING_API_KEY')
-    
     generator = KeywordGenerator(
         gemini_api_key=api_key,
-        model='gemini-3-pro-preview',  # Correct model name
-        seranking_api_key=seranking_api_key  # Enable SERanking gap analysis
+        model='gemini-3-pro-preview'  # Correct model name
     )
-    
-    if seranking_api_key:
-        logger.info("   ✓ SE Ranking enabled (competitor gap analysis)")
-    else:
-        logger.info("   ⚠️  SE Ranking disabled (set SERANKING_API_KEY env var to enable)")
     
     import time
     start_time = time.time()
@@ -193,7 +170,7 @@ async def run_generation(input_data: dict) -> dict:
         'generation_time': generation_time,
         'used_company_analysis': analysis_result is not None,
         'generation_date': datetime.now().isoformat(),
-        'pipeline': 'full' if config.enable_serp_analysis else 'basic',
+        'pipeline': 'full' if config.include_serp_analysis else 'basic',
     }
     
     logger.info(f"✅ Generated {len(output.get('keywords', []))} keywords in {generation_time:.1f}s")

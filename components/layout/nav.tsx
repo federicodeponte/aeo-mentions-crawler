@@ -25,11 +25,13 @@ import { Logo } from '@/components/brand/Logo'
 import { useTheme } from 'next-themes'
 
 export function Nav() {
-  const router = useRouter()
-  const pathname = usePathname()
+  const [_hasMounted, setHasMounted] = useState(false)
   const { theme, setTheme } = useTheme()
   const { userEmail, userAvatar } = useAuth()
-  const [_hasMounted, setHasMounted] = useState(false)
+  
+  // Only use navigation hooks on client side to prevent SSR context errors
+  const router = typeof window !== 'undefined' ? useRouter() : null
+  const pathname = typeof window !== 'undefined' ? usePathname() : ''
 
   // Prevent hydration mismatch for CSS transitions
   useEffect(() => {
@@ -41,20 +43,24 @@ export function Nav() {
       const supabase = createClient()
       if (supabase) {
         await supabase.auth.signOut()
-        router.push('/auth')
-        router.refresh()
+        if (router) {
+          router.push('/auth')
+          router.refresh()
+        }
       }
     } catch (err) {
       console.error('Failed to sign out:', err)
       // Still redirect to auth page on error
-      router.push('/auth')
+      if (router) {
+        router.push('/auth')
+      }
     }
   }
 
   // Clean navigation: CONTEXT → KEYWORDS → BLOGS → ANALYTICS → LOG (history)
   const navLinks = [
     { href: '/context', label: 'CONTEXT' },
-    { href: '/keywords', label: 'KEYWORDS' },
+    { href: '/go', label: 'KEYWORDS' },
     { href: '/blogs', label: 'BLOGS' },
     { href: '/analytics', label: 'ANALYTICS' },
     { href: '/log', label: 'LOG' },
@@ -160,7 +166,9 @@ export function Nav() {
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.preventDefault()
-                    router.push('/settings')
+                    if (router) {
+                      router.push('/settings')
+                    }
                   }}
                   className="cursor-pointer py-2.5"
                 >

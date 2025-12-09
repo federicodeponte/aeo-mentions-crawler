@@ -23,10 +23,6 @@ import { useContextStorage } from '@/hooks/useContextStorage'
 import { GTM_PLAYBOOKS, PRODUCT_TYPES } from '@/lib/config/gtm-config'
 import type { GTMPlaybook, ProductType } from '@/lib/types/business-context'
 import { CollapsibleSection } from '@/components/ui/collapsible-section'
-import { ProfileSelector } from './ProfileSelector'
-import { SaveProfileDialog } from './SaveProfileDialog'
-import { cn } from '@/lib/utils'
-import { containerPadding, textSizes } from '@/lib/utils/responsive-utils'
 
 interface BusinessContextFormData {
   // Core Business Info
@@ -70,8 +66,6 @@ export function BusinessContextForm() {
   const { updateContext } = useContextStorage()
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const [currentProfileId, setCurrentProfileId] = useState<string | undefined>(undefined)
-  const [showSaveDialog, setShowSaveDialog] = useState(false)
   
   const [formData, setFormData] = useState<BusinessContextFormData>({
     tone: '',
@@ -250,109 +244,6 @@ export function BusinessContextForm() {
     }))
   }
 
-  // Profile management functions
-  const handleApplyProfile = async (profileId: string) => {
-    try {
-      const response = await fetch(`/api/context-profiles/${profileId}/apply`, {
-        method: 'POST',
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to apply profile')
-      }
-
-      const data = await response.json()
-      
-      // Update form data with profile data
-      setFormData({
-        tone: data.contextVariables.tone || '',
-        valueProposition: data.contextVariables.valueProposition || '',
-        productDescription: data.contextVariables.productDescription || '',
-        companyName: data.contextVariables.companyName || '',
-        companyWebsite: data.contextVariables.companyWebsite || '',
-        targetCountries: data.contextVariables.targetCountries || '',
-        targetIndustries: data.contextVariables.targetIndustries || '',
-        complianceFlags: data.contextVariables.complianceFlags || '',
-        marketingGoals: data.contextVariables.marketingGoals || [],
-        contactEmail: data.contextVariables.contactEmail || '',
-        contactPhone: data.contextVariables.contactPhone || '',
-        linkedInUrl: data.contextVariables.linkedInUrl || '',
-        twitterUrl: data.contextVariables.twitterUrl || '',
-        githubUrl: data.contextVariables.githubUrl || '',
-        icp: data.businessContext.icp || '',
-        products: data.businessContext.products || [],
-        targetKeywords: data.businessContext.targetKeywords || [],
-        competitorKeywords: data.businessContext.competitorKeywords || [],
-        gtmPlaybook: data.gtmProfile.gtmPlaybook || null,
-        productType: data.gtmProfile.productType || null,
-      })
-
-      // Update local context storage
-      await updateContext({
-        tone: data.contextVariables.tone,
-        valueProposition: data.contextVariables.valueProposition,
-        productDescription: data.contextVariables.productDescription,
-        targetCountries: data.contextVariables.targetCountries,
-        competitors: data.contextVariables.competitors,
-        targetIndustries: data.contextVariables.targetIndustries,
-        complianceFlags: data.contextVariables.complianceFlags,
-        marketingGoals: data.contextVariables.marketingGoals,
-        companyName: data.contextVariables.companyName,
-        companyWebsite: data.contextVariables.companyWebsite,
-        contactEmail: data.contextVariables.contactEmail,
-        contactPhone: data.contextVariables.contactPhone,
-        linkedInUrl: data.contextVariables.linkedInUrl,
-        twitterUrl: data.contextVariables.twitterUrl,
-        githubUrl: data.contextVariables.githubUrl,
-        gtmPlaybook: data.gtmProfile.gtmPlaybook || undefined,
-        productType: data.gtmProfile.productType || undefined,
-      })
-
-      setCurrentProfileId(profileId)
-    } catch (error) {
-      console.error('Error applying profile:', error)
-      throw error
-    }
-  }
-
-  const handleSaveAsProfile = () => {
-    setShowSaveDialog(true)
-  }
-
-  const handleCreateProfile = () => {
-    // Reset form and show save dialog
-    setFormData({
-      tone: '',
-      valueProposition: '',
-      productDescription: '',
-      products: [],
-      companyName: '',
-      companyWebsite: '',
-      icp: '',
-      targetCountries: '',
-      targetIndustries: '',
-      marketingGoals: [],
-      competitors: '',
-      targetKeywords: [],
-      competitorKeywords: [],
-      gtmPlaybook: null,
-      productType: null,
-      complianceFlags: '',
-      contactEmail: '',
-      contactPhone: '',
-      linkedInUrl: '',
-      twitterUrl: '',
-      githubUrl: '',
-    })
-    setCurrentProfileId(undefined)
-    setShowSaveDialog(true)
-  }
-
-  const handleProfileSaved = () => {
-    // Refresh could happen here if needed
-    setCurrentProfileId(undefined)
-  }
-
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -363,39 +254,12 @@ export function BusinessContextForm() {
   }
 
   return (
-    <div className={cn(
-      "space-y-4 sm:space-y-6",
-      containerPadding.xs,
-      "sm:px-0" // Remove padding on larger screens since parent handles it
-    )}>
-      {/* Header with Profile Selector */}
-      <div className={cn(
-        "flex flex-col gap-3 sm:gap-4",
-        "sm:flex-row sm:items-start sm:justify-between"
-      )}>
-        <div className="flex-1 min-w-0">
-          <h2 className={cn(
-            "font-semibold mb-1",
-            textSizes.sm
-          )}>
-            Business Context
-          </h2>
-          <p className={cn(
-            "text-muted-foreground",
-            textSizes.xs,
-            "pr-2 sm:pr-0" // Add right padding on mobile for profile selector overlap
-          )}>
-            Configure your business context to help agents generate better, personalized content
-          </p>
-        </div>
-        <div className="flex-shrink-0 sm:min-w-[200px] md:min-w-[250px]">
-          <ProfileSelector
-            onApplyProfile={handleApplyProfile}
-            onSaveAsProfile={handleSaveAsProfile}
-            onCreateProfile={handleCreateProfile}
-            currentProfileId={currentProfileId}
-          />
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-sm font-semibold mb-1">Business Context</h2>
+        <p className="text-xs text-muted-foreground">
+          Configure your business context to help agents generate better, personalized content
+        </p>
       </div>
 
       {/* Cluster 1: Core Business Info */}
@@ -845,14 +709,6 @@ export function BusinessContextForm() {
         {isSaving ? 'Saving...' : 'Save Business Context'}
       </Button>
       </div>
-
-      {/* Save Profile Dialog */}
-      <SaveProfileDialog
-        isOpen={showSaveDialog}
-        onClose={() => setShowSaveDialog(false)}
-        onSaved={handleProfileSaved}
-        currentContext={formData}
-      />
     </div>
   )
 }

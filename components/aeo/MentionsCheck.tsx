@@ -6,45 +6,24 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
-import { 
-  Loader2, 
-  Download, 
-  FileText, 
-  Info, 
-  Search, 
-  Award, 
-  Filter,
-  Eye,
-  EyeOff,
-  Sparkles,
-  Zap,
-  Target,
-  BarChart3,
-  Globe,
-  Crown,
-  Shield,
-  AlertTriangle
-} from 'lucide-react'
+import { Loader2, Download, FileText, Info, TrendingUp, TrendingDown, Search, Award } from 'lucide-react'
 import { useContextStorage } from '@/hooks/useContextStorage'
-import { generateMentionsReportPdf } from '@/lib/exports/aeo-report-generator'
-import { generateMentionsExcel } from '@/lib/exports/aeo-excel-generator'
-
-// Helper function for downloading blobs
-const downloadBlob = (blob: Blob, filename: string) => {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
-}
+import { generateMentionsPDF } from '@/lib/exports/aeo-report-generator'
+import { generateMentionsExcel, downloadBlob } from '@/lib/exports/aeo-excel-generator'
 
 interface QueryResult {
   query: string
@@ -105,7 +84,7 @@ export function MentionsCheck() {
   const { businessContext, hasContext } = useContextStorage()
   const [companyName, setCompanyName] = useState('')
   const [industry, setIndustry] = useState('')
-  const [apiKey, setApiKey] = useState('server-configured') // Use server API key by default
+  const [apiKey, setApiKey] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<MentionsResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -121,8 +100,16 @@ export function MentionsCheck() {
   const [exportingPDF, setExportingPDF] = useState(false)
   const [exportingExcel, setExportingExcel] = useState(false)
 
-  // Auto-populate from context on mount
+  // Auto-populate from context and settings on mount
   useEffect(() => {
+    // Load OpenRouter API key from settings
+    if (typeof window !== 'undefined') {
+      const storedKey = localStorage.getItem('openrouter-api-key')
+      if (storedKey && !apiKey) {
+        setApiKey(storedKey)
+      }
+    }
+
     // Auto-populate company name from context
     if (businessContext?.companyName && !companyName) {
       setCompanyName(businessContext.companyName)
@@ -135,10 +122,14 @@ export function MentionsCheck() {
         setIndustry(industryFromContext)
       }
     }
-  }, [businessContext, companyName, industry])
+  }, [businessContext, apiKey, companyName, industry])
 
   const handleCheck = async () => {
     if (!companyName) return
+    if (!apiKey) {
+      setError('OpenRouter API key is required for mentions check')
+      return
+    }
 
     // Build company_analysis from business context - MATCHING openaeoanalytics structure
     const companyAnalysis = {
@@ -149,7 +140,7 @@ export function MentionsCheck() {
         industry: industry || businessContext?.targetIndustries || businessContext?.icp || '',
         target_audience: businessContext?.icp ? [businessContext.icp] : [],
         products: businessContext?.products || [],
-        services: businessContext?.services || [], // Use services from context if available
+        services: [], // Could map from products if needed
         pain_points: [], // Not in current context schema
         use_cases: [], // Not in current context schema
         key_features: businessContext?.targetKeywords || [],
@@ -165,80 +156,12 @@ export function MentionsCheck() {
         : []
     }
 
-    // Validate we have products or services, or fall back to generated ones based on company info
+    // Validate we have products or services
     const hasProducts = companyAnalysis.companyInfo.products.length > 0
     const hasServices = companyAnalysis.companyInfo.services.length > 0
-    const hasDescription = !!companyAnalysis.companyInfo.description
-    const hasIndustry = !!companyAnalysis.companyInfo.industry
     
-    // If no products/services but we have description or industry, auto-generate basic products
-    if (!hasProducts && !hasServices && (hasDescription || hasIndustry)) {
-      const industryBasedProduct = industry || businessContext?.targetIndustries || businessContext?.icp
-      if (industryBasedProduct) {
-        companyAnalysis.companyInfo.products = [`${industryBasedProduct} Solutions`]
-      } else {
-        companyAnalysis.companyInfo.products = [`${companyName} Services`]
-      }
-    }
-    
-    // FALLBACK: Generate pain points and use cases if company analysis failed to extract them
-    if (companyAnalysis.companyInfo.pain_points.length === 0 || companyAnalysis.companyInfo.use_cases.length === 0) {
-      console.log('[FALLBACK] MentionsCheck: Company analysis missing pain points/use cases, generating fallbacks...')
-      
-      const industryStr = industry || businessContext?.targetIndustries || businessContext?.icp || ''
-      const description = companyAnalysis.companyInfo.description
-      const products = companyAnalysis.companyInfo.products || []
-      const services = companyAnalysis.companyInfo.services || []
-      
-      // Generate industry-specific pain points if missing
-      if (companyAnalysis.companyInfo.pain_points.length === 0) {
-        const fallbackPainPoints = []
-        
-        if (industryStr.toLowerCase().includes('seo') || industryStr.toLowerCase().includes('search') || industryStr.toLowerCase().includes('marketing')) {
-          fallbackPainPoints.push('improve search rankings', 'increase online visibility', 'boost website traffic')
-        } else if (industryStr.toLowerCase().includes('ai') || industryStr.toLowerCase().includes('artificial intelligence')) {
-          fallbackPainPoints.push('implement AI solutions', 'automate processes', 'improve decision making')
-        } else if (industryStr.toLowerCase().includes('saas') || industryStr.toLowerCase().includes('software')) {
-          fallbackPainPoints.push('streamline workflows', 'reduce manual tasks', 'increase productivity')
-        }
-        
-        // Generic fallbacks if still empty
-        if (fallbackPainPoints.length === 0) {
-          fallbackPainPoints.push('improve efficiency', 'reduce costs', 'increase revenue')
-        }
-        
-        companyAnalysis.companyInfo.pain_points = fallbackPainPoints.slice(0, 3)
-        console.log('[FALLBACK] MentionsCheck Generated pain points:', companyAnalysis.companyInfo.pain_points)
-      }
-      
-      // Generate use cases if missing
-      if (companyAnalysis.companyInfo.use_cases.length === 0) {
-        const fallbackUseCases = []
-        
-        // Base use cases on products/services
-        products.concat(services).forEach(item => {
-          if (item.toLowerCase().includes('content')) {
-            fallbackUseCases.push('content optimization', 'content creation')
-          } else if (item.toLowerCase().includes('track') || item.toLowerCase().includes('monitor')) {
-            fallbackUseCases.push('performance tracking', 'brand monitoring')
-          } else if (item.toLowerCase().includes('analytics')) {
-            fallbackUseCases.push('data analysis', 'performance measurement')
-          }
-        })
-        
-        // Generic fallbacks if still empty
-        if (fallbackUseCases.length === 0) {
-          fallbackUseCases.push('business optimization', 'workflow automation', 'performance improvement')
-        }
-        
-        companyAnalysis.companyInfo.use_cases = fallbackUseCases.slice(0, 3)
-        console.log('[FALLBACK] MentionsCheck Generated use cases:', companyAnalysis.companyInfo.use_cases)
-      }
-    }
-
-    // Final validation - if still no products/services, show error
-    if (companyAnalysis.companyInfo.products.length === 0 && companyAnalysis.companyInfo.services.length === 0) {
-      setError('Unable to determine your products or services. Please add products/services to your Business Context or specify an industry for better query generation.')
+    if (!hasProducts && !hasServices) {
+      setError('Please add products or services to your Business Context first. This is required to generate relevant queries for the mentions check.')
       return
     }
 
@@ -257,6 +180,7 @@ export function MentionsCheck() {
           country: businessContext?.countries?.[0] || 'US',
           num_queries: 10,
           mode: 'fast',
+          api_key: apiKey,
         }),
       })
 
@@ -391,11 +315,11 @@ export function MentionsCheck() {
     }
   }
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = () => {
     if (!result) return
     setExportingPDF(true)
     try {
-      const blob = await generateMentionsReportPdf(result, result.companyName)
+      const blob = generateMentionsPDF(result)
       const filename = `aeo-mentions-${result.companyName.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`
       downloadBlob(blob, filename)
     } catch (error) {
@@ -406,11 +330,11 @@ export function MentionsCheck() {
     }
   }
 
-  const handleExportExcel = async () => {
+  const handleExportExcel = () => {
     if (!result) return
     setExportingExcel(true)
     try {
-      const blob = await generateMentionsExcel(result, result.companyName)
+      const blob = generateMentionsExcel(result)
       const filename = `aeo-mentions-${result.companyName.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.xlsx`
       downloadBlob(blob, filename)
     } catch (error) {
@@ -424,6 +348,7 @@ export function MentionsCheck() {
   const fromContext = {
     name: businessContext?.companyName === companyName,
     industry: businessContext?.targetIndustries === industry || businessContext?.icp === industry,
+    apiKey: apiKey && typeof window !== 'undefined' && localStorage.getItem('openrouter-api-key') === apiKey,
   }
 
   // Check if we have additional context that will be used
@@ -435,168 +360,131 @@ export function MentionsCheck() {
   )
 
   return (
-    <div className="space-y-8">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 dark:from-purple-950/20 dark:via-blue-950/20 dark:to-cyan-950/20 border border-purple-100 dark:border-purple-800/20">
-        <div className="absolute inset-0 bg-grid-pattern opacity-5" />
-        <div className="relative p-8">
-          <div className="flex items-start gap-4">
-            <div className="flex-shrink-0">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-lg">
-                <Target className="w-6 h-6 text-white" />
-              </div>
-            </div>
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                AEO Mentions Analysis
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400 text-base leading-relaxed">
-                Discover how AI platforms like ChatGPT, Claude, and Perplexity mention your brand.
-                Get actionable insights to improve your Answer Engine Optimization.
-              </p>
-            </div>
-          </div>
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="openrouter-key" className="flex items-center gap-2">
+            OpenRouter API Key *
+            {fromContext.apiKey && (
+              <span className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                <Info className="h-3 w-3" />
+                From settings
+              </span>
+            )}
+          </Label>
+          <Input
+            id="openrouter-key"
+            type="password"
+            placeholder="sk-or-v1-..."
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            disabled={loading}
+          />
+          <p className="text-xs text-muted-foreground">
+            Set in{' '}
+            <a href="/settings" className="text-primary hover:underline">
+              Settings
+            </a>
+            {' '}or paste here. Get your key from{' '}
+            <a
+              href="https://openrouter.ai/keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              openrouter.ai/keys
+            </a>
+          </p>
         </div>
-      </div>
 
-      {/* Configuration Form */}
-      <Card className="p-6 shadow-sm border-0 ring-1 ring-gray-200 dark:ring-gray-800 hover:ring-gray-300 dark:hover:ring-gray-700 transition-all duration-200">
-        <div className="space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="company" className="flex items-center gap-2">
+            Company Name *
+            {fromContext.name && (
+              <span className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                <Info className="h-3 w-3" />
+                From context
+              </span>
+            )}
+          </Label>
+          <Input
+            id="company"
+            type="text"
+            placeholder="Acme Corp"
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            disabled={loading}
+          />
+        </div>
 
-          {/* Company Name Input */}
-          <div className="space-y-3">
-            <Label htmlFor="company" className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
-              <Globe className="w-4 h-4" />
-              Company Name *
-              {fromContext.name && (
-                <Badge variant="secondary" className="text-xs">
-                  <Info className="h-3 w-3 mr-1" />
-                  From context
-                </Badge>
-              )}
-            </Label>
-            <Input
-              id="company"
-              type="text"
-              placeholder="Acme Corp"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              disabled={loading}
-              className="h-12 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200"
-            />
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="industry" className="flex items-center gap-2">
+            Industry (Optional)
+            {fromContext.industry && (
+              <span className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                <Info className="h-3 w-3" />
+                From context
+              </span>
+            )}
+          </Label>
+          <Input
+            id="industry"
+            type="text"
+            placeholder="B2B SaaS"
+            value={industry}
+            onChange={(e) => setIndustry(e.target.value)}
+            disabled={loading}
+          />
+          <p className="text-xs text-muted-foreground">
+            Helps generate more relevant test queries
+          </p>
+        </div>
 
-          {/* Industry Input */}
-          <div className="space-y-3">
-            <Label htmlFor="industry" className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Industry (Optional)
-              {fromContext.industry && (
-                <Badge variant="secondary" className="text-xs">
-                  <Info className="h-3 w-3 mr-1" />
-                  From context
-                </Badge>
-              )}
-            </Label>
-            <Input
-              id="industry"
-              type="text"
-              placeholder="B2B SaaS"
-              value={industry}
-              onChange={(e) => setIndustry(e.target.value)}
-              disabled={loading}
-              className="h-12 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Helps generate more relevant test queries
+        {!hasContext && !companyName && (
+          <Card className="p-3 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+            <p className="text-xs text-blue-800 dark:text-blue-400">
+              💡 Tip: Set your company details in the Context page for auto-fill
             </p>
-          </div>
-        </div>
-      </Card>
+          </Card>
+        )}
 
-      {/* Context Cards */}
-      {!hasContext && !companyName && (
-        <Card className="border-0 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 ring-1 ring-blue-200 dark:ring-blue-800/30">
-          <div className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              </div>
-              <p className="text-sm text-blue-900 dark:text-blue-100 font-medium">
-                💡 Tip: Set your company details in the Context page for auto-fill
-              </p>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {hasAdditionalContext && (
-        <Card className="border-0 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 ring-1 ring-green-200 dark:ring-green-800/30">
-          <div className="p-5">
-            <div className="flex items-start gap-4">
-              <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Zap className="w-4 h-4 text-green-600 dark:text-green-400" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-green-900 dark:text-green-100">
-                  Enhanced with Context Data
-                </h3>
-                <div className="flex flex-wrap gap-2">
+        {hasAdditionalContext && (
+          <Card className="p-3 bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+            <div className="flex items-start gap-2">
+              <Info className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+              <div className="text-xs text-green-800 dark:text-green-400 space-y-1">
+                <p className="font-medium">Using context data to enhance mentions check:</p>
+                <ul className="list-disc list-inside space-y-0.5 text-green-700 dark:text-green-500">
                   {businessContext?.products?.length > 0 && (
-                    <Badge variant="outline" className="text-xs border-green-200 text-green-700 dark:border-green-700 dark:text-green-300">
-                      Products: {businessContext.products.slice(0, 2).join(', ')}{businessContext.products.length > 2 && ` +${businessContext.products.length - 2} more`}
-                    </Badge>
+                    <li>Products: {businessContext.products.slice(0, 2).join(', ')}{businessContext.products.length > 2 && ` +${businessContext.products.length - 2} more`}</li>
                   )}
                   {businessContext?.valueProposition && (
-                    <Badge variant="outline" className="text-xs border-green-200 text-green-700 dark:border-green-700 dark:text-green-300">
-                      Value proposition
-                    </Badge>
+                    <li>Value proposition</li>
                   )}
                   {businessContext?.targetKeywords?.length > 0 && (
-                    <Badge variant="outline" className="text-xs border-green-200 text-green-700 dark:border-green-700 dark:text-green-300">
-                      Target keywords
-                    </Badge>
+                    <li>Target keywords</li>
                   )}
                   {businessContext?.competitors && (
-                    <Badge variant="outline" className="text-xs border-green-200 text-green-700 dark:border-green-700 dark:text-green-300">
-                      Competitors
-                    </Badge>
+                    <li>Competitors</li>
                   )}
-                </div>
+                </ul>
               </div>
             </div>
-          </div>
-        </Card>
-      )}
+          </Card>
+        )}
 
-      {/* Main Action */}
-      <div className="space-y-4">
         <Button
           onClick={handleCheck}
-          disabled={loading || !companyName}
-          size="lg"
-          className="w-full h-14 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 relative overflow-hidden group"
+          disabled={loading || !companyName || !apiKey}
+          className="w-full"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-blue-600/20 translate-y-full group-hover:translate-y-0 transition-transform duration-200" />
-          <div className="relative flex items-center gap-3">
-            {loading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span className="font-medium">Analyzing Mentions...</span>
-              </>
-            ) : (
-              <>
-                <Target className="w-5 h-5" />
-                <span className="font-medium">Start AEO Mentions Check</span>
-              </>
-            )}
-          </div>
+          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {loading ? 'Checking Mentions...' : 'Check AEO Mentions'}
         </Button>
-        
-        <div className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-          <Globe className="w-4 h-4" />
-          <span>Tests visibility across 4 AI platforms with 10 queries</span>
-        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Tests visibility across 4 AI platforms with 10 queries (Fast mode)
+        </p>
       </div>
 
       {error && (
@@ -606,456 +494,294 @@ export function MentionsCheck() {
       )}
 
       {result && (
-        <div className="space-y-8">
-          {/* Hero Results */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white">
-            <div className="absolute inset-0 bg-grid-white opacity-5" />
-            <div className="relative p-8">
-              <div className="text-center space-y-6">
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium text-purple-200">
+        <div className="space-y-6">
+          {/* Score Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">
                     AEO Visibility Score
                   </h3>
-                  <div className="flex items-center justify-center gap-4">
-                    <span className="text-6xl font-bold text-white">
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className={`text-4xl font-bold ${getVisibilityColor(result.visibility)}`}>
                       {result.visibility}%
                     </span>
-                    <div className="flex flex-col items-start">
-                      <Badge 
-                        className={`${getBandColor(result.band)} border-0 text-sm font-semibold px-3 py-1`}
-                      >
-                        {result.band}
-                      </Badge>
-                      {result.visibility >= 80 && <Crown className="w-5 h-5 text-yellow-400 mt-1" />}
-                      {result.visibility < 20 && <AlertTriangle className="w-5 h-5 text-orange-400 mt-1" />}
-                    </div>
                   </div>
+                  <span className={`inline-block mt-2 px-3 py-1 rounded-full text-sm font-medium ${getBandColor(result.band)}`}>
+                    {result.band}
+                  </span>
                 </div>
 
-                <div className="max-w-md mx-auto">
-                  <Progress 
-                    value={result.visibility} 
-                    className="h-3 bg-white/20" 
-                  />
+                <div>
+                  <Progress value={result.visibility} className="h-2" />
                 </div>
 
-                <div className="grid grid-cols-3 gap-6 pt-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold">{result.presence_rate}%</div>
-                    <div className="text-sm text-purple-200">Presence Rate</div>
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t text-sm">
+                  <div>
+                    <div className="text-muted-foreground">Presence Rate</div>
+                    <div className="text-xl font-semibold">{result.presence_rate}%</div>
                   </div>
-                  <div className="text-center">
-                    <div className={`text-2xl font-bold ${getQualityColor(result.quality_score)}`}>
+                  <div>
+                    <div className="text-muted-foreground">Avg Quality</div>
+                    <div className={`text-xl font-semibold ${getQualityColor(result.quality_score)}`}>
                       {result.quality_score.toFixed(1)}/10
                     </div>
-                    <div className="text-sm text-purple-200">Avg Quality</div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold">{result.mentions}</div>
-                    <div className="text-sm text-purple-200">Total Mentions</div>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Total Mentions
+                  </h3>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className="text-4xl font-bold text-primary">
+                      {result.mentions}
+                    </span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-center gap-6 text-xs text-purple-200 pt-4 border-t border-white/20">
-                  <span>{result.actualQueriesProcessed} queries analyzed</span>
-                  <span>•</span>
-                  <span>{result.execution_time_seconds}s processing time</span>
-                  <span>•</span>
-                  <span>${result.total_cost.toFixed(4)} cost</span>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <div className="text-muted-foreground">Queries</div>
+                    <div className="text-xl font-semibold">{result.actualQueriesProcessed}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Time</div>
+                    <div className="text-xl font-semibold">{result.execution_time_seconds}s</div>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t text-xs text-muted-foreground">
+                  Mode: {result.mode} • Cost: ${result.total_cost.toFixed(4)}
                 </div>
               </div>
-            </div>
+            </Card>
           </div>
 
-          {/* Platform Performance */}
-          <Card className="border-0 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
-                  <Award className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Platform Performance
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Visibility breakdown across AI platforms
-                  </p>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {Object.entries(result.platform_stats).map(([platform, stats]) => (
-                  <div key={platform} className="group relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 p-4 hover:shadow-lg transition-all duration-200 hover:scale-[1.02]">
-                    <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-purple-500/10 to-blue-500/10 rounded-full -mr-8 -mt-8" />
-                    <div className="relative space-y-3">
-                      <div className="flex items-center gap-2">
-                        <div className="text-sm font-bold text-gray-900 dark:text-white capitalize">
-                          {platform}
-                        </div>
-                        <Badge variant="outline" className="text-xs">
-                          {stats.responses} queries
-                        </Badge>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500 dark:text-gray-400">Mentions</span>
-                          <span className="text-lg font-bold text-gray-900 dark:text-white">
-                            {stats.mentions}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500 dark:text-gray-400">Quality</span>
-                          <div className="flex items-center gap-1">
-                            <span className={`text-sm font-bold ${getQualityColor(stats.quality_score)}`}>
-                              {stats.quality_score.toFixed(1)}
-                            </span>
-                            <span className="text-xs text-gray-400">/10</span>
-                          </div>
-                        </div>
-                        
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-2">
-                          <div 
-                            className="h-1.5 rounded-full bg-gradient-to-r from-purple-500 to-blue-600"
-                            style={{ width: `${(stats.quality_score / 10) * 100}%` }}
-                          />
-                        </div>
-                      </div>
+          {/* Platform Stats */}
+          <Card className="p-4">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <Award className="h-5 w-5" />
+              Platform Performance
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {Object.entries(result.platform_stats).map(([platform, stats]) => (
+                <div key={platform} className="border rounded-lg p-3 space-y-2">
+                  <div className="font-medium">{platform}</div>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Mentions</span>
+                      <span className="font-semibold">{stats.mentions}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Quality</span>
+                      <span className={`font-semibold ${getQualityColor(stats.quality_score)}`}>
+                        {stats.quality_score.toFixed(1)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Responses</span>
+                      <span className="font-semibold">{stats.responses}</span>
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           </Card>
 
-          {/* Export Actions */}
-          <div className="flex flex-col sm:flex-row gap-3">
+          {/* Export Buttons */}
+          <div className="flex gap-3">
             <Button 
               variant="outline" 
-              size="lg"
-              className="flex-1 h-12 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 group"
+              className="flex-1"
               onClick={handleExportPDF}
               disabled={exportingPDF}
             >
-              <div className="flex items-center gap-3">
-                {exportingPDF ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <FileText className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                )}
-                <span className="font-medium">
-                  {exportingPDF ? 'Generating PDF...' : 'Export PDF Report'}
-                </span>
-              </div>
+              {exportingPDF ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileText className="mr-2 h-4 w-4" />
+              )}
+              {exportingPDF ? 'Generating PDF...' : 'Export PDF Report'}
             </Button>
             <Button 
               variant="outline" 
-              size="lg"
-              className="flex-1 h-12 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 group"
+              className="flex-1"
               onClick={handleExportExcel}
               disabled={exportingExcel}
             >
-              <div className="flex items-center gap-3">
-                {exportingExcel ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                )}
-                <span className="font-medium">
-                  {exportingExcel ? 'Generating Excel...' : 'Export Excel Data'}
-                </span>
-              </div>
+              {exportingExcel ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              {exportingExcel ? 'Generating Excel...' : 'Export Excel Data'}
             </Button>
           </div>
 
-          {/* Advanced Filters */}
-          <Card className="border-0 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                  <Filter className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Filter & Search
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Refine your analysis results
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {/* Search Bar */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          {/* Filters */}
+          <Card className="p-4">
+            <div className="space-y-4">
+              <div className="flex flex-col lg:flex-row gap-4">
+                <div className="flex-1">
                   <Input
-                    placeholder="Search queries, responses, or platforms..."
+                    placeholder="Search queries, responses..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 h-12 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 focus:border-blue-500 focus:ring-blue-500/20"
+                    className="w-full"
                   />
                 </div>
-
-                {/* Filter Pills */}
-                <div className="flex flex-wrap gap-3">
-                  {/* Platform Filter */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Platform:</span>
-                    <div className="flex gap-1">
-                      <Button
-                        variant={filterPlatform === 'all' ? 'default' : 'outline'}
-                        size="sm"
-                        className="h-8 text-xs"
-                        onClick={() => setFilterPlatform('all')}
-                      >
-                        All
-                      </Button>
-                      {platforms.map(p => (
-                        <Button
-                          key={p}
-                          variant={filterPlatform === p ? 'default' : 'outline'}
-                          size="sm"
-                          className="h-8 text-xs"
-                          onClick={() => setFilterPlatform(p)}
-                        >
-                          {p}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Mention Filter */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Status:</span>
-                    <div className="flex gap-1">
-                      <Button
-                        variant={filterMention === 'all' ? 'default' : 'outline'}
-                        size="sm"
-                        className="h-8 text-xs"
-                        onClick={() => setFilterMention('all')}
-                      >
-                        All
-                      </Button>
-                      <Button
-                        variant={filterMention === 'mentioned' ? 'default' : 'outline'}
-                        size="sm"
-                        className="h-8 text-xs flex items-center gap-1"
-                        onClick={() => setFilterMention('mentioned')}
-                      >
-                        <Eye className="w-3 h-3" />
-                        Mentioned
-                      </Button>
-                      <Button
-                        variant={filterMention === 'not-mentioned' ? 'default' : 'outline'}
-                        size="sm"
-                        className="h-8 text-xs flex items-center gap-1"
-                        onClick={() => setFilterMention('not-mentioned')}
-                      >
-                        <EyeOff className="w-3 h-3" />
-                        Not Mentioned
-                      </Button>
-                    </div>
-                  </div>
+                <div className="flex flex-wrap gap-2">
+                  <select
+                    value={filterPlatform}
+                    onChange={(e) => setFilterPlatform(e.target.value)}
+                    className="px-3 py-2 border rounded-md text-sm"
+                  >
+                    <option value="all">All Platforms</option>
+                    {platforms.map(p => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={filterDimension}
+                    onChange={(e) => setFilterDimension(e.target.value)}
+                    className="px-3 py-2 border rounded-md text-sm"
+                  >
+                    <option value="all">All Dimensions</option>
+                    {dimensions.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={filterMention}
+                    onChange={(e) => setFilterMention(e.target.value as FilterMention)}
+                    className="px-3 py-2 border rounded-md text-sm"
+                  >
+                    <option value="all">All Results</option>
+                    <option value="mentioned">Mentioned</option>
+                    <option value="not-mentioned">Not Mentioned</option>
+                  </select>
                 </div>
-
-                <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-700">
-                  <span>
-                    Showing <strong>{filteredAndSortedResults.length}</strong> of <strong>{result.query_results.length}</strong> results
-                  </span>
-                  {filteredAndSortedResults.length !== result.query_results.length && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSearchQuery('')
-                        setFilterPlatform('all')
-                        setFilterMention('all')
-                      }}
-                      className="text-xs"
-                    >
-                      Clear filters
-                    </Button>
-                  )}
-                </div>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Showing {filteredAndSortedResults.length} of {result.query_results.length} results
               </div>
             </div>
           </Card>
 
-          {/* Query Results */}
-          <Card className="border-0 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-teal-600 flex items-center justify-center">
-                  <Search className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Detailed Results
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    AI responses for each query × platform combination
-                  </p>
-                </div>
-              </div>
-
-              <Accordion
-                type="multiple"
-                value={expandedResults}
-                onValueChange={setExpandedResults}
-                className="space-y-3"
-              >
-                {filteredAndSortedResults.map((queryResult, idx) => (
-                  <AccordionItem 
-                    key={idx} 
-                    value={`result-${idx}`} 
-                    className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-900 hover:shadow-md transition-all duration-200"
-                  >
-                    <AccordionTrigger className="px-5 py-4 hover:no-underline hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                      <div className="flex items-center justify-between w-full text-left">
-                        <div className="flex-1 min-w-0 pr-4">
-                          <div className="font-medium text-gray-900 dark:text-white mb-1 leading-tight">
-                            {queryResult.query}
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <Badge 
-                              variant={queryResult.capped_mentions > 0 ? 'default' : 'outline'} 
-                              className="text-xs"
-                            >
-                              {queryResult.platform}
-                            </Badge>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              {queryResult.dimension}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <div className="flex items-center gap-2">
-                              <div className={`w-2 h-2 rounded-full ${queryResult.capped_mentions > 0 ? 'bg-green-500' : 'bg-gray-300'}`} />
-                              <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                                {queryResult.capped_mentions} mention{queryResult.capped_mentions !== 1 ? 's' : ''}
-                              </span>
-                            </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                              Quality: <span className={`font-medium ${getQualityColor(queryResult.quality_score)}`}>
-                                {queryResult.quality_score.toFixed(1)}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          <Badge 
-                            className={`${getMentionTypeColor(queryResult.mention_type)} border-0`}
-                          >
-                            {queryResult.mention_type}
-                          </Badge>
+          {/* Results Table */}
+          <Card className="p-4">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <Search className="h-5 w-5" />
+              Query Results
+            </h3>
+            <Accordion
+              type="multiple"
+              value={expandedResults}
+              onValueChange={setExpandedResults}
+              className="space-y-2"
+            >
+              {filteredAndSortedResults.map((result, idx) => (
+                <AccordionItem key={idx} value={`result-${idx}`} className="border rounded-lg">
+                  <AccordionTrigger className="px-4 hover:no-underline">
+                    <div className="flex items-center justify-between w-full pr-4 text-left">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{result.query}</div>
+                        <div className="flex gap-2 mt-1 text-xs">
+                          <span className="text-muted-foreground">{result.platform}</span>
+                          <span className="text-muted-foreground">•</span>
+                          <span className="text-muted-foreground">{result.dimension}</span>
                         </div>
                       </div>
-                    </AccordionTrigger>
-                    
-                    <AccordionContent className="px-5 pb-5">
-                      <div className="space-y-4 pt-1">
-                        {/* AI Response */}
-                        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Sparkles className="w-4 h-4 text-blue-600" />
-                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
-                              AI Response
-                            </h4>
+                      <div className="flex items-center gap-4 ml-4">
+                        <div className="text-right">
+                          <div className="text-sm font-semibold">
+                            {result.capped_mentions} mention{result.capped_mentions !== 1 ? 's' : ''}
                           </div>
-                          <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                            {queryResult.response_text || 'No response text available'}
+                          <div className={`text-xs ${getQualityColor(result.quality_score)}`}>
+                            Quality: {result.quality_score.toFixed(1)}
                           </div>
                         </div>
-                        
-                        {/* Metrics Grid */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg p-3 border border-blue-100 dark:border-blue-800/30">
-                            <div className="text-xs font-medium text-blue-600 dark:text-blue-400">Raw Mentions</div>
-                            <div className="text-lg font-bold text-blue-900 dark:text-blue-100">{queryResult.raw_mentions}</div>
-                          </div>
-                          <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg p-3 border border-green-100 dark:border-green-800/30">
-                            <div className="text-xs font-medium text-green-600 dark:text-green-400">Quality Score</div>
-                            <div className={`text-lg font-bold ${getQualityColor(queryResult.quality_score)}`}>
-                              {queryResult.quality_score.toFixed(1)}/10
-                            </div>
-                          </div>
-                          <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-lg p-3 border border-purple-100 dark:border-purple-800/30">
-                            <div className="text-xs font-medium text-purple-600 dark:text-purple-400">Type</div>
-                            <div className="text-sm font-bold text-purple-900 dark:text-purple-100 capitalize">
-                              {queryResult.mention_type}
-                            </div>
-                          </div>
-                          <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 rounded-lg p-3 border border-orange-100 dark:border-orange-800/30">
-                            <div className="text-xs font-medium text-orange-600 dark:text-orange-400">Dimension</div>
-                            <div className="text-sm font-bold text-orange-900 dark:text-orange-100 capitalize">
-                              {queryResult.dimension}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Position */}
-                        {queryResult.position && (
-                          <div className="bg-yellow-50 dark:bg-yellow-950/20 rounded-lg p-3 border border-yellow-100 dark:border-yellow-800/30">
-                            <div className="text-xs font-medium text-yellow-600 dark:text-yellow-400 mb-1">
-                              Mention Position
-                            </div>
-                            <div className="text-sm font-semibold text-yellow-900 dark:text-yellow-100">
-                              Position #{queryResult.position} in response
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Competitor Mentions */}
-                        {queryResult.competitor_mentions.length > 0 && (
-                          <div>
-                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                              Also Mentioned
-                            </h4>
-                            <div className="flex flex-wrap gap-2">
-                              {queryResult.competitor_mentions.map((comp, i) => (
-                                <Badge 
-                                  key={i} 
-                                  variant="outline" 
-                                  className="border-yellow-200 text-yellow-800 dark:border-yellow-700 dark:text-yellow-300"
-                                >
-                                  {comp.name} ({comp.count})
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Source URLs */}
-                        {queryResult.source_urls.length > 0 && (
-                          <div>
-                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                              Source URLs
-                            </h4>
-                            <div className="space-y-1">
-                              {queryResult.source_urls.slice(0, 3).map((url, i) => (
-                                <a
-                                  key={i}
-                                  href={url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-blue-600 hover:text-blue-800 hover:underline block truncate transition-colors"
-                                >
-                                  {url}
-                                </a>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getMentionTypeColor(result.mention_type)}`}>
+                          {result.mention_type}
+                        </span>
                       </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            </div>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4 pb-4">
+                    <div className="space-y-3 pt-2">
+                      {/* Response Text */}
+                      <div>
+                        <div className="text-xs font-medium text-muted-foreground mb-1">
+                          AI Response:
+                        </div>
+                        <div className="text-sm p-3 bg-muted rounded-md">
+                          {result.response_text || 'No response text available'}
+                        </div>
+                      </div>
+
+                      {/* Position */}
+                      {result.position && (
+                        <div>
+                          <div className="text-xs font-medium text-muted-foreground mb-1">
+                            Mention Position:
+                          </div>
+                          <div className="text-sm">
+                            Position #{result.position} in response
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Competitor Mentions */}
+                      {result.competitor_mentions.length > 0 && (
+                        <div>
+                          <div className="text-xs font-medium text-muted-foreground mb-1">
+                            Competitor Mentions:
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {result.competitor_mentions.map((comp, i) => (
+                              <span
+                                key={i}
+                                className="px-2 py-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400 rounded text-xs"
+                              >
+                                {comp.name} ({comp.count})
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Source URLs */}
+                      {result.source_urls.length > 0 && (
+                        <div>
+                          <div className="text-xs font-medium text-muted-foreground mb-1">
+                            Source URLs:
+                          </div>
+                          <div className="space-y-1">
+                            {result.source_urls.slice(0, 3).map((url, i) => (
+                              <a
+                                key={i}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-primary hover:underline block truncate"
+                              >
+                                {url}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
           </Card>
         </div>
       )}

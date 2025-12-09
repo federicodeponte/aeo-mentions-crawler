@@ -5,8 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Save, Check, Key } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { textSizes, containerPadding } from '@/lib/utils/responsive-utils'
 
 export default function SettingsPage() {
   const [geminiApiKey, setGeminiApiKey] = useState('')
@@ -60,33 +58,27 @@ export default function SettingsPage() {
 
   return (
     <div className="h-full bg-background overflow-auto">
-      <div className={cn(
-        "container mx-auto max-w-2xl py-6 sm:py-8",
-        containerPadding.md
-      )}>
-        <div className="space-y-4 sm:space-y-6">
+      <div className="container mx-auto max-w-2xl px-4 py-8">
+        <div className="space-y-6">
           {/* Header */}
           <div className="space-y-2">
-            <h1 className={cn("font-bold tracking-tight", textSizes.lg)}>Settings</h1>
-            <p className={cn("text-muted-foreground", textSizes.xs)}>
+            <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+            <p className="text-sm text-muted-foreground">
               Configure your API keys and preferences
             </p>
           </div>
 
           {/* API Keys Section */}
-          <div className={cn(
-            "rounded-lg border border-border bg-card space-y-4 sm:space-y-6",
-            "p-4 sm:p-6"
-          )}>
+          <div className="rounded-lg border border-border bg-card p-6 space-y-6">
             <div className="flex items-center gap-2">
-              <Key className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-              <h2 className={cn("font-semibold", textSizes.base)}>API Keys</h2>
+              <Key className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">API Keys</h2>
             </div>
 
-            <form onSubmit={handleSave} className="space-y-4 sm:space-y-6">
+            <form onSubmit={handleSave} className="space-y-6">
               {/* Gemini API Key */}
               <div className="space-y-2">
-                <Label htmlFor="gemini-api-key" className={cn("font-medium", textSizes.xs)}>
+                <Label htmlFor="gemini-api-key" className="text-sm font-medium">
                   Gemini API Key
                 </Label>
                 <Input
@@ -96,9 +88,9 @@ export default function SettingsPage() {
                   value={geminiApiKey}
                   onChange={(e) => setGeminiApiKey(e.target.value)}
                   disabled={isSaving}
-                  className={cn("font-mono h-8 sm:h-10", textSizes.xs)}
+                  className="font-mono"
                 />
-                <p className={cn("text-muted-foreground", "text-[10px] sm:text-xs")}>
+                <p className="text-xs text-muted-foreground">
                   Required for keyword generation and website analysis. Get your free key from{' '}
                   <a
                     href="https://aistudio.google.com/app/apikey"
@@ -113,7 +105,7 @@ export default function SettingsPage() {
 
               {/* OpenRouter API Key */}
               <div className="space-y-2">
-                <Label htmlFor="openrouter-api-key" className={cn("font-medium", textSizes.xs)}>
+                <Label htmlFor="openrouter-api-key" className="text-sm font-medium">
                   OpenRouter API Key
                 </Label>
                 <Input
@@ -123,9 +115,9 @@ export default function SettingsPage() {
                   value={openrouterApiKey}
                   onChange={(e) => setOpenrouterApiKey(e.target.value)}
                   disabled={isSaving}
-                  className={cn("font-mono h-8 sm:h-10", textSizes.xs)}
+                  className="font-mono"
                 />
-                <p className={cn("text-muted-foreground", "text-[10px] sm:text-xs")}>
+                <p className="text-xs text-muted-foreground">
                   Required for AEO Mentions check. Get your key from{' '}
                   <a
                     href="https://openrouter.ai/keys"
@@ -143,18 +135,18 @@ export default function SettingsPage() {
                 <Button
                   type="submit"
                   disabled={isSaving || (!geminiApiKey.trim() && !openrouterApiKey.trim())}
-                  className={cn("gap-2 h-8 sm:h-10", textSizes.xs)}
+                  className="gap-2"
                 >
                   {isSaved ? (
                     <>
-                      <Check className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <Check className="h-4 w-4" />
                       Saved
                     </>
                   ) : isSaving ? (
                     'Saving...'
                   ) : (
                     <>
-                      <Save className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <Save className="h-4 w-4" />
                       Save API Keys
                     </>
                   )}
@@ -165,11 +157,8 @@ export default function SettingsPage() {
             {/* Success Message */}
             {isSaved && (
               <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-3">
-                <p className={cn(
-                  "text-green-600 dark:text-green-400 flex items-center gap-2",
-                  textSizes.xs
-                )}>
-                  <Check className="h-3 w-3 sm:h-4 sm:w-4" />
+                <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
+                  <Check className="h-4 w-4" />
                   API keys saved successfully!
                 </p>
               </div>
@@ -177,17 +166,11 @@ export default function SettingsPage() {
           </div>
 
           {/* Info Box */}
-          <div className={cn(
-            "rounded-lg border border-blue-500/20 bg-blue-500/10",
-            "p-3 sm:p-4"
-          )}>
-            <h3 className={cn(
-              "font-medium text-blue-600 dark:text-blue-400 mb-2",
-              textSizes.xs
-            )}>
+          <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
+            <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-2">
               🔐 Your API Key is Secure
             </h3>
-            <p className={cn("text-muted-foreground", "text-[10px] sm:text-xs")}>
+            <p className="text-xs text-muted-foreground">
               Your API key is stored locally in your browser only. It's never sent to our servers
               and is only used for direct communication with Google's AI services.
             </p>

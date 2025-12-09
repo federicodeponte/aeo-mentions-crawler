@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Short AEO Blog",
+    "success": false,
+    "error": "Exit code 1: 2025-12-09 21:01:51,471 - pipeline.models.gemini_client - INFO - AI client initialized (model: gemini-3-pro-preview, backend: google-genai SDK, API: v1alpha)\n2025-12-09 21:01:51,471 - pipeline.blog_generation.stage_02_gemini_call - INFO - Stage 2 initialized: GeminiClient(model=gemini-3-pro-preview, backend=google-genai)\n2025-12-09 21:01:51,514 - pipeline.models.gemini_client - INFO - AI client initialized (model: gemini-3-pro-preview, backend: google-genai SDK, API: v1alpha)\n2025-12-09 21:01:51"
+  },
+  {
+    "name": "Medium Marketing Blog",
+    "success": false,
+    "error": "Exit code 1: 2025-12-09 21:01:57,948 - pipeline.models.gemini_client - INFO - AI client initialized (model: gemini-3-pro-preview, backend: google-genai SDK, API: v1alpha)\n2025-12-09 21:01:57,948 - pipeline.blog_generation.stage_02_gemini_call - INFO - Stage 2 initialized: GeminiClient(model=gemini-3-pro-preview, backend=google-genai)\n2025-12-09 21:01:57,994 - pipeline.models.gemini_client - INFO - AI client initialized (model: gemini-3-pro-preview, backend: google-genai SDK, API: v1alpha)\n2025-12-09 21:01:57"
+  },
+  {
+    "name": "Long Technical Blog",
+    "success": false,
+    "error": "Exit code 1: 2025-12-09 21:02:04,746 - pipeline.models.gemini_client - INFO - AI client initialized (model: gemini-3-pro-preview, backend: google-genai SDK, API: v1alpha)\n2025-12-09 21:02:04,746 - pipeline.blog_generation.stage_02_gemini_call - INFO - Stage 2 initialized: GeminiClient(model=gemini-3-pro-preview, backend=google-genai)\n2025-12-09 21:02:04,788 - pipeline.models.gemini_client - INFO - AI client initialized (model: gemini-3-pro-preview, backend: google-genai SDK, API: v1alpha)\n2025-12-09 21:02:04"
+  }
+]

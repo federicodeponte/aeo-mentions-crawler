@@ -48,7 +48,7 @@ export default function NotFound() {
             size="lg"
             className="w-full sm:w-auto"
           >
-            <Link href="/keywords">
+            <Link href="/go">
               <Home className="mr-2 h-4 w-4" />
               Go to App
             </Link>

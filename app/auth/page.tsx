@@ -33,8 +33,8 @@ function AuthPageContent() {
 
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
-          const returnUrl = searchParams.get('returnUrl') || '/keywords'
-          router.replace(isValidReturnUrl(returnUrl) ? returnUrl : '/keywords')
+          const returnUrl = searchParams.get('returnUrl') || '/go'
+          router.replace(isValidReturnUrl(returnUrl) ? returnUrl : '/go')
           return
         }
       } catch {
@@ -95,7 +95,7 @@ function AuthPageContent() {
             <h1 className="text-base font-semibold text-foreground">Welcome</h1>
           </div>
           <div className="px-6 py-6">
-            <AuthForm returnUrl={searchParams.get('returnUrl') || '/keywords'} />
+            <AuthForm returnUrl={searchParams.get('returnUrl') || '/go'} />
           </div>
         </div>
       </div>

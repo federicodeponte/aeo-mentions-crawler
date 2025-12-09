@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { cn } from '@/lib/utils'
+import { textSizes, containerPadding } from '@/lib/utils/responsive-utils'
 
 export default function TestAnalyticsPage() {
   const [loading, setLoading] = useState(false)
@@ -62,15 +64,18 @@ export default function TestAnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <h1 className="text-3xl font-bold mb-8 text-center">
+    <div className="min-h-screen bg-background">
+      <div className={cn(
+        "container mx-auto max-w-4xl py-6 sm:py-8",
+        containerPadding.md
+      )}>
+        <div className="bg-card rounded-lg border border-border shadow-sm p-4 sm:p-6 lg:p-8">
+          <h1 className={cn("font-bold tracking-tight mb-6 sm:mb-8 text-center", textSizes.lg)}>
             🧪 Test Analytics Page
           </h1>
           
-          <div className="text-center mb-8">
-            <p className="text-gray-600 mb-4">
+          <div className="text-center mb-6 sm:mb-8">
+            <p className={cn("text-muted-foreground mb-3 sm:mb-4", textSizes.xs)}>
               Minimal version with zero dependencies or complex logic
             </p>
             
@@ -78,50 +83,46 @@ export default function TestAnalyticsPage() {
             <button 
               onClick={handleClick}
               disabled={loading}
-              style={{
-                padding: '16px 32px',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                backgroundColor: loading ? '#cccccc' : '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s'
-              }}
+              className={cn(
+                "px-6 sm:px-8 py-3 sm:py-4 font-bold rounded-lg transition-all duration-200 border-0",
+                "bg-primary text-primary-foreground hover:bg-primary/90",
+                "disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed",
+                textSizes.xs,
+                "sm:text-base"
+              )}
             >
               {loading ? '⏳ Running Analytics...' : '🚀 Run Full Analytics'}
             </button>
             
             {loading && (
-              <div className="mt-4">
-                <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
-                <p className="text-gray-600 mt-2">This will take ~60 seconds...</p>
+              <div className="mt-3 sm:mt-4">
+                <div className="animate-spin h-6 w-6 sm:h-8 sm:w-8 border-2 sm:border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+                <p className={cn("text-muted-foreground mt-2", "text-[10px] xs:text-xs sm:text-sm")}>This will take ~60 seconds...</p>
               </div>
             )}
           </div>
 
           {/* RESULTS */}
           {result && (
-            <div className="mt-8">
-              <h2 className="text-2xl font-bold mb-4">📊 Results</h2>
+            <div className="mt-6 sm:mt-8">
+              <h2 className={cn("font-bold tracking-tight mb-3 sm:mb-4", textSizes.base)}>📊 Results</h2>
               
               {result.error ? (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                  <strong>Error:</strong> {result.error}
+                <div className="bg-destructive/10 border border-destructive/20 text-destructive px-3 sm:px-4 py-2 sm:py-3 rounded-lg">
+                  <strong>Error:</strong> <span className={textSizes.xs}>{result.error}</span>
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                   {/* Health Results */}
                   {result.health && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                      <h3 className="text-lg font-semibold mb-3 text-blue-800">
+                    <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 sm:p-6">
+                      <h3 className={cn("font-semibold mb-2 sm:mb-3 text-blue-800 dark:text-blue-200", textSizes.xs)}>
                         🏥 AEO Health Score
                       </h3>
-                      <div className="text-3xl font-bold text-blue-600 mb-2">
+                      <div className={cn("font-bold text-blue-600 dark:text-blue-400 mb-1 sm:mb-2", "text-2xl sm:text-3xl")}>
                         {result.health.overall_score || result.health.score || 'N/A'}
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className={cn("text-blue-700 dark:text-blue-300", "text-[10px] xs:text-xs sm:text-sm")}>
                         Grade: {result.health.grade || 'N/A'}
                       </div>
                     </div>
@@ -129,25 +130,28 @@ export default function TestAnalyticsPage() {
 
                   {/* Mentions Results */}
                   {result.mentions && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-                      <h3 className="text-lg font-semibold mb-3 text-green-800">
+                    <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4 sm:p-6">
+                      <h3 className={cn("font-semibold mb-2 sm:mb-3 text-green-800 dark:text-green-200", textSizes.xs)}>
                         🎯 AI Visibility
                       </h3>
-                      <div className="text-3xl font-bold text-green-600 mb-2">
+                      <div className={cn("font-bold text-green-600 dark:text-green-400 mb-1 sm:mb-2", "text-2xl sm:text-3xl")}>
                         {result.mentions.visibility_percentage || result.mentions.total_visibility || 'N/A'}%
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className={cn("text-green-700 dark:text-green-300", "text-[10px] xs:text-xs sm:text-sm")}>
                         Total queries: {result.mentions.total_queries || 'N/A'}
                       </div>
                     </div>
                   )}
 
                   {/* Raw Data */}
-                  <details className="mt-6">
-                    <summary className="cursor-pointer font-semibold text-gray-700 hover:text-gray-900">
+                  <details className="mt-4 sm:mt-6">
+                    <summary className={cn("cursor-pointer font-semibold text-foreground hover:text-primary transition-colors", textSizes.xs)}>
                       🔍 View Raw Data
                     </summary>
-                    <pre className="mt-2 bg-gray-100 p-4 rounded text-xs overflow-auto max-h-96">
+                    <pre className={cn(
+                      "mt-2 bg-muted p-3 sm:p-4 rounded-lg overflow-auto max-h-64 sm:max-h-96",
+                      "text-[9px] xs:text-[10px] sm:text-xs"
+                    )}>
                       {JSON.stringify(result, null, 2)}
                     </pre>
                   </details>

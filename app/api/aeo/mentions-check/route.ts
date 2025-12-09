@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { spawn } from 'child_process'
+import path from 'path'
 
 /**
  * POST /api/aeo/mentions-check
- * AEO Mentions Check - Latest Modal Service
+ * AEO Mentions Check - Python script approach
  * 
- * Uses the latest Modal AEO service with improved queries and AI platforms
- * Checks visibility across: Perplexity, Gemini, Claude, Mistral, ChatGPT
+ * Calls check-mentions.py which uses services/aeo-checks/mentions_service.py
+ * Same code as openaeoanalytics repo, runs locally
+ * Checks visibility across: Perplexity, ChatGPT, Claude, Gemini
  */
 
 export const maxDuration = 300 // 5 minutes for mentions check
@@ -36,7 +39,7 @@ interface MentionsCheckRequest {
   company_name: string
   company_analysis?: CompanyAnalysis
   company_website?: string
-  api_key?: string // Optional now - server can provide fallback
+  api_key: string
   gemini_api_key?: string
   language?: string
   country?: string
@@ -66,63 +69,20 @@ export async function POST(request: NextRequest): Promise<Response> {
       )
     }
 
+    if (!api_key) {
+      return NextResponse.json(
+        { error: 'OpenRouter API key is required' },
+        { status: 400 }
+      )
+    }
+
     console.log('[API:MENTIONS] Running mentions check for:', company_name)
-    console.log('[API:MENTIONS] Company analysis received:', JSON.stringify(company_analysis, null, 2))
     const startTime = Date.now()
 
-    // Use the latest mentions_service.py from openanalytics
-    const scriptPath = '/Users/federicodeponte/openanalytics/aeo-checks/mentions_service.py'
-    
-    // Create a wrapper Python script to run the service
-    const wrapperScript = `
-import sys
-import json
-import asyncio
-sys.path.insert(0, '/Users/federicodeponte/openanalytics/aeo-checks')
-
-from mentions_service import check_mentions, MentionsCheckRequest, CompanyAnalysis
-
-async def run_check():
-    try:
-        # Read input from stdin
-        input_data = json.loads(sys.stdin.read())
-        
-        # Convert to the format expected by mentions_service
-        company_analysis = None
-        if input_data.get('company_analysis'):
-            ca_data = input_data['company_analysis']
-            company_analysis = CompanyAnalysis(
-                companyInfo=ca_data.get('companyInfo', {}),
-                competitors=ca_data.get('competitors', [])
-            )
-        
-        request = MentionsCheckRequest(
-            companyName=input_data.get('company_name', ''),
-            companyWebsite=input_data.get('company_website', ''),
-            companyAnalysis=company_analysis,
-            language=input_data.get('language', 'english'),
-            country=input_data.get('country', 'US'),
-            numQueries=input_data.get('num_queries', 50),
-            mode=input_data.get('mode', 'fast'),
-            generateInsights=False,
-            platforms=None
-        )
-        
-        result = await check_mentions(request)
-        result_dict = result.model_dump() if hasattr(result, 'model_dump') else result.dict()
-        print(json.dumps(result_dict, default=str))
-        
-    except Exception as e:
-        error_output = {"error": str(e), "type": type(e).__name__}
-        print(json.dumps(error_output), file=sys.stderr)
-        sys.exit(1)
-
-if __name__ == "__main__":
-    asyncio.run(run_check())
-`
-
+    // Call Python script directly (same pattern as generate-keywords.py, generate-blog.py)
     return new Promise((resolve) => {
-      const python = require('child_process').spawn('python3', ['-c', wrapperScript])
+      const scriptPath = path.join(process.cwd(), 'scripts', 'check-mentions.py')
+      const python = spawn('python3', [scriptPath])
       let stdout = ''
       let stderr = ''
 
@@ -150,6 +110,7 @@ if __name__ == "__main__":
         try {
           const result = JSON.parse(stdout)
           
+          // Check for error in result
           if (result.error) {
             resolve(
               NextResponse.json(
@@ -181,11 +142,13 @@ if __name__ == "__main__":
         }
       })
 
-      // Send input to Python
+      // Send input to Python via stdin
       const requestData = {
         company_name,
         company_analysis,
         company_website,
+        api_key,
+        gemini_api_key,
         language,
         country,
         num_queries,

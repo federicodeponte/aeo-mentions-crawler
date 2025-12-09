@@ -14,7 +14,7 @@ interface AuthFormProps {
   returnUrl?: string
 }
 
-export function AuthForm({ returnUrl = '/keywords' }: AuthFormProps) {
+export function AuthForm({ returnUrl = '/go' }: AuthFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [email, setEmail] = useState('')

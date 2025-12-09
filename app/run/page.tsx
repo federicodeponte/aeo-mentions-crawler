@@ -1,8 +1,8 @@
-// ABOUTME: Redirect /run to /keywords for backwards compatibility
+// ABOUTME: Redirect /run to /go for backwards compatibility
 import { redirect } from 'next/navigation'
 
 export default function RunPage() {
-  redirect('/keywords')
+  redirect('/go')
 }
 
 
