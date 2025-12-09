@@ -369,7 +369,6 @@ export function KeywordGenerator() {
     setProgress(0)
     setCurrentStage('')
     setCurrentSubstage('')
-    setCurrentSubstage('')
     setStageProgress({
       company_analysis: 0,
       configuration: 0,
@@ -451,34 +450,60 @@ export function KeywordGenerator() {
         },
       ]
 
+      // Linear progress calculation
+      // Total duration: ~360 seconds (6 minutes), interval: 800ms
+      // Total intervals: ~450, progress per interval: 95/450 ≈ 0.21%
+      const TOTAL_DURATION_SEC = 360
+      const INTERVAL_MS = 800
+      const TOTAL_INTERVALS = Math.ceil((TOTAL_DURATION_SEC * 1000) / INTERVAL_MS)
+      const PROGRESS_PER_INTERVAL = 95 / TOTAL_INTERVALS
+      
       let currentProgress = 0
       let stageIndex = 0
       let substageIndex = 0
       
+      // Initialize first stage immediately
+      if (stages.length > 0) {
+        setCurrentStage(stages[0].label)
+        if (stages[0].substages && stages[0].substages.length > 0) {
+          setCurrentSubstage(stages[0].substages[0])
+        }
+      }
+      
       progressInterval = setInterval(() => {
+        // Linear progress increment
+        currentProgress = Math.min(currentProgress + PROGRESS_PER_INTERVAL, 95)
+        setProgress(currentProgress)
+        
+        // Update stage based on current progress
         if (stageIndex < stages.length) {
           const stage = stages[stageIndex]
-          setCurrentStage(stage.label)
           
-          // Cycle through substages for this stage
-          if (stage.substages && stage.substages.length > 0) {
-            setCurrentSubstage(stage.substages[substageIndex % stage.substages.length])
-            substageIndex++
-          } else {
-            setCurrentSubstage('')
+          // Check if we should advance to next stage
+          if (currentProgress >= stage.end) {
+            stageIndex++
+            substageIndex = 0
           }
           
-          currentProgress += (stage.end - currentProgress) / 15
-          setProgress(Math.min(currentProgress, stage.end))
-          
-          if (currentProgress >= stage.end - 0.5) {
-            stageIndex++
-            substageIndex = 0 // Reset substage for next stage
+          // Update current stage display
+          if (stageIndex < stages.length) {
+            const currentStage = stages[stageIndex]
+            setCurrentStage(currentStage.label)
+            
+            // Cycle through substages
+            if (currentStage.substages && currentStage.substages.length > 0) {
+              setCurrentSubstage(currentStage.substages[substageIndex % currentStage.substages.length])
+              substageIndex++
+            } else {
+              setCurrentSubstage('')
+            }
           }
         } else {
-          setProgress(prev => Math.min(prev + 0.3, 95))
+          // Final stage
+          setCurrentStage('7/7: Finalizing results')
+          setCurrentSubstage('Preparing output')
         }
-      }, 800) // Slower interval to match longer generation time
+      }, INTERVAL_MS)
 
       // Make the API call while progress animates
       const response = await fetch('/api/generate-keywords', {
