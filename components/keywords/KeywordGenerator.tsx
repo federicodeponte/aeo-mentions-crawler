@@ -323,15 +323,15 @@ export function KeywordGenerator() {
       const state = JSON.parse(savedState)
       const elapsed = Math.floor((Date.now() - state.startTime) / 1000)
       
-      // Only restore if less than 8 minutes elapsed (reasonable timeout for 5-7 min generation)
-      if (elapsed < 480) {
+      // Only restore if less than 6 minutes elapsed (reasonable timeout for 4-5 min generation)
+      if (elapsed < 360) {
         setIsGenerating(true)
         setLanguage(state.language)
         setCountry(state.country)
         setNumKeywords(state.numKeywords)
         
-        // Calculate current progress (based on 360 sec average = 6 min)
-        const currentProgress = Math.min((elapsed / 360) * 95, 95)
+        // Calculate current progress (based on 270 sec average = 4.5 min after parallelization)
+        const currentProgress = Math.min((elapsed / 270) * 95, 95)
         
         setProgress(currentProgress)
         toast.info('Resuming keyword generation...')
@@ -404,8 +404,9 @@ export function KeywordGenerator() {
     }
     sessionStorage.setItem(GENERATION_STATE_KEY, JSON.stringify(generationState))
 
-    // Estimated time: ~6 minutes (360 seconds) for keyword generation
-    const estimatedTime = 360
+    // Estimated time: ~4-5 minutes (270 seconds) after parallelization improvements
+    // Research, SERanking, and Autocomplete now run in parallel (saves ~40-60s)
+    const estimatedTime = 270
     setProgress(0)
 
     // Stage definitions
@@ -476,7 +477,7 @@ export function KeywordGenerator() {
     // Start progress tracking (matching analytics/blogs pattern exactly)
     progressIntervalRef.current = setInterval(() => {
       setProgress((prev) => {
-        const newProgress = prev + (95 / estimatedTime) // 95% in 360 seconds = ~0.264% per second
+        const newProgress = prev + (95 / estimatedTime) // 95% in 270 seconds = ~0.352% per second
         const rounded = Math.min(newProgress, 95)
         
         // Update stages based on progress
@@ -749,7 +750,7 @@ export function KeywordGenerator() {
                   {/* Overall progress bar - bigger and cleaner */}
                   <div className="w-full max-w-2xl mx-auto space-y-3">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">⏱️ ~5-7 minutes</span>
+                      <span className="text-muted-foreground">⏱️ ~4-5 minutes</span>
                       <span className="font-mono font-semibold text-foreground">{Math.round(progress)}%</span>
                     </div>
                     <div className="w-full bg-muted rounded-full h-2 overflow-hidden shadow-inner">
