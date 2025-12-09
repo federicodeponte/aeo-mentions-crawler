@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Progress Bar Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .progress-container {
+      width: 100%;
+      background: #e5e7eb;
+      border-radius: 9999px;
+      height: 8px;
+      overflow: hidden;
+      margin: 20px 0;
+    }
+    .progress-bar {
+      background: linear-gradient(to right, #a855f7, #3b82f6, #06b6d4);
+      height: 100%;
+      border-radius: 9999px;
+      transition: width 300ms ease-linear;
+      will-change: width;
+    }
+    .info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 10px;
+    }
+    .percentage {
+      font-family: monospace;
+      font-weight: 600;
+      color: #111827;
+    }
+    button {
+      padding: 10px 20px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    .log {
+      margin-top: 20px;
+      padding: 10px;
+      background: #f3f4f6;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Progress Bar Verification Test</h1>
+  <p>This simulates the exact React progress bar logic to verify it works.</p>
+  
+  <button onclick="startTest()">Start Progress Test</button>
+  
+  <div class="info">
+    <span>⏱️ ~5-7 minutes</span>
+    <span class="percentage" id="percentage">0%</span>
+  </div>
+  
+  <div class="progress-container">
+    <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+  </div>
+  
+  <div class="log" id="log"></div>
+
+  <script>
+    const INTERVAL_MS = 800;
+    const PROGRESS_PER_INTERVAL = 0.5;
+    const MAX_PROGRESS = 95;
+    
+    let progressInterval = null;
+    let currentProgress = 0;
+    let tickCount = 0;
+    
+    const stages = [
+      { name: "Company Analysis", end: 10 },
+      { name: "Configuration", end: 15 },
+      { name: "AI Generation", end: 40 },
+      { name: "Research & Enrichment", end: 60 },
+      { name: "SERP Analysis", end: 75 },
+      { name: "Deduplication", end: 85 },
+      { name: "Final Clustering", end: 95 },
+    ];
+    
+    let stageIndex = 0;
+    
+    function log(message) {
+      const logEl = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      logEl.innerHTML += `[${time}] ${message}<br>`;
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log(message);
+    }
+    
+    function updateProgress() {
+      const progressBar = document.getElementById('progressBar');
+      const percentage = document.getElementById('percentage');
+      
+      currentProgress = Math.min(currentProgress + PROGRESS_PER_INTERVAL, MAX_PROGRESS);
+      
+      // Update visual
+      progressBar.style.width = `${currentProgress}%`;
+      percentage.textContent = `${Math.round(currentProgress)}%`;
+      
+      // Log every 5 ticks (~4 seconds)
+      if (tickCount % 5 === 0) {
+        log(`[PROGRESS] ${currentProgress.toFixed(1)}%`);
+      }
+      
+      // Check stage advancement
+      if (stageIndex < stages.length && currentProgress >= stages[stageIndex].end) {
+        stageIndex++;
+        log(`[PROGRESS] ⏭️  Stage ${stageIndex}: ${stages[stageIndex]?.name}`);
+      }
+      
+      // Stop at max
+      if (currentProgress >= MAX_PROGRESS) {
+        clearInterval(progressInterval);
+        log(`[PROGRESS] ✅ Reached ${MAX_PROGRESS}%`);
+        log(`[PROGRESS] Total ticks: ${tickCount}`);
+        log(`[PROGRESS] Total time: ${(tickCount * INTERVAL_MS / 1000).toFixed(1)}s`);
+      }
+    }
+    
+    function startTest() {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
+      
+      // Reset
+      currentProgress = 0;
+      tickCount = 0;
+      stageIndex = 0;
+      document.getElementById('log').innerHTML = '';
+      
+      log(`[PROGRESS] Started - updating every ${INTERVAL_MS}ms`);
+      
+      progressInterval = setInterval(() => {
+        tickCount++;
+        updateProgress();
+      }, INTERVAL_MS);
+    }
+    
+    // Auto-start for testing
+    window.addEventListener('load', () => {
+      setTimeout(startTest, 1000);
+    });
+  </script>
+</body>
+</html>
+
