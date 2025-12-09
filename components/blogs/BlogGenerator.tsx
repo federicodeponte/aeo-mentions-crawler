@@ -12,13 +12,18 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { useContextStorage } from '@/hooks/useContextStorage'
+import { useMobile } from '@/hooks/useMobile'
+import { cn } from '@/lib/utils'
+import { textSizes, containerPadding } from '@/lib/utils/responsive-utils'
 import { toast } from 'sonner'
+import { BlogResultsTable } from './BlogResultsTable'
 
 const LOADING_MESSAGES = [
   '🔍 Researching your topic',
@@ -74,6 +79,31 @@ const TONE_EXAMPLES = [
   },
 ]
 
+interface Citation {
+  id: number
+  type: string
+  source: string
+  url: string
+  text: string
+}
+
+interface InternalLink {
+  anchor_text: string
+  target_slug: string
+  target_title: string
+  url?: string
+}
+
+interface FAQItem {
+  question: string
+  answer: string
+}
+
+interface PAAItem {
+  question: string
+  answer: string
+}
+
 interface BlogResult {
   title: string
   content: string
@@ -87,6 +117,24 @@ interface BlogResult {
     job_id?: string
     slug?: string
   }
+  
+  // Enhanced data (NEW)
+  meta_title?: string
+  meta_description?: string
+  citations?: Citation[]
+  citations_count?: number
+  internal_links?: InternalLink[]
+  internal_links_count?: number
+  toc?: Record<string, string>
+  faq?: FAQItem[]
+  faq_count?: number
+  paa?: PAAItem[]
+  paa_count?: number
+  image_url?: string
+  image_alt_text?: string
+  image_prompt?: string
+  publication_date?: string
+  read_time_minutes?: number
 }
 
 interface BatchKeyword {
@@ -133,6 +181,10 @@ export function BlogGenerator() {
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+  
+  // Mobile detection and tab state
+  const { isMobile } = useMobile()
+  const [mobileActiveTab, setMobileActiveTab] = useState<string>('input')
   
   // Track if user is actively editing fields (prevent context overwrites)
   const isEditingRef = useRef<{ systemPrompts: boolean; additionalInstructions: boolean }>({
@@ -272,6 +324,13 @@ export function BlogGenerator() {
       clearInterval(dotTimer)
     }
   }, [isGenerating])
+
+  // Auto-switch mobile tab to Results when generation starts
+  useEffect(() => {
+    if (isMobile && isGenerating) {
+      setMobileActiveTab('results')
+    }
+  }, [isMobile, isGenerating])
   
   // Get company info from context
   const companyName = businessContext.companyName || ''
@@ -575,8 +634,10 @@ export function BlogGenerator() {
 
   return (
     <div className="h-full flex">
-      {/* Left Panel - Input Form */}
-      <div className="w-96 border-r border-border p-6 overflow-auto">
+      {/* Desktop: Two-panel layout */}
+      <div className="hidden md:flex h-full flex-1">
+        {/* Left Panel - Input Form */}
+        <div className="w-96 border-r border-border p-6 overflow-auto">
         <div className="space-y-6">
           <div>
             <h2 className="text-lg font-semibold mb-1">Generate Blog Article</h2>
@@ -924,10 +985,10 @@ export function BlogGenerator() {
             </Button>
           </div>
         </div>
-      </div>
+        </div>
 
-      {/* Right Panel - Results/Loading */}
-      <div className="flex-1 flex flex-col overflow-hidden p-6">
+        {/* Right Panel - Results/Loading */}
+        <div className="flex-1 flex flex-col overflow-hidden p-6">
         {isGenerating && (
           <div className="h-full flex items-center justify-center">
             <div className="text-center space-y-4 max-w-md">
@@ -1016,13 +1077,26 @@ export function BlogGenerator() {
                 onClick={() => {
                   const successfulBlogs = batchResult.results.filter(r => !r.error)
                   const csvContent = [
-                    ['Keyword', 'Title', 'Word Count', 'AEO Score', 'Status'].join(','),
+                    [
+                      'Keyword', 'Title', 'Word Count', 'Read Time', 'AEO Score', 'Status',
+                      'Meta Title', 'Meta Description', 'Citations', 'Internal Links', 
+                      'FAQ Count', 'PAA Count', 'Image URL', 'Publication Date'
+                    ].join(','),
                     ...batchResult.results.map(r => [
                       `"${r.keyword}"`,
                       `"${r.title || ''}"`,
                       r.word_count || 0,
+                      r.read_time_minutes || 0,
                       r.aeo_score || 0,
-                      r.error ? 'Failed' : 'Success'
+                      r.error ? 'Failed' : 'Success',
+                      `"${r.meta_title || ''}"`,
+                      `"${r.meta_description || ''}"`,
+                      r.citations_count || 0,
+                      r.internal_links_count || 0,
+                      r.faq_count || 0,
+                      r.paa_count || 0,
+                      `"${r.image_url || ''}"`,
+                      `"${r.publication_date || ''}"`
                     ].join(','))
                   ].join('\n')
 
@@ -1111,26 +1185,31 @@ export function BlogGenerator() {
 
         {result && (
           <div className="flex flex-col h-full overflow-hidden">
-            <div className="flex items-center justify-between pb-4 flex-shrink-0">
-              <div>
-                <h3 className="text-lg font-semibold">{result.title}</h3>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span>{result.metadata.word_count} words</span>
-                  <span>•</span>
-                  <span>{result.metadata.generation_time.toFixed(1)}s</span>
-                  {result.metadata.aeo_score !== undefined && (
-                    <>
-                      <span>•</span>
-                      <span className="font-medium text-primary">AEO: {result.metadata.aeo_score}/100</span>
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
+            <BlogResultsTable 
+              result={result}
+              onDownload={() => {
+                // Export as Markdown
+                const markdown = `# ${result.title}\n\n${result.content}`
+                const blob = new Blob([markdown], { type: 'text/markdown' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                
+                const timestamp = new Date().toISOString().split('T')[0]
+                const keywordSlug = result.metadata.keyword.replace(/[^a-z0-9]/gi, '-').toLowerCase()
+                a.download = `blog-${keywordSlug}-${timestamp}.md`
+                
+                a.click()
+                URL.revokeObjectURL(url)
+                toast.success('Blog exported as Markdown')
+              }}
+            />
+            
+            <div className="mt-4 flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
                     if (!result.content) {
                       toast.error('No content to refresh')
                       return
@@ -1232,30 +1311,6 @@ export function BlogGenerator() {
                   <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                   {isRefreshing ? 'Refreshing...' : 'Refresh'}
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    // Export as Markdown
-                    const markdown = `# ${result.title}\n\n${result.content}`
-                    const blob = new Blob([markdown], { type: 'text/markdown' })
-                    const url = URL.createObjectURL(blob)
-                    const a = document.createElement('a')
-                    a.href = url
-                    
-                    const timestamp = new Date().toISOString().split('T')[0]
-                    const keywordSlug = result.metadata.keyword.replace(/[^a-z0-9]/gi, '-').toLowerCase()
-                    a.download = `blog-${keywordSlug}-${timestamp}.md`
-                    
-                    a.click()
-                    URL.revokeObjectURL(url)
-                    toast.success('Blog exported as Markdown')
-                  }}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Export MD
-                </Button>
-              </div>
             </div>
 
             <div className="flex-1 overflow-auto border border-border rounded-lg p-6 prose prose-sm dark:prose-invert max-w-none">
@@ -1263,6 +1318,318 @@ export function BlogGenerator() {
             </div>
           </div>
         )}
+        </div>
+      </div>
+
+      {/* Mobile: Tab layout */}
+      <div className="md:hidden h-full flex flex-col min-h-0 overflow-hidden">
+        <Tabs value={mobileActiveTab} onValueChange={setMobileActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <TabsList className={cn(
+            "flex-shrink-0 w-full rounded-none border-b border-border/40",
+            "bg-gradient-to-b from-secondary/30 to-secondary/15"
+          )}>
+            <TabsTrigger 
+              value="input" 
+              className="flex-1 data-[state=active]:bg-background/60 data-[state=active]:shadow-sm"
+            >
+              <span className={textSizes.xs}>Input</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="results" 
+              className={cn(
+                "flex-1 flex items-center gap-2",
+                "data-[state=active]:bg-background/60 data-[state=active]:shadow-sm"
+              )}
+            >
+              <span className={textSizes.xs}>Results</span>
+              {(result || batchResult) && (
+                <span className="inline-flex items-center justify-center rounded-md bg-primary/20 px-1.5 py-0.5 text-xs font-medium text-primary">
+                  ✓
+                </span>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="input" className="flex-1 flex flex-col min-h-0 overflow-hidden mt-0">
+            <div className={cn("flex-1 overflow-auto", containerPadding.md)}>
+              <div className="space-y-6">
+                <div>
+                  <h2 className={cn("font-semibold mb-1", textSizes.sm)}>Generate Blog Article</h2>
+                  <p className={cn("text-muted-foreground", textSizes.xs)}>
+                    AI-powered content creation optimized for AEO
+                  </p>
+                </div>
+
+                {/* AEO Explanation */}
+                <div className="bg-gradient-to-r from-purple-500/5 to-blue-500/5 border-l-4 border-purple-500 rounded-r-lg p-4 space-y-1">
+                  <p className={cn("font-semibold text-foreground flex items-center gap-2", textSizes.xs)}>
+                    <span className="text-lg">✍️</span>
+                    AEO-Optimized Content
+                  </p>
+                  <p className={cn("text-muted-foreground leading-relaxed", "text-[10px] sm:text-xs")}>
+                    Creates comprehensive articles designed to rank in AI search engines and answer engines.
+                  </p>
+                </div>
+
+                {/* Company Context */}
+                {!hasContext && (
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 space-y-1.5">
+                    <p className={cn("font-medium text-blue-500", textSizes.xs)}>No Company Context Set</p>
+                    <p className={cn("text-muted-foreground", "text-[10px] sm:text-xs")}>
+                      Set up your{' '}
+                      <a href="/context" className="text-primary hover:underline">
+                        Business Context
+                      </a>{' '}
+                      for personalized content generation.
+                    </p>
+                  </div>
+                )}
+
+                {hasContext && (
+                  <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 space-y-2">
+                    <p className={cn("font-medium text-primary/90", textSizes.xs)}>Using Company Context</p>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className={cn("text-muted-foreground", "text-[10px] sm:text-xs")}>Company:</span>
+                        <span className={cn("font-medium truncate max-w-[200px]", "text-[10px] sm:text-xs")}>{companyName}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Batch Mode Toggle */}
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="batch-mode"
+                    checked={batchMode}
+                    onCheckedChange={setBatchMode}
+                  />
+                  <Label htmlFor="batch-mode" className={cn("font-medium", textSizes.xs)}>
+                    Batch Mode {batchKeywords.length > 1 && `(${batchKeywords.length} keywords)`}
+                  </Label>
+                </div>
+
+                {/* Keyword Input */}
+                {!batchMode ? (
+                  <div>
+                    <Label className={cn("font-medium", textSizes.xs)}>Primary Keyword</Label>
+                    <Input
+                      placeholder="e.g., AI content marketing"
+                      value={primaryKeyword}
+                      onChange={(e) => setPrimaryKeyword(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className={cn("font-medium", textSizes.xs)}>Keywords for Batch Generation</Label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="file"
+                          accept=".csv"
+                          onChange={handleCsvUpload}
+                          ref={fileInputRef}
+                          className="hidden"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => fileInputRef.current?.click()}
+                          className={textSizes.xs}
+                        >
+                          <Upload className="h-3 w-3 mr-1" />
+                          Import CSV
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {batchKeywords.map((item, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <Input
+                            placeholder={`Keyword ${index + 1}`}
+                            value={item.keyword}
+                            onChange={(e) => {
+                              const newKeywords = [...batchKeywords]
+                              newKeywords[index] = { keyword: e.target.value }
+                              setBatchKeywords(newKeywords)
+                            }}
+                            className={textSizes.xs}
+                          />
+                          {batchKeywords.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const newKeywords = batchKeywords.filter((_, i) => i !== index)
+                                setBatchKeywords(newKeywords.length > 0 ? newKeywords : [{ keyword: '' }])
+                              }}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setBatchKeywords([...batchKeywords, { keyword: '' }])}
+                        className="w-full"
+                      >
+                        <Plus className="h-3 w-3 mr-2" />
+                        <span className={textSizes.xs}>Add Keyword</span>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Word Count */}
+                <div>
+                  <Label className={cn("font-medium", textSizes.xs)}>Word Count: {wordCount}</Label>
+                  <input
+                    type="range"
+                    min="500"
+                    max="3000"
+                    step="250"
+                    value={wordCount}
+                    onChange={(e) => setWordCount(parseInt(e.target.value))}
+                    className="w-full mt-2"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                    <span>500</span>
+                    <span>3000</span>
+                  </div>
+                </div>
+
+                {/* Generate Button */}
+                <Button
+                  onClick={handleGenerate}
+                  disabled={isGenerating || (!batchMode && !primaryKeyword.trim()) || (batchMode && !batchKeywords.some(k => k.keyword.trim()))}
+                  className="w-full"
+                  size="lg"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <span className={textSizes.xs}>Generating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      <span className={textSizes.xs}>
+                        Generate {batchMode ? `${batchKeywords.filter(k => k.keyword.trim()).length} Articles` : 'Article'}
+                      </span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="results" className="flex-1 flex flex-col min-h-0 overflow-hidden mt-0">
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {isGenerating && (
+                <div className="h-full flex items-center justify-center">
+                  <div className={cn("text-center space-y-4 max-w-md", containerPadding.md)}>
+                    {/* Progress indicator */}
+                    <div className="relative w-16 h-16 mx-auto">
+                      <div className="absolute inset-0 w-16 h-16 rounded-full border-2 border-primary/20 animate-[spin_3s_linear_infinite]" />
+                      <div className="absolute inset-1 w-14 h-14 rounded-full border-2 border-t-primary/40 border-r-primary/40 border-b-transparent border-l-transparent animate-[spin_2s_linear_infinite_reverse]" />
+                      <div className="w-16 h-16 flex items-center justify-center">
+                        <Sparkles className="h-7 w-7 text-primary animate-pulse" />
+                      </div>
+                    </div>
+
+                    {/* Current message */}
+                    <div className="space-y-2">
+                      <p className={cn("font-medium text-foreground", textSizes.xs)}>
+                        {LOADING_MESSAGES[messageIndex]}{dots}
+                      </p>
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div
+                          className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-1000 ease-linear"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                      <p className={cn("text-muted-foreground", "text-[10px] sm:text-xs")}>
+                        ~{timeRemaining}s remaining
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!isGenerating && !result && !batchResult && (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center space-y-3">
+                    <Sparkles className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+                    <p className={cn("text-muted-foreground", textSizes.xs)}>
+                      Generate an article to see results here
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {(result || batchResult) && (
+                <div className="flex-1 overflow-y-auto">
+                  <div className={containerPadding.sm}>
+                    {batchResult ? (
+                      <div>
+                        <h3 className={cn("font-semibold mb-4", textSizes.sm)}>
+                          Batch Results ({batchResult.results.length} articles)
+                        </h3>
+                        <div className="space-y-3">
+                          {batchResult.results.map((blogResult, index) => (
+                            <div key={index} className="border border-border rounded-lg p-3 space-y-2">
+                              <div className="flex items-start justify-between">
+                                <span className={cn("font-medium", textSizes.xs)}>
+                                  {index + 1}. {blogResult.keyword}
+                                </span>
+                                <span className={cn(
+                                  "px-2 py-1 rounded text-xs font-medium",
+                                  blogResult.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                                )}>
+                                  {blogResult.status}
+                                </span>
+                              </div>
+                              {blogResult.title && (
+                                <p className={cn("text-muted-foreground font-medium", "text-[10px] sm:text-xs")}>
+                                  {blogResult.title}
+                                </p>
+                              )}
+                              {blogResult.word_count && (
+                                <p className={cn("text-muted-foreground", "text-[9px] sm:text-xs")}>
+                                  {blogResult.word_count} words
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : result && (
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className={cn("font-semibold", textSizes.sm)}>{result.title}</h3>
+                          <p className={cn("text-muted-foreground", "text-[10px] sm:text-xs")}>
+                            {result.word_count} words
+                          </p>
+                        </div>
+                        <div className="prose prose-sm dark:prose-invert max-w-none text-[11px] sm:text-sm">
+                          <div dangerouslySetInnerHTML={{ __html: result.content }} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Analytics Button</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        button { padding: 10px 20px; margin: 10px 5px; }
+    </style>
+</head>
+<body>
+    <h1>Analytics Button Debug Tool</h1>
+    <div id="results"></div>
+    
+    <h2>Actions</h2>
+    <button onclick="testPage()">Test Analytics Page</button>
+    <button onclick="clearStorage()">Clear localStorage</button>
+    <button onclick="setScaileContext()">Set SCAILE Context</button>
+    
+    <script>
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            document.getElementById('results').appendChild(div);
+            console.log(`[DEBUG] ${message}`);
+        }
+        
+        function clearStorage() {
+            localStorage.clear();
+            sessionStorage.clear();
+            log('✅ Storage cleared', 'success');
+        }
+        
+        function setScaileContext() {
+            const context = {
+                companyName: 'SCAILE',
+                companyWebsite: 'https://scaile.tech',
+                products: ['AEO Services', 'Content Marketing'],
+                valueProposition: 'AI-powered AEO optimization',
+                targetIndustries: 'B2B SaaS',
+                countries: ['US', 'UK']
+            };
+            localStorage.setItem('business-context', JSON.stringify(context));
+            log('✅ SCAILE context set in localStorage', 'success');
+        }
+        
+        async function testPage() {
+            try {
+                log('🔍 Testing analytics page...', 'info');
+                
+                // Open analytics page in new tab
+                const newWindow = window.open('http://localhost:3002/analytics', '_blank');
+                
+                if (!newWindow) {
+                    log('❌ Popup blocked - please allow popups', 'error');
+                    return;
+                }
+                
+                // Wait for page to load
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                log('✅ Analytics page opened successfully', 'success');
+                log('ℹ️ Check the new tab - the button should be clickable', 'info');
+                
+                // Check localStorage from this context
+                const storedContext = localStorage.getItem('business-context');
+                if (storedContext) {
+                    const parsed = JSON.parse(storedContext);
+                    log(`✅ Business context found: ${parsed.companyName}`, 'success');
+                } else {
+                    log('⚠️ No business context in localStorage', 'info');
+                }
+                
+            } catch (error) {
+                log(`❌ Error testing page: ${error.message}`, 'error');
+            }
+        }
+        
+        // Auto-check storage on load
+        window.onload = function() {
+            log('🚀 Debug tool loaded', 'info');
+            
+            const context = localStorage.getItem('business-context');
+            if (context) {
+                const parsed = JSON.parse(context);
+                log(`ℹ️ Current business context: ${parsed.companyName || 'unnamed'}`, 'info');
+            } else {
+                log('ℹ️ No business context found', 'info');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -6,6 +6,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { cn } from '@/lib/utils'
 
 interface ProgressBarProps {
   /** Whether the progress bar should be animating */
@@ -20,6 +21,8 @@ interface ProgressBarProps {
   height?: 'sm' | 'md' | 'lg'
   /** Custom className for the container */
   className?: string
+  /** Show progress percentage text */
+  showPercentage?: boolean
 }
 
 export function ProgressBar({
@@ -29,6 +32,7 @@ export function ProgressBar({
   actualProgress,
   height = 'md',
   className = '',
+  showPercentage = false,
 }: ProgressBarProps) {
   const [progress, setProgress] = useState(0)
 
@@ -59,6 +63,7 @@ export function ProgressBar({
     return () => clearInterval(interval)
   }, [isActive, estimatedDuration, startTime, actualProgress])
 
+  // Height classes
   const heightClasses = {
     sm: 'h-1',
     md: 'h-1.5',
@@ -67,15 +72,37 @@ export function ProgressBar({
 
   // Determine if progress is complete (100%)
   const isComplete = actualProgress !== undefined ? actualProgress >= 100 : progress >= 100
+  
+  // Format progress percentage
+  const progressPercentage = Math.round(actualProgress !== undefined ? actualProgress : progress)
 
   return (
-    <div className={`w-full ${heightClasses[height]} ${isComplete ? 'bg-green-600/20' : 'bg-primary/20'} rounded-full overflow-hidden ${className}`}>
-      <div 
-        className={`h-full rounded-full transition-all duration-300 ease-out ${
-          isComplete ? 'bg-green-600' : 'bg-primary'
-        }`}
-        style={{ width: `${progress}%` }}
-      />
+    <div className={cn('w-full space-y-1', className)}>
+      {showPercentage && (
+        <div className="flex justify-between items-center text-xs">
+          <span className="text-muted-foreground">Progress</span>
+          <span className={cn(
+            'font-medium',
+            isComplete ? 'text-green-600' : 'text-primary'
+          )}>
+            {progressPercentage}%
+          </span>
+        </div>
+      )}
+      
+      <div className={cn(
+        'w-full rounded-full overflow-hidden transition-all duration-300',
+        heightClasses[height],
+        isComplete ? 'bg-green-600/20' : 'bg-primary/20'
+      )}>
+        <div 
+          className={cn(
+            'h-full rounded-full transition-all ease-out duration-300',
+            isComplete ? 'bg-green-600' : 'bg-primary'
+          )}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
     </div>
   )
 }

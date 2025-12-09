@@ -13,8 +13,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
-# Add blog-writer to path
-blog_writer_path = Path(__file__).parent.parent.parent / 'services' / 'blog-writer'
+# Add blog-writer (openblog) to path
+blog_writer_path = Path(__file__).parent.parent / 'python-services' / 'blog-writer'
 sys.path.insert(0, str(blog_writer_path))
 
 from pipeline.core.workflow_engine import WorkflowEngine
@@ -301,6 +301,65 @@ async def generate_blog(input_data: dict) -> dict:
         if aeo_score is None and hasattr(context, 'aeo_score'):
             aeo_score = context.aeo_score
         
+        # Extract enhanced data from parallel_results (stages 4-9)
+        parallel_results = getattr(context, 'parallel_results', {}) or {}
+        
+        # Extract citations data (Stage 4)
+        citations_data = parallel_results.get('citations', {})
+        citations = []
+        if isinstance(citations_data, dict):
+            # Extract citation list if available
+            citations_html = citations_data.get('citations_html', '')
+            # Parse citations from HTML or get structured data
+            if 'citation_list' in citations_data:
+                citations = citations_data['citation_list']
+        
+        # Extract internal links (Stage 5)
+        internal_links_data = parallel_results.get('internal_links', {})
+        internal_links = []
+        if isinstance(internal_links_data, dict):
+            internal_links_html = internal_links_data.get('internal_links_html', '')
+            if 'links' in internal_links_data:
+                internal_links = internal_links_data['links']
+        
+        # Extract TOC (Stage 6)
+        toc_data = parallel_results.get('toc', {})
+        toc = toc_data if isinstance(toc_data, dict) else {}
+        
+        # Extract metadata (Stage 7)
+        metadata_extra = parallel_results.get('metadata', {})
+        if isinstance(metadata_extra, dict):
+            read_time = metadata_extra.get('read_time', calculate_read_time(word_count))
+            publication_date = metadata_extra.get('publication_date', '')
+        else:
+            read_time = calculate_read_time(word_count)
+            publication_date = ''
+        
+        # Extract FAQ/PAA (Stage 8)
+        faq_paa_data = parallel_results.get('faq_paa', {})
+        faq_items = []
+        paa_items = []
+        if isinstance(faq_paa_data, dict):
+            faq_items = faq_paa_data.get('faq_items', [])
+            paa_items = faq_paa_data.get('paa_items', [])
+        
+        # Extract image data (Stage 9)
+        image_data = parallel_results.get('image', {})
+        image_url = ''
+        image_alt_text = ''
+        image_prompt = ''
+        if isinstance(image_data, dict):
+            image_url = image_data.get('image_url', '')
+            image_alt_text = image_data.get('image_alt_text', '')
+            image_prompt = image_data.get('image_prompt', '')
+        
+        # Extract meta tags from structured_data
+        meta_title = ''
+        meta_description = ''
+        if context.structured_data:
+            meta_title = getattr(context.structured_data, 'Meta_Title', '') or ''
+            meta_description = getattr(context.structured_data, 'Meta_Description', '') or ''
+        
         result = {
             "success": True,
             "job_id": job_id,
@@ -308,11 +367,28 @@ async def generate_blog(input_data: dict) -> dict:
             "slug": generate_slug(headline) if headline else generate_slug(request.primary_keyword),
             "html_content": html_content,
             "word_count": word_count,
-            "read_time_minutes": calculate_read_time(word_count),
+            "read_time_minutes": read_time,
             "language": request.language,
             "country": request.country,
             "aeo_score": aeo_score,
             "duration_seconds": duration,
+            
+            # Enhanced data (NEW)
+            "meta_title": meta_title,
+            "meta_description": meta_description,
+            "citations": citations,
+            "citations_count": len(citations),
+            "internal_links": internal_links,
+            "internal_links_count": len(internal_links),
+            "toc": toc,
+            "faq": faq_items,
+            "faq_count": len(faq_items),
+            "paa": paa_items,
+            "paa_count": len(paa_items),
+            "image_url": image_url,
+            "image_alt_text": image_alt_text,
+            "image_prompt": image_prompt,
+            "publication_date": publication_date,
         }
         
         return result
