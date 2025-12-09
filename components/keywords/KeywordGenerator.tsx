@@ -390,45 +390,15 @@ export function KeywordGenerator() {
     }
     sessionStorage.setItem(GENERATION_STATE_KEY, JSON.stringify(generationState))
 
+    let progressInterval: NodeJS.Timeout | null = null
+
     try {
       console.log('[KEYWORDS] Starting streaming keyword generation...')
       console.log('[KEYWORDS] Company:', companyName.trim())
       console.log('[KEYWORDS] URL:', companyUrl.trim())
       console.log('[KEYWORDS] Count:', numKeywords)
 
-      const response = await fetch('/api/generate-keywords', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          company_name: companyName.trim(),
-          company_url: companyUrl.trim(),
-          language,
-          country,
-          num_keywords: numKeywords,
-          // FREE add-ons
-          enable_google_trends: enableGoogleTrends,
-          enable_autocomplete: enableAutocomplete,
-          // Pass all rich context
-          description: businessContext.productDescription,
-          products: businessContext.products,
-          target_audience: businessContext.targetAudience,
-          competitors: businessContext.competitors,
-          pain_points: businessContext.painPoints,
-          value_propositions: businessContext.valuePropositions,
-          use_cases: businessContext.useCases,
-          content_themes: businessContext.contentThemes,
-          tone: businessContext.brandTone,
-        }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to generate keywords' }))
-        throw new Error(error.error || error.message || 'Failed to generate keywords')
-      }
-
-      // Simulate realistic progress (for UX engagement) - matches actual 5-7 minute generation time
+      // Start progress simulation immediately (for UX engagement)
       const stages = [
         { 
           name: 'company_analysis', 
@@ -485,7 +455,7 @@ export function KeywordGenerator() {
       let stageIndex = 0
       let substageIndex = 0
       
-      const progressInterval = setInterval(() => {
+      progressInterval = setInterval(() => {
         if (stageIndex < stages.length) {
           const stage = stages[stageIndex]
           setCurrentStage(stage.label)
@@ -509,6 +479,40 @@ export function KeywordGenerator() {
           setProgress(prev => Math.min(prev + 0.3, 95))
         }
       }, 800) // Slower interval to match longer generation time
+
+      // Make the API call while progress animates
+      const response = await fetch('/api/generate-keywords', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          company_name: companyName.trim(),
+          company_url: companyUrl.trim(),
+          language,
+          country,
+          num_keywords: numKeywords,
+          // FREE add-ons
+          enable_google_trends: enableGoogleTrends,
+          enable_autocomplete: enableAutocomplete,
+          // Pass all rich context
+          description: businessContext.productDescription,
+          products: businessContext.products,
+          target_audience: businessContext.targetAudience,
+          competitors: businessContext.competitors,
+          pain_points: businessContext.painPoints,
+          value_propositions: businessContext.valuePropositions,
+          use_cases: businessContext.useCases,
+          content_themes: businessContext.contentThemes,
+          tone: businessContext.brandTone,
+        }),
+      })
+
+      if (!response.ok) {
+        clearInterval(progressInterval)
+        const error = await response.json().catch(() => ({ error: 'Failed to generate keywords' }))
+        throw new Error(error.error || error.message || 'Failed to generate keywords')
+      }
 
       // Get JSON response
       const result = await response.json()
@@ -540,6 +544,7 @@ export function KeywordGenerator() {
       existingLogs.unshift(logEntry)
       localStorage.setItem('bulk-gpt-logs', JSON.stringify(existingLogs.slice(0, 50)))
     } catch (error) {
+      if (progressInterval) clearInterval(progressInterval)
       console.error('Keyword generation error:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to generate keywords')
       sessionStorage.removeItem(GENERATION_STATE_KEY)
