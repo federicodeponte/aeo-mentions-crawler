@@ -163,10 +163,19 @@ async def run_generation(input_data: dict) -> dict:
         logger.info("   ✓ Google Trends (seasonality, rising queries)")
     
     # STEP 4: Generate keywords
+    # Get SERanking API key from environment (optional)
+    seranking_api_key = os.getenv('SERANKING_API_KEY')
+    
     generator = KeywordGenerator(
         gemini_api_key=api_key,
-        model='gemini-3-pro-preview'  # Correct model name
+        model='gemini-3-pro-preview',  # Correct model name
+        seranking_api_key=seranking_api_key  # Enable SERanking gap analysis
     )
+    
+    if seranking_api_key:
+        logger.info("   ✓ SE Ranking enabled (competitor gap analysis)")
+    else:
+        logger.info("   ⚠️  SE Ranking disabled (set SERANKING_API_KEY env var to enable)")
     
     import time
     start_time = time.time()
