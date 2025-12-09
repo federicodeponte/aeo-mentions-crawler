@@ -680,7 +680,7 @@ export function KeywordGenerator() {
       <div className="flex-1 flex flex-col overflow-hidden p-6">
         {isGenerating && (
           <div className="h-full flex items-center justify-center">
-            <div className="text-center space-y-4 max-w-md">
+            <div className="text-center space-y-4 max-w-3xl w-full px-4">
               {/* Animated icon */}
               <div className="relative w-16 h-16 mx-auto">
                 {/* Outer ring */}
@@ -707,7 +707,7 @@ export function KeywordGenerator() {
                   </div>
                   
                   {/* Overall progress bar - bigger and cleaner */}
-                  <div className="w-full max-w-lg mx-auto space-y-3">
+                  <div className="w-full max-w-2xl mx-auto space-y-3">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground">⏱️ ~5-7 minutes</span>
                       <span className="font-mono font-semibold text-foreground">{Math.round(progress)}%</span>
@@ -722,7 +722,7 @@ export function KeywordGenerator() {
                 </div>
 
                 {/* 7-stage breakdown - clean and minimal */}
-                <div className="w-full max-w-md mx-auto space-y-1.5">
+                <div className="w-full max-w-xl mx-auto space-y-1.5">
                   {[
                     { key: 'company_analysis', icon: '🔍', label: 'Company Analysis', range: [0, 10], duration: '~30s' },
                     { key: 'configuration', icon: '⚙️', label: 'Configuration', range: [10, 15], duration: '~20s' },
