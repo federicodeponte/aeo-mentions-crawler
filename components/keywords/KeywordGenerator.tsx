@@ -544,6 +544,10 @@ export function KeywordGenerator() {
       clearInterval(progressInterval)
 
       console.log('[KEYWORDS] Success! Generated', result.keywords?.length || 0, 'keywords')
+      
+      // Show results IMMEDIATELY (even if faster than simulated progress)
+      setProgress(100)
+      setIsGenerating(false)
       setResults(result)
       toast.success(`Generated ${result.keywords.length} keywords!`)
       
@@ -708,7 +712,7 @@ export function KeywordGenerator() {
 
       {/* Right Panel - Results Table */}
       <div className="flex-1 flex flex-col overflow-hidden p-6">
-        {isGenerating && (
+        {isGenerating && !results && (
           <div className="h-full flex items-center justify-center">
             <div className="text-center space-y-4 max-w-3xl w-full px-4">
               {/* Animated icon */}
