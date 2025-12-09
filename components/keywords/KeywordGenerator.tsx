@@ -288,6 +288,10 @@ export function KeywordGenerator() {
   const [currentStage, setCurrentStage] = useState('')
   const [currentSubstage, setCurrentSubstage] = useState('')
   
+  // Refs for stage tracking (persist across renders)
+  const stageIndexRef = useRef(0)
+  const substageIndexRef = useRef(0)
+  
   // Dots animation state
   const [dots, setDots] = useState('')
   
@@ -450,14 +454,13 @@ export function KeywordGenerator() {
         },
       ]
 
-      // Linear progress calculation
-      // Total duration: ~360 seconds (6 minutes), interval: 800ms
-      // Progress per interval: ~0.25% (more visible updates)
-      const INTERVAL_MS = 800
-      const PROGRESS_PER_INTERVAL = 0.25 // ~0.25% per interval = visible movement
+      // Reset refs
+      stageIndexRef.current = 0
+      substageIndexRef.current = 0
       
-      let stageIndex = 0
-      let substageIndex = 0
+      // Linear progress calculation
+      const INTERVAL_MS = 800
+      const PROGRESS_PER_INTERVAL = 0.25 // 0.25% per interval = visible movement
       
       // Initialize first stage immediately
       if (stages.length > 0) {
@@ -468,35 +471,28 @@ export function KeywordGenerator() {
       }
       
       progressInterval = setInterval(() => {
-        // Use functional form to read current state
         setProgress((prevProgress) => {
           const newProgress = Math.min(prevProgress + PROGRESS_PER_INTERVAL, 95)
           
           // Update stage based on new progress
-          if (stageIndex < stages.length) {
-            const stage = stages[stageIndex]
+          while (stageIndexRef.current < stages.length && newProgress >= stages[stageIndexRef.current].end) {
+            stageIndexRef.current++
+            substageIndexRef.current = 0
+          }
+          
+          // Update stage display based on current stage index
+          if (stageIndexRef.current < stages.length) {
+            const currentStage = stages[stageIndexRef.current]
+            setCurrentStage(currentStage.label)
             
-            // Check if we should advance to next stage
-            if (newProgress >= stage.end) {
-              stageIndex++
-              substageIndex = 0
-            }
-            
-            // Update current stage display
-            if (stageIndex < stages.length) {
-              const currentStage = stages[stageIndex]
-              setCurrentStage(currentStage.label)
-              
-              // Cycle through substages
-              if (currentStage.substages && currentStage.substages.length > 0) {
-                setCurrentSubstage(currentStage.substages[substageIndex % currentStage.substages.length])
-                substageIndex++
-              } else {
-                setCurrentSubstage('')
-              }
+            if (currentStage.substages && currentStage.substages.length > 0) {
+              const substageIdx = substageIndexRef.current % currentStage.substages.length
+              setCurrentSubstage(currentStage.substages[substageIdx])
+              substageIndexRef.current++
+            } else {
+              setCurrentSubstage('')
             }
           } else {
-            // Final stage
             setCurrentStage('7/7: Finalizing results')
             setCurrentSubstage('Preparing output')
           }
@@ -504,6 +500,8 @@ export function KeywordGenerator() {
           return newProgress
         })
       }, INTERVAL_MS)
+      
+      console.log('[PROGRESS] Interval started, updating every', INTERVAL_MS, 'ms')
 
       // Make the API call while progress animates
       const response = await fetch('/api/generate-keywords', {
