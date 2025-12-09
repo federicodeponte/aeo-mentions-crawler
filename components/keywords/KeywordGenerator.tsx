@@ -764,7 +764,12 @@ export function KeywordGenerator() {
                     <div className="w-full bg-muted rounded-full h-2 overflow-hidden shadow-inner">
                       <div
                         className="bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${progress}%`, minWidth: progress > 0 ? '2px' : '0' }}
+                        style={{ 
+                          width: `${progress}%`, 
+                          minWidth: progress > 0 ? '2px' : '0',
+                          willChange: 'width'
+                        }}
+                        data-progress={progress.toFixed(2)}
                       />
                     </div>
                   </div>
