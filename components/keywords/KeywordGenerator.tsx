@@ -96,10 +96,10 @@ interface Keyword {
   source: string // ai_generated, research_reddit, research_quora, research_niche, gap_analysis, serp_paa, autocomplete
   volume?: number // monthly search volume
   difficulty?: number // keyword difficulty (0-100)
-  aeo_opportunity?: number // AEO opportunity score (0-100)
-  has_featured_snippet?: boolean
-  has_paa?: boolean
-  serp_analyzed?: boolean
+  aeo_opportunity?: number | null // AEO opportunity score (0-100), null if not analyzed
+  has_featured_snippet?: boolean | null // null if not analyzed
+  has_paa?: boolean | null // null if not analyzed
+  serp_analyzed?: boolean // Whether SERP analysis was run for this keyword
   // ENHANCED DATA CAPTURE fields
   research_data?: {
     sources: ResearchSource[]
@@ -867,9 +867,9 @@ export function KeywordGenerator() {
                       k.source || 'ai_generated',
                       k.volume || 0,
                       k.difficulty || 0,
-                      k.aeo_opportunity || 0,
-                      k.has_featured_snippet ? 'Yes' : 'No',
-                      k.has_paa ? 'Yes' : 'No',
+                      (k.aeo_opportunity !== undefined && k.aeo_opportunity !== null) ? k.aeo_opportunity : '',
+                      (k.has_featured_snippet === true) ? 'Yes' : (k.has_featured_snippet === false) ? 'No' : '',
+                      (k.has_paa === true) ? 'Yes' : (k.has_paa === false) ? 'No' : '',
                       k.is_question ? 'Yes' : 'No',
                       // Enhanced data fields
                       `"${k.research_summary || ''}"`,
@@ -1003,7 +1003,7 @@ export function KeywordGenerator() {
                         )}
                       </td>
                       <td className="p-3">
-                        {keyword.aeo_opportunity !== undefined && keyword.aeo_opportunity > 0 ? (
+                        {keyword.aeo_opportunity !== undefined && keyword.aeo_opportunity !== null && keyword.aeo_opportunity > 0 ? (
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                             keyword.aeo_opportunity >= 70 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
                             keyword.aeo_opportunity >= 50 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
@@ -1012,14 +1012,16 @@ export function KeywordGenerator() {
                             {keyword.aeo_opportunity}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground text-xs">-</span>
+                          <span className="text-muted-foreground text-xs" title={keyword.serp_analyzed === false ? "SERP analysis not run for this keyword" : "No AEO opportunity data"}>-</span>
                         )}
                       </td>
                       <td className="p-3">
                         <div className="flex gap-1">
-                          {keyword.has_featured_snippet && <span className="text-sm" title="Featured Snippet">🌟</span>}
-                          {keyword.has_paa && <span className="text-sm" title="People Also Ask">💬</span>}
-                          {!keyword.has_featured_snippet && !keyword.has_paa && <span className="text-muted-foreground text-xs">-</span>}
+                          {keyword.has_featured_snippet === true && <span className="text-sm" title="Featured Snippet">🌟</span>}
+                          {keyword.has_paa === true && <span className="text-sm" title="People Also Ask">💬</span>}
+                          {(keyword.has_featured_snippet !== true && keyword.has_paa !== true) && (
+                            <span className="text-muted-foreground text-xs" title={keyword.serp_analyzed === false ? "SERP analysis not run" : "No featured snippet or PAA"}>-</span>
+                          )}
                         </div>
                       </td>
                       <td className="p-3">
