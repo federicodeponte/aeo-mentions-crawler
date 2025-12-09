@@ -35,6 +35,15 @@ interface ResearchSource {
   comments_count?: number
 }
 
+interface ContentBriefSource {
+  type: string
+  platform?: string
+  url?: string
+  title?: string
+  quote?: string
+  position?: number
+}
+
 interface ContentBrief {
   content_angle: string
   target_questions: string[]
@@ -42,6 +51,7 @@ interface ContentBrief {
   audience_pain_point: string
   recommended_word_count?: number
   fs_opportunity_type?: string
+  sources?: ContentBriefSource[]
 }
 
 interface SERPRanking {
@@ -1097,6 +1107,48 @@ export function KeywordGenerator() {
                                           <li key={i}>{q}</li>
                                         ))}
                                       </ul>
+                                    </div>
+                                  )}
+                                  {keyword.content_brief.sources && keyword.content_brief.sources.length > 0 && (
+                                    <div className="mt-3 pt-3 border-t border-border">
+                                      <strong className="text-xs text-muted-foreground">Sources:</strong>
+                                      <div className="mt-2 space-y-1.5">
+                                        {keyword.content_brief.sources.map((source, i) => (
+                                          <div key={i} className="text-xs flex items-start gap-2">
+                                            <span className="text-muted-foreground shrink-0">
+                                              {source.type === 'research' && '🔍'}
+                                              {source.type === 'serp' && '🔎'}
+                                              {source.type === 'paa' && '❓'}
+                                              {source.type === 'trends' && '📊'}
+                                            </span>
+                                            <div className="flex-1 min-w-0">
+                                              {source.platform && (
+                                                <span className="font-medium">{source.platform}</span>
+                                              )}
+                                              {source.title && (
+                                                <span className="text-muted-foreground">
+                                                  {source.platform ? ': ' : ''}{source.title}
+                                                </span>
+                                              )}
+                                              {source.url && (
+                                                <a 
+                                                  href={source.url} 
+                                                  target="_blank" 
+                                                  rel="noopener noreferrer" 
+                                                  className="text-primary hover:underline ml-1"
+                                                >
+                                                  →
+                                                </a>
+                                              )}
+                                              {source.position && (
+                                                <span className="text-muted-foreground ml-1">
+                                                  (Position {source.position})
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
                                     </div>
                                   )}
                                 </div>
