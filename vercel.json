@@ -1,11 +1,9 @@
-# Vercel Configuration for Python Serverless Functions
-
 {
   "functions": {
     "api/python/*.py": {
       "runtime": "python3.9",
       "maxDuration": 300,
-      "memory": 3008
+      "memory": 1024
     }
   },
   "env": {
