@@ -754,10 +754,13 @@ export function KeywordGenerator() {
                     </div>
                     <div className="w-full bg-muted rounded-full h-2 overflow-hidden shadow-inner">
                       <div
+                        key={`progress-${Math.floor(progress)}`}
                         className="bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-300 ease-linear"
                         style={{ 
-                          width: `${Math.max(0, Math.min(100, progress))}%`
+                          width: `${Math.max(0, Math.min(100, progress))}%`,
+                          willChange: 'width'
                         }}
+                        data-progress={progress.toFixed(1)}
                       />
                     </div>
                   </div>
