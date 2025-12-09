@@ -144,6 +144,7 @@ async def run_generation(input_data: dict) -> dict:
         min_score=40,
         # ENABLE FULL PIPELINE (uses DataForSEO or Gemini)
         enable_serp_analysis=True,   # Get SERP features, AEO opportunities
+        serp_sample_size=int(target_count),  # Analyze ALL keywords for AEO opportunity and features
         enable_volume_lookup=True,   # Get search volume + difficulty
         # Google Trends & Autocomplete (FREE add-ons, optional)
         enable_google_trends=enable_google_trends,
