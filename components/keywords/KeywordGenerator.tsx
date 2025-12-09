@@ -355,13 +355,6 @@ export function KeywordGenerator() {
     }
   }, [isGenerating])
   
-  // Debug: Log when progress state changes
-  useEffect(() => {
-    if (isGenerating && progress > 0) {
-      console.log('[PROGRESS STATE] React re-rendered with progress:', progress.toFixed(2) + '%')
-    }
-  }, [progress, isGenerating])
-  
   // Get company info from context
   const companyName = businessContext.companyName || ''
   const companyUrl = businessContext.companyWebsite || ''
@@ -467,7 +460,7 @@ export function KeywordGenerator() {
       
       // Linear progress calculation
       const INTERVAL_MS = 800
-      const PROGRESS_PER_INTERVAL = 0.25 // 0.25% per interval = visible movement
+      const PROGRESS_PER_INTERVAL = 0.5 // 0.5% per interval = more visible movement
       
       // Initialize first stage immediately
       if (stages.length > 0) {
@@ -477,37 +470,35 @@ export function KeywordGenerator() {
         }
       }
       
-      // Start progress interval - simplified and more reliable
-      let intervalCount = 0
+      // Start progress interval - SIMPLE AND WORKING
+      let tickCount = 0
       progressInterval = setInterval(() => {
-        intervalCount++
-        
-        setProgress((prevProgress) => {
-          const newProgress = Math.min(prevProgress + PROGRESS_PER_INTERVAL, 95)
+        tickCount++
+        setProgress((prev) => {
+          const next = Math.min(prev + PROGRESS_PER_INTERVAL, 95)
           
-          // Log every 10 intervals (~8 seconds) or every 2.5% progress
-          if (intervalCount % 10 === 0 || Math.floor(newProgress / 2.5) !== Math.floor(prevProgress / 2.5)) {
-            console.log('[PROGRESS]', newProgress.toFixed(2) + '%', '(interval:', intervalCount + ')')
+          // Log every 5 ticks (~4 seconds)
+          if (tickCount % 5 === 0) {
+            console.log('[PROGRESS]', next.toFixed(1) + '%')
           }
           
-          // Advance stages if threshold crossed
-          while (stageIndexRef.current < stages.length && newProgress >= stages[stageIndexRef.current].end) {
+          // Check if we need to advance stage
+          if (stageIndexRef.current < stages.length && next >= stages[stageIndexRef.current].end) {
             stageIndexRef.current++
             substageIndexRef.current = 0
-            console.log('[PROGRESS] ⏭️  Advanced to stage', stageIndexRef.current, '-', stages[stageIndexRef.current]?.label)
+            console.log('[PROGRESS] Stage', stageIndexRef.current, stages[stageIndexRef.current]?.label)
           }
           
-          return newProgress
+          return next
         })
         
-        // Update stage display (separate from progress to ensure it updates)
+        // Update stage display AFTER progress update
         if (stageIndexRef.current < stages.length) {
-          const currentStage = stages[stageIndexRef.current]
-          setCurrentStage(currentStage.label)
-          
-          if (currentStage.substages && currentStage.substages.length > 0) {
-            const substageIdx = substageIndexRef.current % currentStage.substages.length
-            setCurrentSubstage(currentStage.substages[substageIdx])
+          const stage = stages[stageIndexRef.current]
+          setCurrentStage(stage.label)
+          if (stage.substages && stage.substages.length > 0) {
+            const subIdx = substageIndexRef.current % stage.substages.length
+            setCurrentSubstage(stage.substages[subIdx])
             substageIndexRef.current++
           } else {
             setCurrentSubstage('')
@@ -518,7 +509,7 @@ export function KeywordGenerator() {
         }
       }, INTERVAL_MS)
       
-      console.log('[PROGRESS] ✅ Started interval:', progressInterval, '| Updates every', INTERVAL_MS, 'ms | Increment:', PROGRESS_PER_INTERVAL + '%')
+      console.log('[PROGRESS] Started - updating every', INTERVAL_MS, 'ms')
 
       // Make the API call while progress animates
       const response = await fetch('/api/generate-keywords', {
@@ -763,13 +754,10 @@ export function KeywordGenerator() {
                     </div>
                     <div className="w-full bg-muted rounded-full h-2 overflow-hidden shadow-inner">
                       <div
-                        className="bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-500"
+                        className="bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-300 ease-linear"
                         style={{ 
-                          width: `${progress}%`, 
-                          minWidth: progress > 0 ? '2px' : '0',
-                          willChange: 'width'
+                          width: `${Math.max(0, Math.min(100, progress))}%`
                         }}
-                        data-progress={progress.toFixed(2)}
                       />
                     </div>
                   </div>
