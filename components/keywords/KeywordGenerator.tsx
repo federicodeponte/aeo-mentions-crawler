@@ -355,6 +355,13 @@ export function KeywordGenerator() {
     }
   }, [isGenerating])
   
+  // Debug: Log when progress state changes
+  useEffect(() => {
+    if (isGenerating && progress > 0) {
+      console.log('[PROGRESS STATE] React re-rendered with progress:', progress.toFixed(2) + '%')
+    }
+  }, [progress, isGenerating])
+  
   // Get company info from context
   const companyName = businessContext.companyName || ''
   const companyUrl = businessContext.companyWebsite || ''
@@ -470,27 +477,30 @@ export function KeywordGenerator() {
         }
       }
       
-      // Start progress interval
+      // Start progress interval - simplified and more reliable
+      let intervalCount = 0
       progressInterval = setInterval(() => {
+        intervalCount++
+        
         setProgress((prevProgress) => {
           const newProgress = Math.min(prevProgress + PROGRESS_PER_INTERVAL, 95)
           
-          // Debug log every 10 intervals (~8 seconds)
-          if (Math.floor(newProgress) % 5 === 0 && Math.floor(prevProgress) !== Math.floor(newProgress)) {
-            console.log('[PROGRESS]', Math.floor(newProgress) + '%')
+          // Log every 10 intervals (~8 seconds) or every 2.5% progress
+          if (intervalCount % 10 === 0 || Math.floor(newProgress / 2.5) !== Math.floor(prevProgress / 2.5)) {
+            console.log('[PROGRESS]', newProgress.toFixed(2) + '%', '(interval:', intervalCount + ')')
           }
           
           // Advance stages if threshold crossed
           while (stageIndexRef.current < stages.length && newProgress >= stages[stageIndexRef.current].end) {
             stageIndexRef.current++
             substageIndexRef.current = 0
-            console.log('[PROGRESS] Advanced to stage', stageIndexRef.current, stages[stageIndexRef.current]?.label)
+            console.log('[PROGRESS] ⏭️  Advanced to stage', stageIndexRef.current, '-', stages[stageIndexRef.current]?.label)
           }
           
           return newProgress
         })
         
-        // Update stage display
+        // Update stage display (separate from progress to ensure it updates)
         if (stageIndexRef.current < stages.length) {
           const currentStage = stages[stageIndexRef.current]
           setCurrentStage(currentStage.label)
@@ -508,7 +518,7 @@ export function KeywordGenerator() {
         }
       }, INTERVAL_MS)
       
-      console.log('[PROGRESS] Started interval:', progressInterval, 'updating every', INTERVAL_MS, 'ms')
+      console.log('[PROGRESS] ✅ Started interval:', progressInterval, '| Updates every', INTERVAL_MS, 'ms | Increment:', PROGRESS_PER_INTERVAL + '%')
 
       // Make the API call while progress animates
       const response = await fetch('/api/generate-keywords', {
