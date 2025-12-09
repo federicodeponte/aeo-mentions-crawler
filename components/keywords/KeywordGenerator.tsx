@@ -475,10 +475,16 @@ export function KeywordGenerator() {
         setProgress((prevProgress) => {
           const newProgress = Math.min(prevProgress + PROGRESS_PER_INTERVAL, 95)
           
+          // Debug log every 10 intervals (~8 seconds)
+          if (Math.floor(newProgress) % 5 === 0 && Math.floor(prevProgress) !== Math.floor(newProgress)) {
+            console.log('[PROGRESS]', Math.floor(newProgress) + '%')
+          }
+          
           // Advance stages if threshold crossed
           while (stageIndexRef.current < stages.length && newProgress >= stages[stageIndexRef.current].end) {
             stageIndexRef.current++
             substageIndexRef.current = 0
+            console.log('[PROGRESS] Advanced to stage', stageIndexRef.current, stages[stageIndexRef.current]?.label)
           }
           
           return newProgress
@@ -502,7 +508,7 @@ export function KeywordGenerator() {
         }
       }, INTERVAL_MS)
       
-      console.log('[PROGRESS] Started interval:', progressInterval)
+      console.log('[PROGRESS] Started interval:', progressInterval, 'updating every', INTERVAL_MS, 'ms')
 
       // Make the API call while progress animates
       const response = await fetch('/api/generate-keywords', {
@@ -748,7 +754,7 @@ export function KeywordGenerator() {
                     <div className="w-full bg-muted rounded-full h-2 overflow-hidden shadow-inner">
                       <div
                         className="bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${progress}%` }}
+                        style={{ width: `${progress}%`, minWidth: progress > 0 ? '2px' : '0' }}
                       />
                     </div>
                   </div>
