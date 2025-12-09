@@ -470,38 +470,39 @@ export function KeywordGenerator() {
         }
       }
       
+      // Start progress interval
       progressInterval = setInterval(() => {
         setProgress((prevProgress) => {
           const newProgress = Math.min(prevProgress + PROGRESS_PER_INTERVAL, 95)
           
-          // Update stage based on new progress
+          // Advance stages if threshold crossed
           while (stageIndexRef.current < stages.length && newProgress >= stages[stageIndexRef.current].end) {
             stageIndexRef.current++
             substageIndexRef.current = 0
           }
           
-          // Update stage display based on current stage index
-          if (stageIndexRef.current < stages.length) {
-            const currentStage = stages[stageIndexRef.current]
-            setCurrentStage(currentStage.label)
-            
-            if (currentStage.substages && currentStage.substages.length > 0) {
-              const substageIdx = substageIndexRef.current % currentStage.substages.length
-              setCurrentSubstage(currentStage.substages[substageIdx])
-              substageIndexRef.current++
-            } else {
-              setCurrentSubstage('')
-            }
-          } else {
-            setCurrentStage('7/7: Finalizing results')
-            setCurrentSubstage('Preparing output')
-          }
-          
           return newProgress
         })
+        
+        // Update stage display
+        if (stageIndexRef.current < stages.length) {
+          const currentStage = stages[stageIndexRef.current]
+          setCurrentStage(currentStage.label)
+          
+          if (currentStage.substages && currentStage.substages.length > 0) {
+            const substageIdx = substageIndexRef.current % currentStage.substages.length
+            setCurrentSubstage(currentStage.substages[substageIdx])
+            substageIndexRef.current++
+          } else {
+            setCurrentSubstage('')
+          }
+        } else {
+          setCurrentStage('7/7: Finalizing results')
+          setCurrentSubstage('Preparing output')
+        }
       }, INTERVAL_MS)
       
-      console.log('[PROGRESS] Interval started, updating every', INTERVAL_MS, 'ms')
+      console.log('[PROGRESS] Started interval:', progressInterval)
 
       // Make the API call while progress animates
       const response = await fetch('/api/generate-keywords', {
