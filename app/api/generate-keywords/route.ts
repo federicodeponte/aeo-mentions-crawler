@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { spawn } from 'child_process'
 import path from 'path'
 
-export const maxDuration = 300 // 5 minutes for generation
+export const maxDuration = 1800 // 30 minutes for generation (Render supports longer timeouts)
 
 interface KeywordRequest {
   company_name: string
@@ -37,9 +37,12 @@ export async function POST(request: NextRequest): Promise<Response> {
       )
     }
 
-    if (!apiKey) {
+    // Use client API key or fallback to server environment variable
+    const finalApiKey = apiKey || process.env.GEMINI_API_KEY
+    
+    if (!finalApiKey) {
       return NextResponse.json(
-        { error: 'Gemini API key is required. Please set it in Settings.' },
+        { error: 'Gemini API key is required. Please set it in Settings or configure GEMINI_API_KEY environment variable.' },
         { status: 400 }
       )
     }
@@ -114,7 +117,9 @@ export async function POST(request: NextRequest): Promise<Response> {
         }
       })
 
-      pythonProcess.stdin.write(JSON.stringify(body))
+      // Pass the final API key to Python script
+      const bodyWithFinalApiKey = { ...body, apiKey: finalApiKey }
+      pythonProcess.stdin.write(JSON.stringify(bodyWithFinalApiKey))
       pythonProcess.stdin.end()
     })
     } else {

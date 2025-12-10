@@ -11,7 +11,7 @@ import path from 'path'
  * Checks visibility across: Perplexity, ChatGPT, Claude, Gemini
  */
 
-export const maxDuration = 300 // 5 minutes for mentions check
+export const maxDuration = 1800 // 30 minutes for mentions check (Render supports longer timeouts)
 
 interface CompanyInfo {
   name?: string
@@ -71,6 +71,8 @@ export async function POST(request: NextRequest): Promise<Response> {
 
     // Use provided API key or fallback to server environment variable
     const finalApiKey = api_key || process.env.OPENROUTER_API_KEY
+    const finalGeminiApiKey = gemini_api_key || process.env.GEMINI_API_KEY
+    
     if (!finalApiKey) {
       return NextResponse.json(
         { error: 'API key configuration error' },
@@ -150,7 +152,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         company_analysis,
         company_website,
         api_key: finalApiKey,
-        gemini_api_key,
+        gemini_api_key: finalGeminiApiKey,
         language,
         country,
         num_queries,

@@ -1,27 +1,28 @@
 services:
   - type: web
-    name: bulk-run
+    name: hyperniche-ai
     runtime: node
     buildCommand: npm install && npm run build
     startCommand: npm start
+    plan: standard # For longer timeout support
     envVars:
       - key: NODE_ENV
         value: production
-      - key: MODAL_API_URL
-        value: https://tech-bulkgpt--bulk-gpt-processor-v4-fastapi-app.modal.run
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
       - key: NEXT_PUBLIC_SUPABASE_URL
         sync: false
       - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
-      - key: NEXT_PUBLIC_GEMINI_API_KEY
+      - key: GEMINI_API_KEY
         sync: false
-      - key: MODAL_TOKEN_ID
+      - key: OPENROUTER_API_KEY
         sync: false
-      - key: MODAL_TOKEN_SECRET
+      - key: SERANKING_API_KEY
         sync: false
-
-
-
-
+      - key: DATAFORSEO_LOGIN
+        sync: false
+      - key: DATAFORSEO_PASSWORD
+        sync: false
