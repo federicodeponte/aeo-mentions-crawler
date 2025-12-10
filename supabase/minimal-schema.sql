@@ -101,7 +101,7 @@ CREATE TRIGGER update_batch_results_updated_at
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
 -- Create test user (development only)
--- Same credentials as before: test@👟 / Test123456!
+-- Same credentials as before: test@hyperniche.ai / Test123456!
 INSERT INTO auth.users (
   id,
   instance_id,
@@ -121,7 +121,7 @@ INSERT INTO auth.users (
 ) VALUES (
   '82f459be-bd4c-4bce-8a42-52f8006f2291',
   '00000000-0000-0000-0000-000000000000',
-  'test@👟',
+  'test@hyperniche.ai',
   crypt('Test123456!', gen_salt('bf')),
   NOW(),
   NOW(),
@@ -138,4 +138,4 @@ INSERT INTO auth.users (
 
 -- Success
 SELECT 'Minimal schema created successfully!' as status;
-SELECT 'Test user: test@👟 / Test123456!' as credentials;
+SELECT 'Test user: test@hyperniche.ai / Test123456!' as credentials;

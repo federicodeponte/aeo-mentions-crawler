@@ -1,6 +1,6 @@
-# 👟 API Integration Guide
+# hyperniche.ai API Integration Guide
 
-Complete guide for integrating with the 👟 processing API using curl, TypeScript, or external tools (n8n, Zapier, etc.).
+Complete guide for integrating with the hyperniche.ai processing API using curl, TypeScript, or external tools (n8n, Zapier, etc.).
 
 ## Table of Contents
 
@@ -333,7 +333,7 @@ export BASE_URL="https://bulk-gpt-app.vercel.app"
       "credentials": {
         "httpHeaderAuth": {
           "id": "1",
-          "name": "👟 API Key"
+          "name": "hyperniche.ai API Key"
         }
       }
     },

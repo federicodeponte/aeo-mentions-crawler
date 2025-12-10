@@ -82,7 +82,7 @@ export function ApiKeyList() {
         <EmptyState
           icon={Key}
           title="No API keys yet"
-          description="Create an API key to access the 👟 API programmatically"
+          description="Create an API key to access the hyperniche.ai API programmatically"
           action={{
             label: 'Create Your First Key',
             onClick: () => setShowCreateModal(true),

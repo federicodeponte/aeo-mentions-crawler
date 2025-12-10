@@ -74,7 +74,7 @@ const isAllowedFallbackOrigin = (
     if (vercelHost && host === vercelHost) return true
     if (allowedHosts.has(host)) return true
     // Allow production domain
-    if (host === '👟' || host === 'www.👟') return true
+    if (host === 'hyperniche.ai' || host === 'www.hyperniche.ai') return true
     if (host.endsWith('.vercel.app')) return true
     if (host.endsWith('.onrender.com')) return true
     if (isLocalHost(host)) return true
@@ -144,11 +144,11 @@ export function getSiteUrl(options: GetSiteUrlOptions = {}): string {
     }
   }
 
-  // Check if requestOrigin is 👟 (production domain)
+  // Check if requestOrigin is hyperniche.ai (production domain)
   if (requestOrigin) {
     try {
       const requestHost = new URL(requestOrigin).host
-      if (requestHost === '👟' || requestHost === 'www.👟') {
+      if (requestHost === 'hyperniche.ai' || requestHost === 'www.hyperniche.ai') {
         return requestOrigin
       }
     } catch {

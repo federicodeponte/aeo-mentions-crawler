@@ -742,7 +742,7 @@ export default function BulkProcessor() {
   // === DYNAMIC PAGE TITLE DURING PROCESSING ===
   // UX issue #28: Show progress in browser tab title
   useEffect(() => {
-    const originalTitle = '👟'
+    const originalTitle = 'hyperniche.ai'
     
     if (batchProcessor.isProcessing) {
       const completed = displayResults.filter(r => r.status === 'completed').length
@@ -766,7 +766,7 @@ export default function BulkProcessor() {
   // Restore title only on component unmount
   useEffect(() => {
     return () => {
-      document.title = '👟'
+      document.title = 'hyperniche.ai'
     }
   }, [])
 
