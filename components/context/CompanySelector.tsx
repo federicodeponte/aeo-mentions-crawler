@@ -80,7 +80,7 @@ export function CompanySelector({ className = '' }: CompanySelectorProps) {
   }
 
   const switchCompany = (companyId: string) => {
-    if (!companyId) return
+    if (!companyId || companyId === 'none') return
     
     const company = savedCompanies.find(c => c.id === companyId)
     if (!company) return
@@ -109,25 +109,26 @@ export function CompanySelector({ className = '' }: CompanySelectorProps) {
       </div>
 
       <div className="flex gap-2">
-        <Select value={selectedCompanyId} onValueChange={switchCompany}>
+        <Select value={selectedCompanyId || 'none'} onValueChange={switchCompany}>
           <SelectTrigger className="flex-1">
             <SelectValue placeholder={currentCompanyName} />
           </SelectTrigger>
           <SelectContent>
-            {savedCompanies.map(company => (
-              <SelectItem key={company.id} value={company.id}>
-                <div className="flex items-center justify-between w-full">
-                  <span>{company.name}</span>
-                  <span className="text-xs text-muted-foreground ml-2">
-                    {company.context.companyWebsite || 'No website'}
-                  </span>
-                </div>
-              </SelectItem>
-            ))}
-            {savedCompanies.length === 0 && (
-              <SelectItem value="" disabled>
+            {savedCompanies.length === 0 ? (
+              <SelectItem value="none" disabled>
                 No saved companies
               </SelectItem>
+            ) : (
+              savedCompanies.map(company => (
+                <SelectItem key={company.id} value={company.id}>
+                  <div className="flex items-center justify-between w-full">
+                    <span>{company.name}</span>
+                    <span className="text-xs text-muted-foreground ml-2">
+                      {company.context.companyWebsite || 'No website'}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))
             )}
           </SelectContent>
         </Select>
