@@ -141,8 +141,8 @@ export default function AnalyticsPage() {
     // Save analytics state to sessionStorage for persistence
     const analyticsState = {
       startTime: Date.now(),
-      url,
-      companyName,
+      url: finalUrl,
+      companyName: finalCompanyName,
     }
     sessionStorage.setItem(ANALYTICS_STATE_KEY, JSON.stringify(analyticsState))
     
@@ -160,19 +160,18 @@ export default function AnalyticsPage() {
       setMentionsProgress('running')
 
       console.log('[ANALYTICS] Starting analytics checks...')
-      console.log('[ANALYTICS] URL:', url)
-      console.log('[ANALYTICS] Company:', companyName)
-      console.log('[ANALYTICS] Has API key:', !!apiKey)
+      console.log('[ANALYTICS] URL:', finalUrl)
+      console.log('[ANALYTICS] Company:', finalCompanyName)
       console.log('[ANALYTICS] Has products:', businessContext?.products?.length || 0)
 
       // Build full company_analysis object from businessContext (before Promise.allSettled)
       // businessContext.competitors is a string (comma-separated), need to parse it
       const competitorsList = businessContext?.competitors ? businessContext.competitors.split(',').map((c: string) => c.trim()).filter(Boolean).map((c: string) => ({ name: c })) : []
 
-      const companyAnalysis = businessContext ? {
+      const companyAnalysis = {
           companyInfo: {
-            name: companyName,
-            website: url,
+            name: finalCompanyName,
+            website: finalUrl,
             description: businessContext.valueProposition || businessContext.productDescription || '',
             industry: businessContext.targetIndustries || businessContext.icp || '',
             products: businessContext.products || [],
@@ -198,7 +197,7 @@ export default function AnalyticsPage() {
         fetch('/api/aeo/health-check', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url }),
+          body: JSON.stringify({ url: finalUrl }),
         }).then(async (res) => {
           console.log('[HEALTH] Response status:', res.status)
           const data = await res.json()
@@ -220,10 +219,8 @@ export default function AnalyticsPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            company_name: companyName,
-            company_website: url,
-            api_key: apiKey,
-            gemini_api_key: localStorage.getItem('gemini-api-key') || undefined,
+            company_name: finalCompanyName,
+            company_website: finalUrl,
             company_analysis: companyAnalysis,
             language: 'english',
             country: businessContext?.countries?.[0] || 'US',
@@ -281,8 +278,8 @@ export default function AnalyticsPage() {
           id: `analytics-${Date.now()}`,
           type: 'analytics',
           timestamp,
-          company: companyName,
-          url,
+          company: finalCompanyName,
+          url: finalUrl,
           healthResult: healthResponse.status === 'fulfilled' ? healthResponse.value : null,
           mentionsResult: mentionsResponse.status === 'fulfilled' ? mentionsResponse.value : null,
         }
@@ -305,9 +302,8 @@ export default function AnalyticsPage() {
   }
 
   const hasContextData = Boolean(businessContext?.companyWebsite && businessContext?.companyName)
-  const hasApiKey = Boolean(apiKey)
   const hasProducts = Boolean(businessContext?.products && businessContext.products.length > 0)
-  const canRun = hasContextData // Button enabled only if we have context data
+  const canRun = hasContextData || companyName || url // Button enabled if we have any company data
 
   return (
     <div className="h-full flex">
