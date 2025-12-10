@@ -475,9 +475,9 @@ def should_add_geographic_modifier(country: str) -> bool:
     """Smart detection if geographic modifier is needed."""
     if not country:
         return False
-    # Skip US and very common countries to avoid cluttered queries
-    skip_countries = ['US', 'USA', 'United States', 'Global', 'International']
-    return country not in skip_countries
+    # ALWAYS include geographic targeting - it's valuable for niche companies
+    # Convert country codes to full names for better query performance
+    return True
 
 def clean_query_term(term: str) -> str:
     """Clean query terms by removing parentheticals and limiting length."""
@@ -604,12 +604,19 @@ def generate_queries(
     num_queries: int,
     mode: str,
 ) -> List[Dict[str, str]]:
-    """Generate hyper-niche targeted queries across multiple dimensions."""
+    """Generate hyper-niche targeted queries across multiple dimensions.
+    
+    For fast mode, prioritizes high-value query types:
+    1. Branded queries (2)
+    2. Top competitive queries (2-3) 
+    3. Geographic + role targeted product queries (3-4)
+    4. Industry-specific queries (2-3)
+    """
     queries = []
     
-    # Always include branded queries
+    # Always include branded queries (highest priority)
     queries.append({"query": company_name, "dimension": "Branded"})
-    queries.append({"query": f"{company_name} software", "dimension": "Branded"})
+    queries.append({"query": f"{company_name} review", "dimension": "Branded-Review"})
     
     # Extract info from company analysis
     info = {}
@@ -635,63 +642,97 @@ def generate_queries(
     company_size = extract_company_size_from_icp(icp_text)
     roles = extract_roles_from_icp(icp_text)
     use_geo = should_add_geographic_modifier(country)
-    geo_suffix = country if use_geo else ""
+    # Convert country codes to readable names for better targeting
+    geo_suffix = "United States" if country in ["US", "USA"] else country if use_geo else ""
     
-    # Product-specific queries (prioritized - most valuable)
-    products_clean = [clean_query_term(p) for p in products[:3] if clean_query_term(p)]
-    for product in products_clean:
-        if product:
-            # Base product queries
-            queries.append({"query": product, "dimension": "Product"})
-            queries.append({"query": f"best {product}", "dimension": "Product"})
-            
-            # Hyper-niche product queries
-            if geo_suffix:
-                queries.append({"query": f"best {product} {geo_suffix}", "dimension": "Product-Geo"})
-            if industry:
-                queries.append({"query": f"best {product} for {industry}", "dimension": "Product-Industry"})
-            if company_size:
-                queries.append({"query": f"best {product} for {company_size}", "dimension": "Product-CompanySize"})
-            for role in roles:
-                queries.append({"query": f"best {product} for {role}", "dimension": "Product-Role"})
-    
-    # Service-specific queries
-    services_clean = [clean_query_term(s) for s in services[:3] if clean_query_term(s)]
-    for service in services_clean:
-        if service:
-            queries.append({"query": f"{service} software", "dimension": "Service-Specific"})
-            queries.append({"query": f"best {service} tools", "dimension": "Service-Specific"})
-    
-    # Industry/vertical queries
-    if industry:
-        queries.append({"query": f"best {industry} tools", "dimension": "Industry/Vertical"})
-        queries.append({"query": f"{industry} solutions", "dimension": "Industry/Vertical"})
-    
-    # Problem-solution queries (from pain points)
-    for pain_point in pain_points[:3]:
-        key_phrase = extract_key_phrase_from_sentence(pain_point)
-        if key_phrase and len(key_phrase) >= 3:
-            queries.append({"query": f"best tools for {key_phrase}", "dimension": "Problem-Solution"})
-    
-    # Competitive queries
-    queries.append({"query": f"{company_name} vs alternatives", "dimension": "Competitive"})
-    
-    # Add specific competitor comparisons (high-value)
+    # PRIORITY 2: Competitive analysis (diverse phrasings)
     if competitors:
-        main_competitor = competitors[0].get('name', '') if competitors else ''
+        main_competitor = competitors[0].get('name', '') if isinstance(competitors[0], dict) else str(competitors[0]) 
         if main_competitor:
             comp_clean = clean_query_term(main_competitor)
             if comp_clean:
                 queries.append({"query": f"{company_name} vs {comp_clean}", "dimension": "Competitive-Specific"})
+                queries.append({"query": f"why choose {comp_clean} over competitors", "dimension": "Competitive-Intent"})
     
-    # Broad category queries
-    if product_category:
-        queries.append({"query": f"best {product_category}", "dimension": "Broad Category"})
+    # PRIORITY 3: Problem-solution targeting (diverse angles)
+    if industry:
+        # Different query structures for variety
+        queries.append({"query": f"how to improve {industry} performance", "dimension": "Problem-Solution"})
+        if geo_suffix:
+            queries.append({"query": f"{industry} companies {geo_suffix}", "dimension": "Industry-Geo"})
     
-    # Use current year for relevance
+    # PRIORITY 4: Use case and workflow queries
+    if roles:
+        main_role = roles[0] if roles else "marketing managers"
+        queries.append({"query": f"tools for {main_role} workflow", "dimension": "Workflow-Specific"})
+    
+    # PRIORITY 5: Product category with intent diversity
+    products_clean = [clean_query_term(p) for p in products[:1] if clean_query_term(p)]
+    for product in products_clean:
+        if product:
+            # Diverse query phrasings
+            queries.append({"query": f"how to choose {product}", "dimension": "Buying-Intent"})
+            if geo_suffix:
+                queries.append({"query": f"top {product} providers {geo_suffix}", "dimension": "Provider-Geo"})
+    
+    # PRIORITY 6: Educational and learning intent (unique angles)
+    if industry and products_clean:
+        product = products_clean[0]
+        # Tutorial and educational queries
+        queries.append({"query": f"{product} tutorial for beginners", "dimension": "Educational"})
+        
+    # PRIORITY 7: Current year trends and updates
     from datetime import datetime
     current_year = datetime.now().year
-    queries.append({"query": f"best software tools {current_year}", "dimension": "Broad Category"})
+    if industry:
+        queries.append({"query": f"{industry} trends {current_year}", "dimension": "Trends"})
+    
+    # FULL MODE ONLY: Additional product, service, and problem queries
+    if mode != "fast":
+        # Additional product queries for full mode
+        products_clean_full = [clean_query_term(p) for p in products[1:3] if clean_query_term(p)]
+        for product in products_clean_full:
+            if product:
+                queries.append({"query": product, "dimension": "Product"})
+                queries.append({"query": f"best {product}", "dimension": "Product"})
+                if industry:
+                    queries.append({"query": f"best {product} for {industry}", "dimension": "Product-Industry"})
+                if company_size:
+                    queries.append({"query": f"best {product} for {company_size}", "dimension": "Product-CompanySize"})
+        
+        # Service-specific queries
+        services_clean = [clean_query_term(s) for s in services[:3] if clean_query_term(s)]
+        for service in services_clean:
+            if service:
+                queries.append({"query": f"{service} software", "dimension": "Service-Specific"})
+                queries.append({"query": f"best {service} tools", "dimension": "Service-Specific"})
+        
+        # Problem-solution queries (from pain points)
+        for pain_point in pain_points[:3]:
+            key_phrase = extract_key_phrase_from_sentence(pain_point)
+            if key_phrase and len(key_phrase) >= 3:
+                queries.append({"query": f"best tools for {key_phrase}", "dimension": "Problem-Solution"})
+        
+        # Additional competitive queries for full mode
+        queries.append({"query": f"best alternatives to {company_name}", "dimension": "Competitive"})
+        if competitors:
+            for i, competitor in enumerate(competitors[1:3]):  # Skip first, already used
+                comp_name = competitor.get('name', '') if isinstance(competitor, dict) else str(competitor)
+                if comp_name:
+                    comp_clean = clean_query_term(comp_name)
+                    if comp_clean:
+                        queries.append({"query": f"{company_name} vs {comp_clean}", "dimension": "Competitive-Specific"})
+                        queries.append({"query": f"{comp_clean} vs {company_name}", "dimension": "Competitive-Specific"})
+    
+    # FULL MODE ONLY: Broad category queries
+    if mode != "fast":
+        if product_category:
+            queries.append({"query": f"best {product_category}", "dimension": "Broad Category"})
+        
+        # Use current year for relevance
+        from datetime import datetime
+        current_year = datetime.now().year
+        queries.append({"query": f"best software tools {current_year}", "dimension": "Broad Category"})
     
     # Remove duplicates while preserving order
     seen = set()

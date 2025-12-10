@@ -1,118 +1,90 @@
 #!/usr/bin/env python3
-"""
-Test with detailed logging to see WHERE the slowness is
-"""
-import os
-import sys
-import json
-import subprocess
-import time
-from datetime import datetime
-
-os.environ['GEMINI_API_KEY'] = '[REMOVED_API_KEY]'
+"""Test blog generation with full logging visibility"""
+import json, subprocess, os, sys, time, threading
 
 test_config = {
-    "primary_keyword": "AEO tips",
-    "company_url": "https://scaile.tech",
-    "company_name": "SCAILE",
+    "primary_keyword": "AEO",
+    "company_name": "Test",
+    "company_url": "https://test.com",
+    "word_count": 400,
+    "tone": "informative",
     "language": "en",
-    "country": "US",
-    "word_count": 500,
-    "tone": "professional",
+    "country": "US"
 }
 
-print("=" * 70)
-print("🔍 DIAGNOSTIC TEST - Track Where Time is Spent")
-print("=" * 70)
-print(f"\n⏱️  Start: {datetime.now().strftime('%H:%M:%S')}\n")
+print("=" * 80)
+print("🚀 BLOG GENERATION WITH FULL LOGGING")
+print("=" * 80)
+print(f"\n📝 Config: {test_config['primary_keyword']} ({test_config['word_count']} words)\n")
 
-env = os.environ.copy()
-if 'GEMINI_MODEL' in env:
-    del env['GEMINI_MODEL']
-
-# Start process with live output
-process = subprocess.Popen(
-    ['python3', '-u', 'scripts/generate-blog.py'],
+proc = subprocess.Popen(
+    ["python3", "-u", "scripts/generate-blog.py"],
     stdin=subprocess.PIPE,
     stdout=subprocess.PIPE,
     stderr=subprocess.PIPE,
     text=True,
-    env=env
+    bufsize=1,
+    env={**os.environ, "GEMINI_API_KEY": "[REMOVED_API_KEY]"}
 )
 
-# Send input
-process.stdin.write(json.dumps(test_config))
-process.stdin.close()
+# Send input and close
+proc.stdin.write(json.dumps(test_config) + '\n')
+proc.stdin.close()
 
-# Monitor live
-start = time.time()
-last_check = start
+# Monitor both stderr and stdout
+stderr_lines = []
+stdout_lines = []
 
-print("📊 Monitoring (will show progress every 30s):\n")
+def read_stderr():
+    for line in proc.stderr:
+        stderr_lines.append(line.rstrip())
+        print(f"[LOG] {line.rstrip()}")
+        sys.stdout.flush()
 
-while process.poll() is None:
-    current = time.time()
-    elapsed = current - start
-    
-    if current - last_check >= 30:
-        print(f"[{int(elapsed)}s] Still running... ({elapsed/60:.1f} min)")
-        last_check = current
-    
-    time.sleep(5)
-    
-    # Stop after 2 minutes for diagnosis
-    if elapsed > 120:
-        print(f"\n⏹️  Stopping after {elapsed:.0f}s for diagnosis")
-        process.terminate()
-        time.sleep(2)
-        if process.poll() is None:
-            process.kill()
+def read_stdout():
+    for line in proc.stdout:
+        stdout_lines.append(line.rstrip())
+
+# Start reader threads
+stderr_thread = threading.Thread(target=read_stderr, daemon=True)
+stdout_thread = threading.Thread(target=read_stdout, daemon=True)
+stderr_thread.start()
+stdout_thread.start()
+
+# Wait with timeout
+start_time = time.time()
+timeout = 300  # 5 minutes
+
+while proc.poll() is None:
+    elapsed = time.time() - start_time
+    if elapsed > timeout:
+        print(f"\n⏰ Timeout after {timeout}s!")
+        proc.terminate()
         break
+    time.sleep(1)
 
-elapsed = time.time() - start
+# Give threads time to finish
+stderr_thread.join(timeout=2)
+stdout_thread.join(timeout=2)
 
-print(f"\n⏱️  Total: {elapsed:.1f}s")
-print("\n" + "=" * 70)
-print("📋 STDERR OUTPUT (last 2000 chars):")
-print("=" * 70)
+elapsed = time.time() - start_time
+print(f"\n" + "=" * 80)
+print(f"⏱️  Total time: {elapsed:.1f}s")
+print(f"✅ Exit code: {proc.returncode}")
+print("=" * 80)
 
-stderr = process.stderr.read()
-if stderr:
-    print(stderr[-2000:])
+# Parse stdout
+if stdout_lines:
+    stdout_text = '\n'.join(stdout_lines)
+    try:
+        result = json.loads(stdout_text)
+        print(f"\n📊 RESULT:")
+        print(f"   Success: {result.get('success')}")
+        print(f"   Headline: {result.get('headline', 'N/A')}")
+        print(f"   HTML Length: {len(result.get('html_content', '')):,} chars")
+        print(f"   Word Count: {result.get('word_count', 0):,}")
+    except:
+        print(f"\n⚠️  Could not parse stdout as JSON")
+        print(f"First 500 chars: {stdout_text[:500]}")
 else:
-    print("(no stderr)")
-
-print("\n" + "=" * 70)
-print("📋 STDOUT OUTPUT (first 500 chars):")
-print("=" * 70)
-
-stdout = process.stdout.read()
-if stdout:
-    print(stdout[:500])
-    if len(stdout) > 500:
-        print(f"\n... and {len(stdout) - 500} more characters")
-else:
-    print("(no stdout)")
-
-print("\n" + "=" * 70)
-print("🔍 DIAGNOSIS")
-print("=" * 70)
-
-if elapsed > 120:
-    print("\n❌ Process took >2 minutes - investigating cause")
-    print("\nPossible issues:")
-    print("  1. Gemini API call hanging")
-    print("  2. Pipeline stage stuck")
-    print("  3. Network timeout")
-    print("  4. Rate limiting")
-    
-    if "timeout" in stderr.lower() or "timeout" in stdout.lower():
-        print("\n⚠️  FOUND: Timeout in logs")
-    if "rate" in stderr.lower() or "limit" in stderr.lower():
-        print("\n⚠️  FOUND: Rate limiting")
-    if "error" in stderr.lower():
-        print("\n⚠️  FOUND: Error in stderr")
-else:
-    print(f"\n✅ Completed in {elapsed:.1f}s - normal speed!")
-
-print("\n" + "=" * 70)
+    print("\n⚠️  No stdout output")

@@ -39,7 +39,7 @@ interface MentionsCheckRequest {
   company_name: string
   company_analysis?: CompanyAnalysis
   company_website?: string
-  api_key: string
+  api_key?: string // Optional now - server can provide fallback
   gemini_api_key?: string
   language?: string
   country?: string
@@ -69,10 +69,12 @@ export async function POST(request: NextRequest): Promise<Response> {
       )
     }
 
-    if (!api_key) {
+    // Use provided API key or fallback to server environment variable
+    const finalApiKey = api_key || process.env.OPENROUTER_API_KEY
+    if (!finalApiKey) {
       return NextResponse.json(
-        { error: 'OpenRouter API key is required' },
-        { status: 400 }
+        { error: 'API key configuration error' },
+        { status: 500 }
       )
     }
 
@@ -147,7 +149,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         company_name,
         company_analysis,
         company_website,
-        api_key,
+        api_key: finalApiKey,
         gemini_api_key,
         language,
         country,
