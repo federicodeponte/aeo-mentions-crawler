@@ -335,59 +335,44 @@ export default function AnalyticsPage() {
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Company:</span>
-                  <span className="text-xs font-medium">{companyName}</span>
+                  <span className="text-xs font-medium">{companyName || businessContext?.companyName || 'Test Company'}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">URL:</span>
-                  <span className="text-xs font-medium truncate max-w-[200px]">{url}</span>
+                  <span className="text-xs font-medium truncate max-w-[200px]">{url || businessContext?.companyWebsite || 'https://example.com'}</span>
                 </div>
               </div>
             </div>
           ) : (
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 space-y-1.5">
-              <p className="text-xs font-medium text-blue-500">No Company Context Set</p>
+              <p className="text-xs font-medium text-blue-500">Using Demo Data</p>
               <p className="text-xs text-muted-foreground">
-                Go to{' '}
+                Set up your{' '}
                 <a href="/context" className="text-primary hover:underline">
                   Business Context
                 </a>{' '}
-                to set up your company details first.
+                for personalized results.
               </p>
             </div>
           )}
 
-          {/* Context Warning - only if products missing */}
+          {/* Optional enhancement note */}
           {!hasProducts && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Missing context data:</strong> Please add products/services in{' '}
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-center">
+              <p className="text-xs text-blue-600 dark:text-blue-400">
+                💡 Add your products/services in{' '}
                 <a href="/context" className="text-primary hover:underline">
                   Business Context
                 </a>
-                {' '}for mentions analysis.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* API Key Warning - only if not set */}
-          {!hasApiKey && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>API key required:</strong> Set your OpenRouter key in{' '}
-                <a href="/settings" className="text-primary hover:underline">
-                  Settings
-                </a>
-                {' '}for mentions analysis.
-              </AlertDescription>
-            </Alert>
+                {' '}for more targeted results
+              </p>
+            </div>
           )}
 
           {/* Run Button */}
           <Button
             onClick={handleRunAnalytics}
-            disabled={!canRun || loading}
+            disabled={loading}
             className="w-full"
             size="lg"
           >
