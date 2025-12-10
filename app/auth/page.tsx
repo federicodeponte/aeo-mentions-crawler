@@ -51,7 +51,7 @@ function AuthPageContent() {
       <div className="flex min-h-screen items-center justify-center p-4 bg-background">
         <div className="w-full max-w-md bg-card border border-border rounded-lg p-6 text-center">
           <div className="mx-auto mb-4 flex justify-center">
-            <span className="text-4xl animate-bounce">👟</span>
+            <span className="text-4xl animate-bounce">🌟</span>
           </div>
           <p className="text-sm text-muted-foreground">Getting ready...</p>
         </div>

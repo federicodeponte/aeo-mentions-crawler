@@ -28,7 +28,6 @@ export default function AnalyticsPage() {
   const { businessContext } = useContextStorage()
   const [url, setUrl] = useState('')
   const [companyName, setCompanyName] = useState('')
-  const [apiKey, setApiKey] = useState<string | null>(null)
   
   const [loading, setLoading] = useState(false)
   const [healthProgress, setHealthProgress] = useState<'idle' | 'running' | 'done'>('idle')
@@ -99,12 +98,6 @@ export default function AnalyticsPage() {
     if (businessContext?.companyName && !companyName) {
       setCompanyName(businessContext.companyName)
     }
-    
-    // Load OpenRouter API key from settings
-    if (typeof window !== 'undefined') {
-      const storedKey = localStorage.getItem('openrouter-api-key')
-      setApiKey(storedKey)
-    }
   }, [businessContext, url, companyName])
 
   // Rotating messages effect
@@ -126,20 +119,12 @@ export default function AnalyticsPage() {
   }, [loading])
 
   const handleRunAnalytics = async () => {
-    if (!url || !companyName) {
-      toast.error('Please enter company name and URL')
-      return
-    }
-
-    if (!apiKey) {
-      toast.error('Please set your OpenRouter API key in Settings first')
-      return
-    }
-
-    if (!businessContext?.products || businessContext.products.length === 0) {
-      toast.error('Please add products/services in Business Context first')
-      return
-    }
+    // Auto-generate fallbacks if missing
+    const finalCompanyName = companyName || businessContext?.companyName || 'Test Company'
+    const finalUrl = url || businessContext?.companyWebsite || 'https://example.com'
+    
+    console.log('[ANALYTICS] Using company:', finalCompanyName)
+    console.log('[ANALYTICS] Using URL:', finalUrl)
 
     setLoading(true)
     setError(null)
