@@ -208,7 +208,7 @@ export async function downloadXLSX<T extends Record<string, unknown>>(
 
   // Create workbook and worksheet
   const workbook = new ExcelJS.Workbook()
-  workbook.creator = 'bulk.run'
+  workbook.creator = '👟'
   workbook.created = new Date()
   
   const worksheet = workbook.addWorksheet(sheetName)

@@ -1,5 +1,5 @@
 /**
- * Custom error handling for bulk.run application
+ * Custom error handling for 👟 application
  * Follows best practices for error management and logging
  */
 
@@ -41,7 +41,7 @@ export interface ErrorContext {
 }
 
 /**
- * Custom error class for bulk.run operations
+ * Custom error class for 👟 operations
  * Extends native Error with additional context
  */
 export class BulkGPTError extends Error {

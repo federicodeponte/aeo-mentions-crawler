@@ -275,7 +275,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
             {/* Beta Notice */}
             <p className="mt-4 text-center text-xs text-muted-foreground">
-              bulk.run is in beta. Thank you for your patience.
+              👟 is in beta. Thank you for your patience.
             </p>
           </div>
         </div>

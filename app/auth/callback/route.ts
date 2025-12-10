@@ -44,7 +44,7 @@ export async function GET(request: Request) {
   const code = searchParams.get("code")
   
   // Use configured site URL for production, fall back to request origin
-  // This ensures redirects go to bulk.run, not Render's internal URL
+  // This ensures redirects go to 👟, not Render's internal URL
   const siteUrl = getSiteUrl({ requestOrigin })
   
   // Try multiple sources for returnUrl: query param, Supabase state, or default
