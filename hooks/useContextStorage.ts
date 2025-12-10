@@ -61,6 +61,26 @@ export function useContextStorage() {
       const stored = localStorage.getItem(STORAGE_KEY)
         if (stored) {
         setBusinessContext(JSON.parse(stored))
+      } else {
+        // Set default SCAILE context for test mode
+        const defaultContext: BusinessContext = {
+          companyName: 'SCAILE',
+          companyWebsite: 'https://scaile.tech',
+          icp: 'AI startups and tech companies looking to improve their visibility in AI search engines like ChatGPT, Perplexity, Claude, and Gemini',
+          valueProposition: 'We help AI startups dominate AI search engines through Answer Engine Optimization (AEO). Our platform ensures your company appears when prospects search in ChatGPT, Perplexity, Claude, and Gemini.',
+          productDescription: 'SCAILE provides Answer Engine Optimization (AEO) services to help tech companies increase their visibility in AI-powered search engines. We offer strategic keyword research, content optimization, and analytics specifically designed for AI platforms.',
+          products: ['AEO Consulting', 'AI Search Optimization', 'Content Strategy', 'AI Visibility Analytics'],
+          countries: ['US', 'Europe', 'Global'],
+          targetKeywords: ['answer engine optimization', 'AI search optimization', 'ChatGPT visibility', 'AI content strategy'],
+          competitorKeywords: ['SEO consulting', 'content marketing', 'digital marketing'],
+          marketingGoals: ['Increase AI search visibility', 'Generate qualified leads from AI platforms', 'Establish thought leadership in AEO'],
+          tone: 'Professional, innovative, data-driven',
+          targetIndustries: 'AI startups, SaaS companies, Tech companies',
+          contactEmail: 'hello@scaile.tech',
+          linkedInUrl: 'https://linkedin.com/company/scaile'
+        }
+        setBusinessContext(defaultContext)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultContext))
       }
     } catch (error) {
       console.error('Failed to load context from localStorage:', error)
