@@ -570,6 +570,68 @@ def extract_roles_from_icp(icp_text: str) -> List[str]:
     # Return top 2 roles to avoid query bloat
     return roles[:2]
 
+def extract_target_industries_from_icp(icp_text: str) -> List[str]:
+    """Extract target client industries from ICP text."""
+    if not icp_text:
+        return []
+    
+    target_industries = []
+    icp_lower = icp_text.lower()
+    
+    # Common B2B industry patterns
+    industry_patterns = [
+        r'\b(saas|software)\s+companies?\b',
+        r'\b(e-?commerce|ecommerce)\s+(?:companies?|businesses?)\b',
+        r'\b(fintech|financial\s+services?)\s+(?:companies?|firms?)?\b',
+        r'\b(healthcare|healthtech)\s+(?:companies?|organizations?)?\b',
+        r'\b(b2b|enterprise)\s+(?:companies?|businesses?)?\b',
+        r'\b(startup|startups?)\b',
+        r'\b(tech|technology)\s+(?:companies?|firms?)?\b',
+        r'\b(manufacturing|retail|consulting)\s+(?:companies?|firms?)?\b',
+        r'\b(real\s+estate|realestate)\s+(?:companies?|firms?)?\b',
+        r'\b(media|marketing\s+agencies?)\b'
+    ]
+    
+    for pattern in industry_patterns:
+        matches = re.findall(pattern, icp_text, re.IGNORECASE)
+        for match in matches:
+            # Clean up the match
+            if isinstance(match, tuple):
+                match = ' '.join(match).strip()
+            
+            industry = match.strip().lower()
+            # Normalize industry names
+            if 'saas' in industry or 'software' in industry:
+                industry = 'SaaS companies'
+            elif 'ecommerce' in industry or 'e-commerce' in industry:
+                industry = 'e-commerce companies'
+            elif 'fintech' in industry or 'financial' in industry:
+                industry = 'FinTech companies'
+            elif 'healthcare' in industry or 'healthtech' in industry:
+                industry = 'healthcare companies'
+            elif 'startup' in industry:
+                industry = 'startups'
+            elif 'tech' in industry and 'companies' not in industry:
+                industry = 'tech companies'
+            elif 'manufacturing' in industry:
+                industry = 'manufacturing companies'
+            elif 'retail' in industry:
+                industry = 'retail companies'
+            elif 'real estate' in industry or 'realestate' in industry:
+                industry = 'real estate companies'
+            elif 'media' in industry:
+                industry = 'media companies'
+            elif 'marketing' in industry and 'agencies' in industry:
+                industry = 'marketing agencies'
+            elif 'b2b' in industry or 'enterprise' in industry:
+                industry = 'B2B companies'
+            
+            if industry not in target_industries and len(industry) >= 5:
+                target_industries.append(industry.title())
+    
+    # Return top 2 target industries to avoid query bloat
+    return target_industries[:2]
+
 def extract_key_phrase_from_sentence(sentence: str) -> str:
     """Extract key searchable phrase from a sentence."""
     if not sentence:
@@ -641,9 +703,13 @@ def generate_queries(
     # Extract hyper-niche targeting data
     company_size = extract_company_size_from_icp(icp_text)
     roles = extract_roles_from_icp(icp_text)
+    target_industries = extract_target_industries_from_icp(icp_text)
     use_geo = should_add_geographic_modifier(country)
     # Convert country codes to readable names for better targeting
     geo_suffix = "United States" if country in ["US", "USA"] else country if use_geo else ""
+    
+    # Pre-process products for reuse
+    products_clean = [clean_query_term(p) for p in products[:1] if clean_query_term(p)]
     
     # PRIORITY 2: Competitive analysis (diverse phrasings)
     if competitors:
@@ -661,13 +727,20 @@ def generate_queries(
         if geo_suffix:
             queries.append({"query": f"{industry} companies {geo_suffix}", "dimension": "Industry-Geo"})
     
-    # PRIORITY 4: Use case and workflow queries
+    # PRIORITY 4: Target client industry queries (CRUCIAL - who they serve)
+    if target_industries and products_clean:
+        main_target_industry = target_industries[0]
+        main_product = products_clean[0]
+        # Target industry + product queries  
+        queries.append({"query": f"{main_product} for {main_target_industry}", "dimension": "Target-Industry"})
+        queries.append({"query": f"best {main_product} {main_target_industry}", "dimension": "Target-Industry-Best"})
+    
+    # PRIORITY 5: Use case and workflow queries
     if roles:
         main_role = roles[0] if roles else "marketing managers"
         queries.append({"query": f"tools for {main_role} workflow", "dimension": "Workflow-Specific"})
     
-    # PRIORITY 5: Product category with intent diversity
-    products_clean = [clean_query_term(p) for p in products[:1] if clean_query_term(p)]
+    # PRIORITY 6: Product category with intent diversity
     for product in products_clean:
         if product:
             # Diverse query phrasings
@@ -675,17 +748,19 @@ def generate_queries(
             if geo_suffix:
                 queries.append({"query": f"top {product} providers {geo_suffix}", "dimension": "Provider-Geo"})
     
-    # PRIORITY 6: Educational and learning intent (unique angles)
+    # PRIORITY 7: Educational and learning intent (unique angles)
     if industry and products_clean:
         product = products_clean[0]
         # Tutorial and educational queries
         queries.append({"query": f"{product} tutorial for beginners", "dimension": "Educational"})
-        
-    # PRIORITY 7: Current year trends and updates
+    
+    # PRIORITY 8: Current year trends and updates  
     from datetime import datetime
     current_year = datetime.now().year
-    if industry:
-        queries.append({"query": f"{industry} trends {current_year}", "dimension": "Trends"})
+    if target_industries:
+        # Trend queries for target client industries
+        main_target_industry = target_industries[0]
+        queries.append({"query": f"{main_target_industry} software trends {current_year}", "dimension": "Target-Industry-Trends"})
     
     # FULL MODE ONLY: Additional product, service, and problem queries
     if mode != "fast":
