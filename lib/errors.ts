@@ -1,5 +1,5 @@
 /**
- * Custom error handling for 👟 application
+ * Custom error handling for hyperniche.ai application
  * Follows best practices for error management and logging
  */
 
@@ -41,7 +41,7 @@ export interface ErrorContext {
 }
 
 /**
- * Custom error class for 👟 operations
+ * Custom error class for hyperniche.ai operations
  * Extends native Error with additional context
  */
 export class BulkGPTError extends Error {

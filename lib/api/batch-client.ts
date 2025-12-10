@@ -1,5 +1,5 @@
 /**
- * ABOUTME: TypeScript client for 👟 batch processing API
+ * ABOUTME: TypeScript client for hyperniche.ai batch processing API
  * ABOUTME: Provides type-safe methods for creating batches, polling status, and streaming results
  */
 

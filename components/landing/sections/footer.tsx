@@ -1,4 +1,4 @@
-// ABOUTME: Footer section for 👟 landing page
+// ABOUTME: Footer section for hyperniche.ai landing page
 // ABOUTME: Logo, links, and copyright
 
 import Link from "next/link";
@@ -10,9 +10,8 @@ export function FooterSection() {
         <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <span className="text-2xl">👟</span>
-            <span className="text-xl font-semibold">bulk</span>
-            <span className="text-xl text-muted-foreground">.run</span>
+            <span className="text-2xl">🌟</span>
+            <span className="text-xl font-semibold">hyperniche.ai</span>
           </div>
 
           {/* Links */}
@@ -30,7 +29,7 @@ export function FooterSection() {
 
           {/* Copyright */}
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} 👟. All rights reserved.
+            © {new Date().getFullYear()} hyperniche.ai. All rights reserved.
           </p>
         </div>
       </div>
