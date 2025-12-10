@@ -70,7 +70,6 @@ export function useContextStorage() {
           valueProposition: 'We help AI startups dominate AI search engines through Answer Engine Optimization (AEO). Our platform ensures your company appears when prospects search in ChatGPT, Perplexity, Claude, and Gemini.',
           productDescription: 'SCAILE provides Answer Engine Optimization (AEO) services to help tech companies increase their visibility in AI-powered search engines. We offer strategic keyword research, content optimization, and analytics specifically designed for AI platforms.',
           products: ['AEO Consulting', 'AI Search Optimization', 'Content Strategy', 'AI Visibility Analytics'],
-          countries: ['US', 'Europe', 'Global'],
           targetKeywords: ['answer engine optimization', 'AI search optimization', 'ChatGPT visibility', 'AI content strategy'],
           competitorKeywords: ['SEO consulting', 'content marketing', 'digital marketing'],
           marketingGoals: ['Increase AI search visibility', 'Generate qualified leads from AI platforms', 'Establish thought leadership in AEO'],
