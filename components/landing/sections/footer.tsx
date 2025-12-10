@@ -1,4 +1,4 @@
-// ABOUTME: Footer section for bulk.run landing page
+// ABOUTME: Footer section for 👟 landing page
 // ABOUTME: Logo, links, and copyright
 
 import Link from "next/link";
@@ -30,7 +30,7 @@ export function FooterSection() {
 
           {/* Copyright */}
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} bulk.run. All rights reserved.
+            © {new Date().getFullYear()} 👟. All rights reserved.
           </p>
         </div>
       </div>

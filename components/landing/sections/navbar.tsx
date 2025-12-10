@@ -1,4 +1,4 @@
-// ABOUTME: Sticky navbar for bulk.run landing page
+// ABOUTME: Sticky navbar for 👟 landing page
 // ABOUTME: Logo, nav links, and auth-aware CTA
 
 "use client";

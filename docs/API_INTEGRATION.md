@@ -1,6 +1,6 @@
-# bulk.run API Integration Guide
+# 👟 API Integration Guide
 
-Complete guide for integrating with the bulk.run processing API using curl, TypeScript, or external tools (n8n, Zapier, etc.).
+Complete guide for integrating with the 👟 processing API using curl, TypeScript, or external tools (n8n, Zapier, etc.).
 
 ## Table of Contents
 
@@ -333,7 +333,7 @@ export BASE_URL="https://bulk-gpt-app.vercel.app"
       "credentials": {
         "httpHeaderAuth": {
           "id": "1",
-          "name": "bulk.run API Key"
+          "name": "👟 API Key"
         }
       }
     },
