@@ -7,14 +7,14 @@ import { Toaster } from 'sonner'
 
 export const metadata: Metadata = {
   title: {
-    default: 'AEO Visibility Machine — AI-Powered Answer Engine Optimization',
-    template: '%s | AEO Visibility Machine',
+    default: 'hyperniche.ai — The Hyperniche AEO Machine',
+    template: '%s | hyperniche.ai',
   },
-  description: 'Optimize your brand for AI search engines. Generate strategic keywords, create AEO-optimized content, and boost visibility in ChatGPT, Perplexity, Claude, and Gemini.',
-  keywords: ['AEO', 'Answer Engine Optimization', 'AI visibility', 'AI search', 'ChatGPT SEO', 'Perplexity optimization', 'AI content strategy', 'keyword research'],
-  authors: [{ name: 'SCAILE' }],
-  creator: 'SCAILE',
-  publisher: 'SCAILE',
+  description: 'Dominate hyperniche markets with AI-powered Answer Engine Optimization. Generate strategic keywords, create AEO-optimized content, and boost visibility in ChatGPT, Perplexity, Claude, and Gemini.',
+  keywords: ['AEO', 'Answer Engine Optimization', 'hyperniche', 'AI visibility', 'AI search', 'ChatGPT SEO', 'Perplexity optimization', 'AI content strategy', 'keyword research'],
+  authors: [{ name: 'hyperniche.ai' }],
+  creator: 'hyperniche.ai',
+  publisher: 'hyperniche.ai',
   formatDetection: {
     email: false,
     address: false,

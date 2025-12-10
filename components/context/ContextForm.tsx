@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useContextStorage } from '@/hooks/useContextStorage'
+import { ProfileSelector } from './ProfileSelector'
+import { SaveProfileDialog } from './SaveProfileDialog'
 import { toast } from 'sonner'
 
 /**
@@ -23,6 +25,8 @@ export function ContextForm() {
   const [geminiApiKey, setGeminiApiKey] = useState<string | null>(null)
   const [analysisProgress, setAnalysisProgress] = useState(0)
   const [timeRemaining, setTimeRemaining] = useState(0)
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [currentProfileId, setCurrentProfileId] = useState<string>()
   
   const EXPECTED_ANALYSIS_TIME = 30 // seconds for Gemini 3 Pro Preview
   
@@ -163,6 +167,38 @@ export function ContextForm() {
     toast.success('Context cleared')
   }, [clearContext])
 
+  // Profile handling functions
+  const handleApplyProfile = useCallback(async (profileId: string) => {
+    try {
+      const response = await fetch(`/api/context-profiles/${profileId}/apply`, {
+        method: 'POST'
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to apply profile')
+      }
+      
+      setCurrentProfileId(profileId)
+      toast.success('Profile applied successfully')
+      // Reload the page to refresh context
+      window.location.reload()
+    } catch (error) {
+      toast.error('Failed to apply profile')
+    }
+  }, [])
+
+  const handleSaveAsProfile = useCallback(() => {
+    if (!hasContext) {
+      toast.error('No context to save. Please analyze a website first.')
+      return
+    }
+    setShowSaveDialog(true)
+  }, [hasContext])
+
+  const handleCreateProfile = useCallback(() => {
+    setShowSaveDialog(true)
+  }, [])
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -174,20 +210,16 @@ export function ContextForm() {
 
   return (
     <div className="space-y-4">
-      {/* API Key Info (not blocking) */}
-      {!geminiApiKey && (
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 space-y-2">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-blue-500" />
-            <p className="text-sm font-medium text-blue-500">Using Server API Key</p>
-          </div>
-              <p className="text-xs text-muted-foreground">
-                No client API key set. The server will use its configured GEMINI_API_KEY environment variable. 
-                To use your own key, set it in{' '}
-                <a href="/settings" className="text-primary hover:underline">
-                  Settings
-                </a>.
-              </p>
+      {/* Profile Selector - Temporarily disabled (requires database setup) */}
+      {false && (
+        <div className="border border-border rounded-lg p-4">
+          <ProfileSelector
+            onApplyProfile={handleApplyProfile}
+            onSaveAsProfile={handleSaveAsProfile}
+            onCreateProfile={handleCreateProfile}
+            currentProfileId={currentProfileId}
+            className="w-full"
+          />
         </div>
       )}
 
@@ -518,6 +550,19 @@ export function ContextForm() {
       </div>
           </div>
         </div>
+      )}
+
+      {/* Save Profile Dialog - Temporarily disabled (requires database setup) */}
+      {false && (
+        <SaveProfileDialog
+          open={showSaveDialog}
+          onOpenChange={setShowSaveDialog}
+          currentContext={businessContext}
+          onSaved={() => {
+            setShowSaveDialog(false)
+            toast.success('Profile saved successfully!')
+          }}
+        />
       )}
       </div>
   )
