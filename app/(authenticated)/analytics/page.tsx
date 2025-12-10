@@ -172,9 +172,9 @@ export default function AnalyticsPage() {
           companyInfo: {
             name: finalCompanyName,
             website: finalUrl,
-            description: businessContext.valueProposition || businessContext.productDescription || '',
-            industry: businessContext.targetIndustries || businessContext.icp || '',
-            products: businessContext.products || [],
+            description: businessContext?.valueProposition || businessContext?.productDescription || '',
+            industry: businessContext?.targetIndustries || businessContext?.icp || '',
+            products: businessContext?.products || [],
             // Map other available fields from businessContext
             // Note: Some fields may not exist in BusinessContext interface, so we use empty arrays/strings as defaults
             target_audience: [],
@@ -182,15 +182,15 @@ export default function AnalyticsPage() {
             pain_points: [],
             use_cases: [],
             key_features: [],
-            solution_keywords: businessContext.targetKeywords || [],
-            value_propositions: businessContext.valueProposition ? [businessContext.valueProposition] : [],
+            solution_keywords: businessContext?.targetKeywords || [],
+            value_propositions: businessContext?.valueProposition ? [businessContext.valueProposition] : [],
             differentiators: [],
             customer_problems: [],
-            product_category: businessContext.productType || '',
-            primary_region: businessContext.countries?.[0] || 'US',
+            product_category: businessContext?.productType || '',
+            primary_region: businessContext?.countries?.[0] || 'US',
           },
           competitors: competitorsList,
-        } : undefined
+        }
 
       const [healthResponse, mentionsResponse] = await Promise.allSettled([
         // Health Check (~10 seconds)
@@ -312,17 +312,17 @@ export default function AnalyticsPage() {
         <div className="space-y-6">
           <div>
             <h2 className="text-lg font-semibold mb-1">Run Analytics</h2>
-            <p className="text-sm text-muted-foreground">
-              Full AEO analysis: health + visibility
+            <p className="text-xs text-muted-foreground">
+              AI-powered AEO analysis for maximum AI visibility
             </p>
           </div>
 
-          {/* AEO Type Selector */}
-          <div className="bg-gradient-to-br from-purple-500/10 to-blue-500/10 border-2 border-purple-500/20 rounded-xl p-4 space-y-2">
-            <div className="flex items-center gap-2">
-              <Bot className="h-5 w-5 text-purple-500" />
-              <h3 className="text-sm font-semibold">AEO (Answer Engine Optimization)</h3>
-            </div>
+          {/* AEO Explanation */}
+          <div className="bg-gradient-to-r from-purple-500/5 to-blue-500/5 border-l-4 border-purple-500 rounded-r-lg p-4 space-y-1">
+            <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <span className="text-lg">🤖</span>
+              AEO (Answer Engine Optimization)
+            </p>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Full AI visibility analysis: technical health check across 29 factors + competitive mentions tracking across AI platforms (Perplexity, ChatGPT, Claude, Gemini).
             </p>
@@ -345,13 +345,13 @@ export default function AnalyticsPage() {
             </div>
           ) : (
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 space-y-1.5">
-              <p className="text-xs font-medium text-blue-500">Using Demo Data</p>
+              <p className="text-xs font-medium text-blue-500">No Company Context Set</p>
               <p className="text-xs text-muted-foreground">
-                Set up your{' '}
+                Go to{' '}
                 <a href="/context" className="text-primary hover:underline">
-                  Business Context
+                  CONTEXT
                 </a>{' '}
-                for personalized results.
+                tab to analyze a company website first.
               </p>
             </div>
           )}
