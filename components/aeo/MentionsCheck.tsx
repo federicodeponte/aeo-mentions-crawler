@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
+import { SearchableSelect } from '@/components/ui/searchable-select'
+import { COUNTRIES, LANGUAGES } from '@/lib/constants/countries-languages'
 import { Progress } from '@/components/ui/progress'
 import {
   Table,
@@ -84,6 +86,8 @@ export function MentionsCheck() {
   const { businessContext, hasContext } = useContextStorage()
   const [companyName, setCompanyName] = useState('')
   const [industry, setIndustry] = useState('')
+  const [market, setMarket] = useState('DE') // Default to German market
+  const [language, setLanguage] = useState('de') // Default to German language (ISO code)
   const [apiKey, setApiKey] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<MentionsResult | null>(null)
@@ -122,7 +126,13 @@ export function MentionsCheck() {
         setIndustry(industryFromContext)
       }
     }
-  }, [businessContext, apiKey, companyName, industry])
+
+    // Auto-populate market from context countries
+    if (businessContext?.countries?.length && market === 'DE') {
+      const contextCountry = businessContext.countries[0]
+      setMarket(contextCountry)
+    }
+  }, [businessContext, apiKey, companyName, industry, market])
 
   const handleCheck = async () => {
     if (!companyName) return
@@ -176,8 +186,8 @@ export function MentionsCheck() {
         body: JSON.stringify({
           company_name: companyName,
           company_analysis: companyAnalysis,
-          language: 'english',
-          country: businessContext?.countries?.[0] || 'US',
+          language: language === 'de' ? 'german' : language === 'en' ? 'english' : language, // Convert ISO to backend format
+          country: market,
           num_queries: 10,
           mode: 'fast',
           api_key: apiKey,
@@ -253,7 +263,7 @@ export function MentionsCheck() {
   const filteredAndSortedResults = useMemo(() => {
     if (!result) return []
 
-    let filtered = result.query_results.filter(r => {
+    const filtered = result.query_results.filter(r => {
       // Filter by platform
       if (filterPlatform !== 'all' && r.platform !== filterPlatform) return false
       
@@ -440,8 +450,36 @@ export function MentionsCheck() {
           </p>
         </div>
 
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="country" className="text-xs font-medium">
+              Country
+            </Label>
+            <SearchableSelect
+              options={COUNTRIES}
+              value={market}
+              onValueChange={setMarket}
+              placeholder="Type to search countries..."
+              disabled={loading}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="language" className="text-xs font-medium">
+              Language
+            </Label>
+            <SearchableSelect
+              options={LANGUAGES}
+              value={language}
+              onValueChange={setLanguage}
+              placeholder="Type to search languages..."
+              disabled={loading}
+            />
+          </div>
+        </div>
+
         {!hasContext && !companyName && (
-          <Card className="p-3 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+          <Card className="p-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
             <p className="text-xs text-blue-800 dark:text-blue-400">
               💡 Tip: Set your company details in the Context page for auto-fill
             </p>
@@ -449,7 +487,7 @@ export function MentionsCheck() {
         )}
 
         {hasAdditionalContext && (
-          <Card className="p-3 bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+          <Card className="p-4 bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
             <div className="flex items-start gap-2">
               <Info className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
               <div className="text-xs text-green-800 dark:text-green-400 space-y-1">
@@ -483,7 +521,7 @@ export function MentionsCheck() {
         </Button>
 
         <p className="text-xs text-muted-foreground">
-          Tests visibility across 4 AI platforms with 10 queries (Fast mode)
+          Tests visibility across 4 AI platforms with 10 queries (Fast mode) • Takes ~2 minutes • Market: {market} • Language: {language === 'de' ? 'German' : language === 'en' ? 'English' : language}
         </p>
       </div>
 
@@ -494,9 +532,9 @@ export function MentionsCheck() {
       )}
 
       {result && (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* Score Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card className="p-6">
               <div className="space-y-4">
                 <div>
@@ -564,12 +602,12 @@ export function MentionsCheck() {
           </div>
 
           {/* Platform Stats */}
-          <Card className="p-4">
-            <h3 className="font-semibold mb-4 flex items-center gap-2">
+          <Card className="p-6">
+            <h3 className="font-semibold mb-6 flex items-center gap-2">
               <Award className="h-5 w-5" />
               Platform Performance
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {Object.entries(result.platform_stats).map(([platform, stats]) => (
                 <div key={platform} className="border rounded-lg p-3 space-y-2">
                   <div className="font-medium">{platform}</div>
@@ -625,8 +663,8 @@ export function MentionsCheck() {
           </div>
 
           {/* Filters */}
-          <Card className="p-4">
-            <div className="space-y-4">
+          <Card className="p-6">
+            <div className="space-y-6">
               <div className="flex flex-col lg:flex-row gap-4">
                 <div className="flex-1">
                   <Input
@@ -675,8 +713,8 @@ export function MentionsCheck() {
           </Card>
 
           {/* Results Table */}
-          <Card className="p-4">
-            <h3 className="font-semibold mb-4 flex items-center gap-2">
+          <Card className="p-6">
+            <h3 className="font-semibold mb-6 flex items-center gap-2">
               <Search className="h-5 w-5" />
               Query Results
             </h3>

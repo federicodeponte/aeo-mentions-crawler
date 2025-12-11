@@ -145,7 +145,7 @@ export function HealthCheck() {
   const filteredAndSortedChecks = useMemo(() => {
     if (!result) return []
 
-    let filtered = result.checks.filter(check => {
+    const filtered = result.checks.filter(check => {
       // Filter by status
       if (filterStatus !== 'all' && check.status !== filterStatus) return false
       
@@ -283,7 +283,7 @@ export function HealthCheck() {
       </div>
 
       {error && (
-        <Card className="p-4 border-destructive bg-destructive/10">
+        <Card className="p-6 border-destructive bg-destructive/10">
           <p className="text-sm text-destructive">{error}</p>
         </Card>
       )}
@@ -366,8 +366,8 @@ export function HealthCheck() {
           </div>
 
           {/* Filters and Search */}
-          <Card className="p-4">
-            <div className="space-y-4">
+          <Card className="p-6">
+            <div className="space-y-6">
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <Input

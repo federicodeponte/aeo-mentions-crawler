@@ -1,18 +1,19 @@
 """AEO Mentions Check Service - AI Platform Visibility Analysis
 
-Queries multiple AI platforms (via OpenRouter) to check company visibility:
-- Perplexity (sonar-pro) - native search
-- Claude (claude-3.5-sonnet) - with google_search tool
-- ChatGPT (openai/gpt-4.1) - with google_search tool
-- Gemini (gemini-3-pro-preview) - with google_search tool
+Queries multiple AI platforms with search grounding to check company visibility:
+- Perplexity (sonar-pro) - native search via OpenRouter
+- Claude (claude-3.5-sonnet) - with google_search tool via OpenRouter
+- ChatGPT (openai/gpt-4.1) - with google_search tool via OpenRouter
+- Gemini (gemini-3-pro-preview) - native Gemini SDK with google_search tool
 
-All platforms use our DataForSEO SERP via scaile-services google_search tool.
+Gemini uses native Google SDK with integrated search grounding for better accuracy.
+Other platforms use DataForSEO SERP via scaile-services google_search tool.
 
 Features:
 - Quality-adjusted scoring with mention capping (max 3 per response)
 - Position detection (#1 in list gets boost)
 - Dimension-based query generation (Branded, Service-Specific, etc.)
-- Fast mode (10 queries, Gemini + ChatGPT only) vs Full mode (50 queries, all platforms)
+- Fast mode (10 queries, Gemini only) vs Full mode (50 queries, all platforms)
 
 v4: GPT-4.1 for ChatGPT, DataForSEO SERP for all platforms
 """
@@ -30,6 +31,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from ai_client import AIClient
+from gemini_client import get_gemini_client
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -103,7 +105,7 @@ class MentionsCheckRequest(BaseModel):
         description="Company analysis data (required for targeted query generation)"
     )
     language: str = "english"
-    country: str = "US"
+    country: str = "DE"  # Default to German market
     numQueries: int = 50
     mode: str = Field(default="full", description="'full' (50 queries, all platforms) or 'fast' (10 queries, Gemini + ChatGPT only)")
     generateInsights: bool = False
@@ -475,9 +477,9 @@ def should_add_geographic_modifier(country: str) -> bool:
     """Smart detection if geographic modifier is needed."""
     if not country:
         return False
-    # ALWAYS include geographic targeting - it's valuable for niche companies
-    # Convert country codes to full names for better query performance
-    return True
+    # Skip US and very common countries to avoid cluttered queries
+    skip_countries = ['US', 'USA', 'United States', 'Global', 'International']
+    return country not in skip_countries
 
 def clean_query_term(term: str) -> str:
     """Clean query terms by removing parentheticals and limiting length."""
@@ -660,34 +662,156 @@ def extract_key_phrase_from_sentence(sentence: str) -> str:
 
 # ==================== Enhanced Query Generation ====================
 
-def generate_queries(
+async def generate_queries_with_gemini(
+    company_name: str,
+    company_analysis: Optional[CompanyAnalysis],
+    num_queries: int = 10,
+    country: str = "DE",
+    language: str = "german",
+) -> List[Dict[str, str]]:
+    """Generate high-quality, diverse queries using Gemini 2.5 Flash with structured output."""
+    
+    # Extract company context
+    info = {}
+    competitors = []
+    if company_analysis and company_analysis.companyInfo:
+        info = company_analysis.companyInfo
+    if company_analysis and company_analysis.competitors:
+        competitors = company_analysis.competitors[:3]  # Top 3 competitors
+    
+    # Build context
+    industry = info.get("industry", "")
+    products = info.get("products", [])[:2]  # Top 2 products
+    services = info.get("services", [])[:2]  # Top 2 services
+    target_audience = info.get("target_audience", "") or info.get("icp", "") or ""
+    # Use country parameter from request, not hardcoded
+    
+    # Handle ICP data format (might be list from database)
+    if isinstance(target_audience, list):
+        target_audience = ", ".join(target_audience) if target_audience else ""
+    
+    # Build competitor context
+    competitor_names = [c.get("name", "") for c in competitors if c.get("name")][:2]
+    
+    prompt = f"""Generate {num_queries} diverse, high-quality AEO visibility queries for {company_name}.
+
+CRITICAL: If you need to search for information, limit yourself to EXACTLY 2 searches maximum, then generate the queries based on your knowledge and those search results.
+
+COMPANY CONTEXT:
+- Industry: {industry}
+- Products: {products}
+- Services: {services}
+- Target Audience: {target_audience}
+- Top Competitors: {competitor_names}
+- Country: {country}
+- Language: {language}
+
+QUERY TYPES & EXAMPLES (use these patterns):
+1. BRANDED: "{company_name}"
+2. BRANDED-REVIEW: "{company_name} review"
+3. BRANDED-VS: "{company_name} vs [competitor]"
+4. BRANDED-ALTERNATIVE: "alternatives to {company_name}"
+5. BRANDED-SPECIFIC: "{company_name} [product/service]"
+6. BRANDED-QUESTION: "what is {company_name}"
+7. BRANDED-OPINION: "is {company_name} good"
+8. COMPETITIVE-MENTION: "best [industry] companies like {company_name}"
+9. INDUSTRY-LEADERS: "top [industry] companies including {company_name}"
+10. PROBLEM-SOLUTION: "companies like {company_name} for [specific problem]"
+
+CRITICAL REQUIREMENTS:
+- Create diverse, natural queries that would organically surface {company_name} in results
+- Replace ALL placeholders with actual industry/product context
+- Use real competitor names from the list above when available
+- Make queries natural and search-friendly in {language}
+- Focus on queries relevant to {company_name}'s market space in {country}
+- MAXIMUM 2 searches if you need to research anything
+- Balance branded queries with industry/product queries
+- Generate queries in {language} language for {country} market
+
+Return exactly {num_queries} queries as a JSON array:
+[{{"query": "actual search query", "dimension": "QUERY_TYPE"}}]"""
+
+    try:
+        # Use native Gemini SDK for query generation (consistent with mentions checking)
+        client = get_gemini_client()
+        
+        from google.genai import types
+        
+        response = client.client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.3,
+                response_mime_type="application/json",
+                automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                    maximum_remote_calls=3  # Limit query generation to 3 remote calls too
+                )
+            )
+        )
+        
+        # Extract response text
+        if hasattr(response, 'text') and response.text:
+            result_text = response.text
+        elif hasattr(response, 'candidates') and response.candidates:
+            candidate = response.candidates[0]
+            if hasattr(candidate, 'content') and candidate.content:
+                if hasattr(candidate.content, 'parts') and candidate.content.parts:
+                    result_text = ''.join(part.text for part in candidate.content.parts if hasattr(part, 'text') and part.text)
+                else:
+                    result_text = str(candidate.content)
+            else:
+                result_text = None
+        else:
+            result_text = str(response)
+        
+        if not result_text:
+            logger.warning(f"Empty Gemini response for {company_name}, falling back to legacy generation")
+            return generate_queries_legacy(company_name, company_analysis, num_queries, "fast")
+        
+        logger.info(f"🔍 Gemini raw response for {company_name}: {result_text[:200]}...")
+        
+        # Parse JSON response
+        import json
+        queries = json.loads(result_text)
+        
+        # Validate and clean up
+        valid_queries = []
+        for q in queries:
+            if isinstance(q, dict) and "query" in q and "dimension" in q:
+                query_text = q["query"].strip()
+                dimension = q["dimension"].strip()
+                if query_text and dimension and len(query_text) <= 200:  # Reasonable length
+                    valid_queries.append({"query": query_text, "dimension": dimension})
+        
+        logger.info(f"✅ Generated {len(valid_queries)} high-quality queries for {company_name} via Gemini")
+        return valid_queries[:num_queries]  # Ensure we don't exceed requested number
+        
+    except Exception as e:
+        logger.error(f"❌ Gemini query generation failed for {company_name}: {e}, falling back to legacy")
+        # Use passed country/language parameters in fallback
+        return generate_queries_legacy(company_name, company_analysis, num_queries, "fast", country, language)
+
+
+def generate_queries_legacy(
     company_name: str,
     company_analysis: Optional[CompanyAnalysis],
     num_queries: int,
     mode: str,
+    country: str = "DE",
+    language: str = "german",
 ) -> List[Dict[str, str]]:
-    """Generate hyper-niche targeted queries across multiple dimensions.
-    
-    For fast mode, prioritizes high-value query types:
-    1. Branded queries (2)
-    2. Top competitive queries (2-3) 
-    3. Geographic + role targeted product queries (3-4)
-    4. Industry-specific queries (2-3)
-    """
+    """Legacy query generation (fallback for when Gemini fails)."""
     queries = []
-    
-    # Always include branded queries (highest priority)
-    queries.append({"query": company_name, "dimension": "Branded"})
-    queries.append({"query": f"{company_name} review", "dimension": "Branded-Review"})
     
     # Extract info from company analysis
     info = {}
     competitors = []
-    country = "US"  # Default
+    # Use country parameter from request, not hardcoded default
     
     if company_analysis and company_analysis.companyInfo:
         info = company_analysis.companyInfo
-        country = info.get("country", "US")
+        # Use request country, fallback to info.country, then parameter default
+        country = info.get("country", country)
         
     if company_analysis and company_analysis.competitors:
         competitors = company_analysis.competitors
@@ -698,36 +822,76 @@ def generate_queries(
     products = info.get("products", []) or []
     services = info.get("services", []) or []
     pain_points = info.get("pain_points", []) or []
-    icp_text = info.get("target_audience", "") or info.get("icp", "") or ""
+    
+    # Clean products list for use in queries
+    products_clean = [clean_query_term(p) for p in products[:3] if clean_query_term(p)]
+    
+    # Always include branded queries with product specificity
+    main_product = products_clean[0] if products_clean else ""
+    if main_product:
+        queries.append({"query": f"{company_name} {main_product}", "dimension": "Branded-Product"})
+        queries.append({"query": f"{company_name} {main_product} review", "dimension": "Branded-Product-Review"})
+    else:
+        queries.append({"query": company_name, "dimension": "Branded"})
+        queries.append({"query": f"{company_name} review", "dimension": "Branded"})
+    
+    # Handle ICP data - might be a list from database
+    icp_raw = info.get("target_audience", "") or info.get("icp", "") or ""
+    if isinstance(icp_raw, list):
+        icp_text = ", ".join(icp_raw) if icp_raw else ""
+    else:
+        icp_text = icp_raw or ""
     
     # Extract hyper-niche targeting data
     company_size = extract_company_size_from_icp(icp_text)
     roles = extract_roles_from_icp(icp_text)
     target_industries = extract_target_industries_from_icp(icp_text)
-    use_geo = should_add_geographic_modifier(country)
-    # Convert country codes to readable names for better targeting
-    geo_suffix = "United States" if country in ["US", "USA"] else country if use_geo else ""
+    # Geographic targeting logic
+    if country in ["US", "USA"]:
+        geo_suffix = "United States"
+    elif country and country not in ['Global', 'International']:
+        geo_suffix = country
+    else:
+        geo_suffix = ""
     
-    # Pre-process products for reuse
-    products_clean = [clean_query_term(p) for p in products[:1] if clean_query_term(p)]
     
-    # PRIORITY 2: Competitive analysis (diverse phrasings)
+    # Add competitive queries early (high value for AEO)
     if competitors:
-        main_competitor = competitors[0].get('name', '') if isinstance(competitors[0], dict) else str(competitors[0]) 
+        main_competitor = competitors[0].get('name', '') if competitors else ''
         if main_competitor:
             comp_clean = clean_query_term(main_competitor)
-            if comp_clean:
-                queries.append({"query": f"{company_name} vs {comp_clean}", "dimension": "Competitive-Specific"})
-                queries.append({"query": f"why choose {comp_clean} over competitors", "dimension": "Competitive-Intent"})
+            if comp_clean and main_product:
+                queries.append({"query": f"{comp_clean} alternatives {main_product}", "dimension": "Competitive-Product"})
+            elif comp_clean:
+                queries.append({"query": f"{comp_clean} alternatives", "dimension": "Competitive"})
+
+    # Product-specific queries (prioritized - most valuable)
+    for i, product in enumerate(products_clean):
+        if product:
+            # Differentiated product queries - all niche with industry/geo targeting
+            if i == 0:  # First product gets more variations
+                if industry and geo_suffix:
+                    queries.append({"query": f"best {product} for {industry} {geo_suffix}", "dimension": "Product-Industry-Geo"})
+                    queries.append({"query": f"{product} comparison {industry} {geo_suffix}", "dimension": "Product-Compare-Geo"})
+                elif industry:
+                    queries.append({"query": f"best {product} for {industry}", "dimension": "Product-Industry"})
+                    queries.append({"query": f"{product} comparison for {industry}", "dimension": "Product-Compare-Industry"})
+                elif geo_suffix:
+                    queries.append({"query": f"best {product} {geo_suffix}", "dimension": "Product-Geo"})
+                    queries.append({"query": f"{product} comparison {geo_suffix}", "dimension": "Product-Compare-Geo"})
+                else:
+                    # Last resort - still add some context
+                    queries.append({"query": f"enterprise {product}", "dimension": "Product-Enterprise"})
+                    queries.append({"query": f"professional {product} comparison", "dimension": "Product-Compare"})
+            else:  # Subsequent products get niche, industry + geo targeting
+                if industry and geo_suffix:
+                    queries.append({"query": f"{product} for {industry} {geo_suffix}", "dimension": "Product-Industry-Geo"})
+                elif industry:
+                    queries.append({"query": f"{product} for {industry}", "dimension": "Product-Industry"})
+                elif geo_suffix:
+                    queries.append({"query": f"{product} {geo_suffix}", "dimension": "Product-Geo"})
     
-    # PRIORITY 3: Problem-solution targeting (diverse angles)
-    if industry:
-        # Different query structures for variety
-        queries.append({"query": f"how to improve {industry} performance", "dimension": "Problem-Solution"})
-        if geo_suffix:
-            queries.append({"query": f"{industry} companies {geo_suffix}", "dimension": "Industry-Geo"})
-    
-    # PRIORITY 4: Target client industry queries (CRUCIAL - who they serve)
+    # Target client industry queries (CRUCIAL - who they serve)
     if target_industries and products_clean:
         main_target_industry = target_industries[0]
         main_product = products_clean[0]
@@ -735,79 +899,52 @@ def generate_queries(
         queries.append({"query": f"{main_product} for {main_target_industry}", "dimension": "Target-Industry"})
         queries.append({"query": f"best {main_product} {main_target_industry}", "dimension": "Target-Industry-Best"})
     
-    # PRIORITY 5: Use case and workflow queries
-    if roles:
-        main_role = roles[0] if roles else "marketing managers"
-        queries.append({"query": f"tools for {main_role} workflow", "dimension": "Workflow-Specific"})
-    
-    # PRIORITY 6: Product category with intent diversity
-    for product in products_clean:
-        if product:
-            # Diverse query phrasings
-            queries.append({"query": f"how to choose {product}", "dimension": "Buying-Intent"})
+    # Service-specific queries with industry + geo targeting
+    services_clean = [clean_query_term(s) for s in services[:2] if clean_query_term(s)]
+    for service in services_clean:
+        if service and industry:
             if geo_suffix:
-                queries.append({"query": f"top {product} providers {geo_suffix}", "dimension": "Provider-Geo"})
+                queries.append({"query": f"{service} for {industry} {geo_suffix}", "dimension": "Service-Industry-Geo"})
+            else:
+                queries.append({"query": f"{service} for {industry}", "dimension": "Service-Industry"})
     
-    # PRIORITY 7: Educational and learning intent (unique angles)
+    # Industry/vertical queries with geographic and context specificity
+    if industry:
+        if geo_suffix:
+            queries.append({"query": f"best {industry} tools {geo_suffix}", "dimension": "Industry-Vertical-Geo"})
+            if main_product:
+                queries.append({"query": f"{industry} {main_product} solutions {geo_suffix}", "dimension": "Industry-Product-Geo"})
+            else:
+                queries.append({"query": f"{industry} solutions {geo_suffix}", "dimension": "Industry-Vertical-Geo"})
+        else:
+            queries.append({"query": f"enterprise {industry} tools", "dimension": "Industry-Vertical-Enterprise"})
+            if main_product:
+                queries.append({"query": f"{industry} {main_product} solutions", "dimension": "Industry-Product"})
+            else:
+                queries.append({"query": f"{industry} solutions", "dimension": "Industry/Vertical"})
+    
+    # Problem-solution queries (from pain points)
+    for pain_point in pain_points[:3]:
+        key_phrase = extract_key_phrase_from_sentence(pain_point)
+        if key_phrase and len(key_phrase) >= 3:
+            queries.append({"query": f"best tools for {key_phrase}", "dimension": "Problem-Solution"})
+    
+    # Additional competitive query (already added one early)
+    if competitors and len(competitors) > 1:
+        second_competitor = competitors[1].get('name', '') if len(competitors) > 1 else ''
+        if second_competitor:
+            comp_clean = clean_query_term(second_competitor)
+            if comp_clean:
+                queries.append({"query": f"alternatives to {comp_clean}", "dimension": "Competitive"})
+    
+    # Broad category queries
+    if product_category:
+        queries.append({"query": f"best {product_category}", "dimension": "Broad Category"})
+    
+    # Industry-specific broad queries (more relevant than generic "software tools")
     if industry and products_clean:
-        product = products_clean[0]
-        # Tutorial and educational queries
-        queries.append({"query": f"{product} tutorial for beginners", "dimension": "Educational"})
-    
-    # PRIORITY 8: Current year trends and updates  
-    from datetime import datetime
-    current_year = datetime.now().year
-    if target_industries:
-        # Trend queries for target client industries
-        main_target_industry = target_industries[0]
-        queries.append({"query": f"{main_target_industry} software trends {current_year}", "dimension": "Target-Industry-Trends"})
-    
-    # FULL MODE ONLY: Additional product, service, and problem queries
-    if mode != "fast":
-        # Additional product queries for full mode
-        products_clean_full = [clean_query_term(p) for p in products[1:3] if clean_query_term(p)]
-        for product in products_clean_full:
-            if product:
-                queries.append({"query": product, "dimension": "Product"})
-                queries.append({"query": f"best {product}", "dimension": "Product"})
-                if industry:
-                    queries.append({"query": f"best {product} for {industry}", "dimension": "Product-Industry"})
-                if company_size:
-                    queries.append({"query": f"best {product} for {company_size}", "dimension": "Product-CompanySize"})
-        
-        # Service-specific queries
-        services_clean = [clean_query_term(s) for s in services[:3] if clean_query_term(s)]
-        for service in services_clean:
-            if service:
-                queries.append({"query": f"{service} software", "dimension": "Service-Specific"})
-                queries.append({"query": f"best {service} tools", "dimension": "Service-Specific"})
-        
-        # Problem-solution queries (from pain points)
-        for pain_point in pain_points[:3]:
-            key_phrase = extract_key_phrase_from_sentence(pain_point)
-            if key_phrase and len(key_phrase) >= 3:
-                queries.append({"query": f"best tools for {key_phrase}", "dimension": "Problem-Solution"})
-        
-        # Additional competitive queries for full mode
-        queries.append({"query": f"best alternatives to {company_name}", "dimension": "Competitive"})
-        if competitors:
-            for i, competitor in enumerate(competitors[1:3]):  # Skip first, already used
-                comp_name = competitor.get('name', '') if isinstance(competitor, dict) else str(competitor)
-                if comp_name:
-                    comp_clean = clean_query_term(comp_name)
-                    if comp_clean:
-                        queries.append({"query": f"{company_name} vs {comp_clean}", "dimension": "Competitive-Specific"})
-                        queries.append({"query": f"{comp_clean} vs {company_name}", "dimension": "Competitive-Specific"})
-    
-    # FULL MODE ONLY: Broad category queries
-    if mode != "fast":
-        if product_category:
-            queries.append({"query": f"best {product_category}", "dimension": "Broad Category"})
-        
-        # Use current year for relevance
-        from datetime import datetime
-        current_year = datetime.now().year
-        queries.append({"query": f"best software tools {current_year}", "dimension": "Broad Category"})
+        main_product = products_clean[0]
+        queries.append({"query": f"top {industry} platforms", "dimension": "Industry-Leaders"})
     
     # Remove duplicates while preserving order
     seen = set()
@@ -824,14 +961,70 @@ def generate_queries(
     return unique_queries[:num_queries]  # Full mode: 50 queries
 
 
+async def generate_queries(
+    company_name: str,
+    company_analysis: Optional[CompanyAnalysis],
+    num_queries: int,
+    mode: str,
+    country: str = "DE",
+    language: str = "german",
+) -> List[Dict[str, str]]:
+    """Main query generation function - uses Gemini for high-quality results."""
+    try:
+        # Use enhanced Gemini query generation for high-quality results
+        return await generate_queries_with_gemini(company_name, company_analysis, num_queries, country, language)
+    except Exception as e:
+        logger.warning(f"Gemini query generation failed for {company_name}: {e}, falling back to legacy")
+        return generate_queries_legacy(company_name, company_analysis, num_queries, mode, country, language)
+
+
 # ==================== AI Platform Queries ====================
+
+async def query_platform_with_company(
+    platform: str,
+    query: str,
+    model_config: Dict[str, Any],
+    company_name: str,
+) -> Dict[str, Any]:
+    """Query Gemini platform with native SDK and company name."""
+    try:
+        if platform == "gemini":
+            result = await get_gemini_client().query_mentions_with_search_grounding(query, company_name)
+            
+            if result.get("success"):
+                return {
+                    "platform": platform,
+                    "query": query,
+                    "response": result["response"],
+                    "model": result["model"],
+                    "has_search_grounding": True,
+                    "search_enabled": True,
+                    "provider": "native_gemini"
+                }
+            else:
+                return {
+                    "platform": platform,
+                    "query": query,
+                    "error": result.get("error", "Unknown Gemini error"),
+                    "response": "",
+                    "model": "gemini-3-pro-preview",
+                    "has_search_grounding": True
+                }
+        else:
+            # Fallback to regular query_platform for non-Gemini
+            return await query_platform(platform, query, model_config)
+            
+    except Exception as e:
+        logger.error(f"{platform} query error: {e}")
+        return {"error": str(e), "platform": platform}
+
 
 async def query_platform(
     platform: str,
     query: str,
     model_config: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Query a single AI platform via local AIClient."""
+    """Query AI platform via OpenRouter (for non-Gemini platforms)."""
     model = model_config["model"]
     needs_tool = model_config.get("needs_tool", False)
     provider = model_config.get("provider")
@@ -840,7 +1033,7 @@ async def query_platform(
         # Use google_search tool for platforms that need it
         tools = ["google_search"] if needs_tool else None
         
-        # Call AI locally
+        # Call AI via OpenRouter
         messages = [{"role": "user", "content": query}]
         
         result = await get_ai_client().complete_with_tools(
@@ -871,12 +1064,17 @@ async def query_platform(
 async def query_all_platforms(
     query: str,
     platforms: List[str],
+    company_name: str = None,
 ) -> List[Dict[str, Any]]:
     """Query all platforms in parallel."""
     tasks = []
     for platform in platforms:
         if platform in AI_PLATFORMS:
-            tasks.append(query_platform(platform, query, AI_PLATFORMS[platform]))
+            if platform == "gemini" and company_name:
+                # Pass company name for native Gemini
+                tasks.append(query_platform_with_company(platform, query, AI_PLATFORMS[platform], company_name))
+            else:
+                tasks.append(query_platform(platform, query, AI_PLATFORMS[platform]))
     
     return await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -935,18 +1133,20 @@ async def check_mentions(request: MentionsCheckRequest):
     if request.platforms:
         platforms = request.platforms
     elif request.mode == "fast":
-        # Fast mode: only Gemini and ChatGPT (faster, cheaper)
-        platforms = ["gemini", "chatgpt"]
+        # Fast mode: only Gemini (with native search grounding)
+        platforms = ["gemini"]
     else:
         # Full mode: all platforms
         platforms = list(AI_PLATFORMS.keys())
     
     # Generate queries
-    queries = generate_queries(
+    queries = await generate_queries(
         request.companyName,
         request.companyAnalysis,
         request.numQueries,
         request.mode,
+        request.country,
+        request.language,
     )
     logger.info(f"Generated {len(queries)} queries")
     
@@ -974,18 +1174,61 @@ async def check_mentions(request: MentionsCheckRequest):
     # Process ALL queries in PARALLEL (much faster!)
     async def process_single_query(query_data):
         """Process a single query across all platforms."""
+        import time
+        query_start = time.time()
+        
         query = query_data["query"]
         dimension = query_data["dimension"]
-        logger.info(f"Querying: '{query}' ({dimension})")
-        results = await query_all_platforms(query, platforms)
-        return {"query_data": query_data, "results": results}
+        logger.info(f"🔍 [QUERY] Starting: '{query}' ({dimension})")
+        
+        platform_start = time.time()
+        results = await query_all_platforms(query, platforms, request.companyName)
+        platform_end = time.time()
+        platform_duration = platform_end - platform_start
+        
+        query_end = time.time()
+        total_duration = query_end - query_start
+        
+        logger.info(f"✅ [QUERY] Completed '{query[:50]}...' in {total_duration:.2f}s (platforms: {platform_duration:.2f}s)")
+        
+        return {"query_data": query_data, "results": results, "timing": {"total": total_duration, "platforms": platform_duration}}
     
-    logger.info(f"Processing {len(queries)} queries in parallel...")
-    all_query_results = await asyncio.gather(
-        *[process_single_query(q) for q in queries],
-        return_exceptions=True
-    )
-    logger.info(f"All queries completed")
+    parallel_start = time.time()
+    logger.info(f"📊 [PARALLEL] Processing {len(queries)} queries in parallel across {len(platforms)} platforms...")
+    
+    # Process queries in batches to avoid resource limits
+    BATCH_SIZE = 5  # Process 5 queries at a time to prevent crashes
+    all_query_results = []
+    
+    for i in range(0, len(queries), BATCH_SIZE):
+        batch = queries[i:i + BATCH_SIZE]
+        batch_num = (i // BATCH_SIZE) + 1
+        total_batches = (len(queries) + BATCH_SIZE - 1) // BATCH_SIZE
+        
+        logger.info(f"🔄 [BATCH {batch_num}/{total_batches}] Processing {len(batch)} queries...")
+        
+        batch_results = await asyncio.gather(
+            *[process_single_query(q) for q in batch],
+            return_exceptions=True
+        )
+        
+        all_query_results.extend(batch_results)
+        logger.info(f"✅ [BATCH {batch_num}/{total_batches}] Completed")
+        
+        # Brief pause between batches to avoid overwhelming the system
+        if i + BATCH_SIZE < len(queries):
+            logger.info(f"⏱️  [BATCH] Brief pause before next batch...")
+            await asyncio.sleep(2)  # 2 second pause between batches
+    
+    parallel_end = time.time()
+    parallel_duration = parallel_end - parallel_start
+    logger.info(f"✅ [PARALLEL] All {len(queries)} queries completed in {parallel_duration:.2f}s using batched processing")
+    
+    # Log timing breakdown
+    successful_queries = [r for r in all_query_results if not isinstance(r, Exception)]
+    if successful_queries:
+        avg_query_time = sum(r.get("timing", {}).get("total", 0) for r in successful_queries) / len(successful_queries)
+        logger.info(f"📈 [TIMING] Average per query: {avg_query_time:.2f}s, Parallel efficiency: {(avg_query_time * len(queries)) / parallel_duration:.1f}x")
     
     # Process results from all parallel queries
     for query_result in all_query_results:
