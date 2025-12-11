@@ -18,6 +18,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { useContextStorage } from '@/hooks/useContextStorage'
+import { CompanySelector } from '@/components/context/CompanySelector'
 import { toast } from 'sonner'
 
 const LOADING_MESSAGES = [
@@ -111,8 +112,37 @@ interface BatchResult {
   generation_time: number
 }
 
+const BLOG_GENERATION_STEPS = [
+  '🔍 Stage 0: Data Fetch & Auto-Detection',
+  '🧠 Stage 1: Simple Prompt Construction',
+  '📝 Stage 2: Gemini Content Generation (Structured JSON)',
+  '🎯 Stage 3: Structured Data Extraction',
+  '🔧 Stage 2b: Quality Refinement',
+  '🔗 Stage 4: Citations Validation & Formatting',
+  '🌐 Stage 5: Internal Links Generation',
+  '📋 Stage 6: Table of Contents Generation',
+  '📊 Stage 7: Metadata Calculation',
+  '❓ Stage 8: FAQ/PAA Validation & Enhancement',
+  '🖼️ Stage 9: Image Generation (3 images)',
+  '✅ Stage 10: Final Assembly & HTML Generation',
+]
+
 export function BlogGenerator() {
-  const { businessContext, hasContext, updateContext } = useContextStorage()
+  const { businessContext, hasContext, updateContext, isLoading } = useContextStorage()
+  
+  // Force context check - simple fallback for debugging
+  const hasValidContext = hasContext || (businessContext.companyName && businessContext.companyWebsite)
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('[DEBUG] Context state:', { 
+      hasContext, 
+      hasValidContext,
+      isLoading,
+      companyName: businessContext.companyName,
+      companyWebsite: businessContext.companyWebsite 
+    })
+  }, [hasContext, hasValidContext, isLoading, businessContext])
   
   // Form state
   const [batchMode, setBatchMode] = useState(false)
@@ -120,7 +150,7 @@ export function BlogGenerator() {
   const [batchKeywords, setBatchKeywords] = useState<BatchKeyword[]>([
     { keyword: '' }
   ])
-  const [wordCount, setWordCount] = useState(1000)
+  // Word count handled by backend - removed from UI
   const [tone, setTone] = useState('professional')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [systemPrompts, setSystemPrompts] = useState('')
@@ -130,6 +160,8 @@ export function BlogGenerator() {
   // Progress tracking
   const [progress, setProgress] = useState(0)
   const [timeRemaining, setTimeRemaining] = useState(0)
+  const [messageIndex, setMessageIndex] = useState(0)
+  const [dots, setDots] = useState('')
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -139,10 +171,6 @@ export function BlogGenerator() {
     systemPrompts: false,
     additionalInstructions: false,
   })
-  
-  // Rotating message state
-  const [messageIndex, setMessageIndex] = useState(0)
-  const [dots, setDots] = useState('')
   
   // Results state
   const [result, setResult] = useState<BlogResult | null>(null)
@@ -174,7 +202,7 @@ export function BlogGenerator() {
           } else {
             setPrimaryKeyword(state.primaryKeyword || '')
           }
-          setWordCount(state.wordCount || 1000)
+          // Word count now handled by backend
           setTone(state.tone || 'professional')
           
           // Calculate current progress (estimate 2min for single, 5min for batch)
@@ -255,23 +283,40 @@ export function BlogGenerator() {
     }
   }, [businessContext.clientKnowledgeBase, businessContext.contentInstructions, businessContext.systemInstructions])
 
-  // Rotating messages effect
+  // Rotating messages effect for blog generation
   useEffect(() => {
     if (!isGenerating) return
 
     const messageTimer = setInterval(() => {
-      setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length)
-    }, 2000)
+      setMessageIndex((prev) => (prev + 1) % BLOG_GENERATION_STEPS.length)
+    }, 2500) // Faster rotation for better visibility
 
     const dotTimer = setInterval(() => {
       setDots((prev) => (prev.length >= 3 ? '' : prev + '.'))
-    }, 400)
+    }, 500)
 
     return () => {
       clearInterval(messageTimer)
       clearInterval(dotTimer)
     }
   }, [isGenerating])
+
+  // Cleanup on unmount - clear intervals and abort requests
+  useEffect(() => {
+    return () => {
+      // Clear progress interval
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+        progressIntervalRef.current = null
+      }
+      
+      // Abort any ongoing requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+        abortControllerRef.current = null
+      }
+    }
+  }, [])
   
   // Get company info from context
   const companyName = businessContext.companyName || ''
@@ -292,14 +337,13 @@ export function BlogGenerator() {
         const text = e.target?.result as string
         const lines = text.split('\n').filter(line => line.trim())
         
-        // Parse CSV (supports: "keyword", "keyword,word_count", or "keyword,word_count,instructions")
+        // Parse CSV (supports: "keyword" or "keyword,instructions")
         const keywords = lines
           .map(line => {
             const parts = line.split(',').map(p => p.trim().replace(/^["']|["']$/g, ''))
             return {
               keyword: parts[0],
-              word_count: parts[1] && !isNaN(parseInt(parts[1])) ? parseInt(parts[1]) : undefined,
-              instructions: parts[2] || undefined,
+              instructions: parts[1] || undefined,
             }
           })
           .filter(k => k.keyword && k.keyword.length > 0)
@@ -353,10 +397,11 @@ export function BlogGenerator() {
       return
     }
 
-    if (!geminiApiKey) {
-      toast.error('Please set your Gemini API key in Settings first.')
-      return
-    }
+    // API key is handled server-side, no need to check client-side
+    // if (!geminiApiKey) {
+    //   toast.error('Please set your Gemini API key in Settings first.')
+    //   return
+    // }
 
     // Clear any existing abort controller
     if (abortControllerRef.current) {
@@ -371,8 +416,10 @@ export function BlogGenerator() {
     setResult(null)
     setBatchResult(null)
     setProgress(0)
+    setMessageIndex(0)
+    setDots('')
     
-    const estimatedTime = batchMode ? batchKeywords.filter(k => k.keyword.trim()).length * 90 : 60
+    const estimatedTime = batchMode ? batchKeywords.filter(k => k.keyword.trim()).length * 240 : 300
     setTimeRemaining(estimatedTime)
 
     // Save generation state to sessionStorage for persistence
@@ -382,7 +429,6 @@ export function BlogGenerator() {
         batchMode,
         primaryKeyword,
         batchKeywords,
-        wordCount,
         tone,
       }
       sessionStorage.setItem(GENERATION_STATE_KEY, JSON.stringify(generationState))
@@ -402,25 +448,25 @@ export function BlogGenerator() {
     try {
       const requestBody = batchMode ? {
         keyword: 'batch',
-        word_count: wordCount,
+        word_count: 1000, // Default handled by backend
         tone: tone,
         system_prompts: systemPrompts.trim() ? systemPrompts.trim().split('\n').filter(p => p.trim()) : [],
         additional_instructions: additionalInstructions.trim(),
         company_name: companyName.trim(),
         company_url: companyUrl.trim(),
-        apiKey: geminiApiKey,
+        apiKey: null, // API key handled server-side
         business_context: businessContext,
         batch_mode: true,
         batch_keywords: batchKeywords.filter(k => k.keyword.trim()),
       } : {
         keyword: primaryKeyword.trim(),
-        word_count: wordCount,
+        word_count: 1000, // Default handled by backend
         tone: tone,
         system_prompts: systemPrompts.trim() ? systemPrompts.trim().split('\n').filter(p => p.trim()) : [],
         additional_instructions: additionalInstructions.trim(),
         company_name: companyName.trim(),
         company_url: companyUrl.trim(),
-        apiKey: geminiApiKey,
+        apiKey: null, // API key handled server-side
         business_context: businessContext,
       }
 
@@ -496,8 +542,8 @@ export function BlogGenerator() {
           console.warn('Failed to save batch to localStorage:', e)
           // Continue anyway - not critical
         }
-      } else {
-        // Validate single blog response structure
+        } else {
+          // Validate single blog response structure
         if (!data || typeof data !== 'object' || !data.metadata) {
           throw new Error('Invalid response format: missing metadata')
         }
@@ -525,7 +571,7 @@ export function BlogGenerator() {
             company: companyName.trim(),
             url: companyUrl.trim(),
             keyword: primaryKeyword.trim(),
-            wordCount: wordCount,
+            wordCount: wordCount, // From backend response
             generationTime: generationTime,
             title: data.title || '',
             content: data.content || '',
@@ -574,7 +620,7 @@ export function BlogGenerator() {
       setTimeRemaining(0)
       abortControllerRef.current = null
     }
-  }, [batchMode, primaryKeyword, batchKeywords, wordCount, systemPrompts, additionalInstructions, companyName, companyUrl, geminiApiKey, businessContext, isGenerating])
+  }, [batchMode, primaryKeyword, batchKeywords, systemPrompts, additionalInstructions, companyName, companyUrl, geminiApiKey, businessContext, isGenerating])
 
   return (
     <div className="h-full flex">
@@ -588,6 +634,9 @@ export function BlogGenerator() {
             </p>
           </div>
 
+          {/* Company Context Selector */}
+          <CompanySelector />
+
           {/* AEO Explanation */}
           <div className="bg-gradient-to-r from-purple-500/5 to-blue-500/5 border-l-4 border-purple-500 rounded-r-lg p-4 space-y-1">
             <p className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -600,7 +649,7 @@ export function BlogGenerator() {
           </div>
 
           {/* No Context Warning */}
-          {!hasContext && (
+          {!hasValidContext && (
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 space-y-1.5">
               <p className="text-xs font-medium text-blue-500">No Company Context Set</p>
               <p className="text-xs text-muted-foreground">
@@ -613,36 +662,7 @@ export function BlogGenerator() {
             </div>
           )}
 
-          {/* API Key Warning */}
-          {!geminiApiKey && (
-            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 space-y-1.5">
-              <p className="text-xs font-medium text-yellow-500">Gemini API Key Required</p>
-              <p className="text-xs text-muted-foreground">
-                Set your API key in{' '}
-                <a href="/settings" className="text-primary hover:underline">
-                  Settings
-                </a>
-                {' '}to generate content.
-              </p>
-            </div>
-          )}
 
-          {/* Show company info from context */}
-          {hasContext && (
-            <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 space-y-2">
-              <p className="text-xs font-medium text-primary/90">Using Company Context</p>
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Company:</span>
-                  <span className="text-xs font-medium">{companyName}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">URL:</span>
-                  <span className="text-xs font-medium truncate max-w-[200px]">{companyUrl}</span>
-                </div>
-              </div>
-            </div>
-          )}
 
           <div className="space-y-4">
             {/* Batch Mode Toggle */}
@@ -762,12 +782,12 @@ export function BlogGenerator() {
                     💡 CSV Format
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Format: <code className="bg-background px-1 py-0.5 rounded">keyword[,word_count][,instructions]</code>
+                    Format: <code className="bg-background px-1 py-0.5 rounded">keyword[,instructions]</code>
                   </p>
                   <code className="text-xs block bg-background p-1.5 rounded mt-1 font-mono">
                     AI in healthcare<br/>
-                    Machine learning basics,1500<br/>
-                    Data science tools,2000,Include case studies
+                    Machine learning basics<br/>
+                    Data science tools,Include case studies
                   </code>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -776,22 +796,7 @@ export function BlogGenerator() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="word-count" className="text-xs font-medium">
-                  Word Count {batchMode && <span className="text-muted-foreground">(default)</span>}
-                </Label>
-                <Input
-                  id="word-count"
-                  type="number"
-                  min={500}
-                  max={3000}
-                  value={wordCount}
-                  onChange={(e) => setWordCount(Math.max(500, Math.min(3000, parseInt(e.target.value) || 1000)))}
-                  className="text-sm"
-                  disabled={isGenerating}
-                />
-              </div>
+            <div className="grid grid-cols-1 gap-3">
 
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
@@ -921,7 +926,7 @@ export function BlogGenerator() {
 
             <Button
               onClick={handleGenerate}
-              disabled={!hasContext || !geminiApiKey || isGenerating || isRefreshing || (!batchMode && !primaryKeyword.trim()) || (batchMode && !batchKeywords.some(k => k.keyword.trim()))}
+              disabled={!hasValidContext || isGenerating || isRefreshing || (!batchMode && !primaryKeyword.trim()) || (batchMode && !batchKeywords.some(k => k.keyword.trim()))}
               className="w-full"
               size="lg"
             >
@@ -962,7 +967,7 @@ export function BlogGenerator() {
                     key={messageIndex}
                     className="text-sm font-medium text-foreground animate-[fadeIn_0.3s_ease-in-out] text-center whitespace-nowrap"
                   >
-                    {LOADING_MESSAGES[messageIndex]}{dots}
+                    {BLOG_GENERATION_STEPS[messageIndex]}{dots}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground text-center h-5">
@@ -1151,11 +1156,11 @@ export function BlogGenerator() {
                       return
                     }
                     
-                    // Check for API key
-                    if (!geminiApiKey) {
-                      toast.error('Please set your Gemini API key in Settings first')
-                      return
-                    }
+                    // API key is handled server-side
+                    // if (!geminiApiKey) {
+                    //   toast.error('Please set your Gemini API key in Settings first')
+                    //   return
+                    // }
                     
                     setIsRefreshing(true)
                     
@@ -1200,7 +1205,7 @@ export function BlogGenerator() {
                           content_format: 'html',
                           instructions: instructions,
                           output_format: 'html',
-                          apiKey: geminiApiKey,
+                          apiKey: null, // API key handled server-side
                         }),
                         signal: refreshAbortController.signal,
                       })
@@ -1285,22 +1290,5 @@ export function BlogGenerator() {
       </div>
     </div>
   )
-  
-  // Cleanup on unmount - clear intervals and abort requests
-  useEffect(() => {
-    return () => {
-      // Clear progress interval
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current)
-        progressIntervalRef.current = null
-      }
-      
-      // Abort any ongoing requests
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort()
-        abortControllerRef.current = null
-      }
-    }
-  }, [])
 }
 

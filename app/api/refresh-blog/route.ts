@@ -34,11 +34,15 @@ export async function POST(request: NextRequest): Promise<Response> {
       )
     }
 
-    const apiKey = clientApiKey || process.env.GEMINI_API_KEY
+    // Try multiple environment variable names for Gemini API key
+    const apiKey = clientApiKey || 
+                  process.env.GEMINI_API_KEY || 
+                  process.env.GOOGLE_GEMINI_API_KEY ||
+                  process.env.NEXT_PUBLIC_GEMINI_API_KEY
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Gemini API key is required' },
+        { error: 'Gemini API key is required. Please set GEMINI_API_KEY or GOOGLE_GEMINI_API_KEY environment variable.' },
         { status: 400 }
       )
     }

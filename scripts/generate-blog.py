@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 
 # Add blog-writer to path
-blog_writer_path = Path(__file__).parent.parent.parent / 'services' / 'blog-writer'
+blog_writer_path = Path(__file__).parent.parent / 'python-services' / 'blog-writer'
 sys.path.insert(0, str(blog_writer_path))
 
 from pipeline.core.workflow_engine import WorkflowEngine
@@ -155,8 +155,8 @@ async def generate_blog(input_data: dict) -> dict:
                     'keyword': kw_data.get('keyword', ''),
                 })
             
-            # Generate each blog
-            for idx, kw_data in enumerate(request.batch_keywords):
+            # Generate each blog in parallel
+            async def generate_single_blog(idx, kw_data):
                 keyword = kw_data.get('keyword', '')
                 word_count = kw_data.get('word_count', request.word_count)
                 
@@ -187,29 +187,72 @@ async def generate_blog(input_data: dict) -> dict:
                 if request.content_generation_instruction:
                     job_config["content_generation_instruction"] = request.content_generation_instruction
                 
-                # Execute
-                engine = get_engine()
-                context = await engine.execute(job_id=job_id, job_config=job_config)
-                
-                # Extract result
-                headline = ""
-                if context.structured_data:
-                    headline = getattr(context.structured_data, 'Headline', None) or ""
-                
-                html_content = ""
-                if context.validated_article:
-                    html_content = context.validated_article.get("html_content", "")
-                elif context.final_article:
-                    html_content = context.final_article.get("html_content", "")
-                
-                results.append({
-                    "keyword": keyword,
-                    "success": True,
-                    "headline": headline,
-                    "slug": generate_slug(headline) if headline else generate_slug(keyword),
-                    "html_content": html_content,
-                    "word_count": len(html_content.split()) if html_content else 0,
-                })
+                try:
+                    # Execute
+                    engine = get_engine()
+                    context = await engine.execute(job_id=job_id, job_config=job_config)
+                    
+                    # Extract result
+                    headline = ""
+                    if context.structured_data:
+                        headline = getattr(context.structured_data, 'Headline', None) or ""
+                    
+                    html_content = ""
+                    if context.validated_article:
+                        html_content = context.validated_article.get("html_content", "")
+                    elif context.final_article:
+                        html_content = context.final_article.get("html_content", "")
+                    
+                    return {
+                        "keyword": keyword,
+                        "success": True,
+                        "headline": headline,
+                        "slug": generate_slug(headline) if headline else generate_slug(keyword),
+                        "html_content": html_content,
+                        "word_count": len(html_content.split()) if html_content else 0,
+                    }
+                except Exception as e:
+                    return {
+                        "keyword": keyword,
+                        "success": False,
+                        "error": str(e),
+                        "headline": "",
+                        "slug": generate_slug(keyword),
+                        "html_content": "",
+                        "word_count": 0,
+                    }
+            
+            # Create tasks for parallel execution with staggered start
+            import asyncio
+            tasks = []
+            for idx, kw_data in enumerate(request.batch_keywords):
+                task = asyncio.create_task(generate_single_blog(idx, kw_data))
+                tasks.append(task)
+                # Add small delay between task creation to avoid overwhelming API
+                if idx < len(request.batch_keywords) - 1:
+                    await asyncio.sleep(2)  # 2 second stagger between starts
+            
+            # Execute all blogs in parallel (they'll start at slightly different times)
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Convert exceptions to error results
+            processed_results = []
+            for i, result in enumerate(results):
+                if isinstance(result, Exception):
+                    kw_data = request.batch_keywords[i]
+                    processed_results.append({
+                        "keyword": kw_data.get('keyword', ''),
+                        "success": False,
+                        "error": str(result),
+                        "headline": "",
+                        "slug": generate_slug(kw_data.get('keyword', '')),
+                        "html_content": "",
+                        "word_count": 0,
+                    })
+                else:
+                    processed_results.append(result)
+            
+            results = processed_results
             
             return {
                 "success": True,

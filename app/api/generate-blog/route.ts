@@ -71,11 +71,15 @@ export async function POST(request: NextRequest): Promise<Response> {
       )
     }
 
-    const apiKey = clientApiKey || process.env.GEMINI_API_KEY
+    // Try multiple environment variable names for Gemini API key
+    const apiKey = clientApiKey || 
+                  process.env.GEMINI_API_KEY || 
+                  process.env.GOOGLE_GEMINI_API_KEY ||
+                  process.env.NEXT_PUBLIC_GEMINI_API_KEY
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Gemini API key is required. Please set it in Settings or GEMINI_API_KEY environment variable.' },
+        { error: 'Gemini API key is required. Please set GEMINI_API_KEY or GOOGLE_GEMINI_API_KEY environment variable.' },
         { status: 400 }
       )
     }
@@ -88,76 +92,91 @@ export async function POST(request: NextRequest): Promise<Response> {
       const isDev = process.env.NODE_ENV === 'development'
       
       if (isDev) {
-        // Local: Call Python script directly
+        // Local: Call Python script directly 
         const scriptPath = path.join(process.cwd(), 'scripts', 'generate-blog.py')
         
-        return new Promise((resolve) => {
-          const python = spawn('python3', [scriptPath])
-          let stdout = ''
-          let stderr = ''
-          
-          python.stdout.on('data', (data) => {
-            stdout += data.toString()
-          })
-          
-          python.stderr.on('data', (data) => {
-            stderr += data.toString()
-            console.error('[BLOG:Python]', data.toString().trim())
-          })
-          
+        const python = spawn('python3', [scriptPath])
+        let stdout = ''
+        
+        python.stdout.on('data', (data) => {
+          stdout += data.toString()
+        })
+        
+        python.stderr.on('data', (data) => {
+          const logLine = data.toString().trim()
+          console.error('[BLOG:Python]', logLine)
+        })
+        
+        // Send input to Python via stdin (using BlogGenerationRequest schema)
+        const requestData = batch_mode ? {
+          primary_keyword: 'batch',
+          company_url: company_url,
+          language: language || 'en',
+          country: country || 'US',
+          company_name: company_name,
+          word_count: word_count,
+          tone: tone,
+          system_prompts: system_prompts || [],
+          content_generation_instruction: additional_instructions,
+          batch_mode: true,
+          batch_keywords: batch_keywords,
+          apiKey: apiKey,
+          business_context: business_context,
+          index: true,
+        } : {
+          primary_keyword: keyword,
+          company_url: company_url,
+          language: language || 'en',
+          country: country || 'US',
+          company_name: company_name,
+          word_count: word_count,
+          tone: tone,
+          system_prompts: system_prompts || [],
+          content_generation_instruction: additional_instructions,
+          apiKey: apiKey,
+          business_context: business_context,
+          index: true,
+        }
+        
+        python.stdin.write(JSON.stringify(requestData))
+        python.stdin.end()
+        
+        return new Promise((resolve, reject) => {
           python.on('close', (code) => {
             if (code !== 0) {
-              console.error('[BLOG] Python error:', stderr)
-              resolve(NextResponse.json(
-                { error: 'Blog generation failed', details: stderr },
-                { status: 500 }
-              ))
-              return
-            }
-            
-            try {
-              const result = JSON.parse(stdout)
-              const generationTime = (Date.now() - startTime) / 1000
-              console.log('[BLOG] Generated in', generationTime, 's')
-              resolve(NextResponse.json(result))
-            } catch (e) {
-              console.error('[BLOG] Failed to parse output:', e)
-              resolve(NextResponse.json(
-                { error: 'Failed to parse output' },
-                { status: 500 }
-              ))
+              console.error('[BLOG] Python error')
+              reject(new Error('Blog generation failed'))
+            } else {
+              try {
+                const result = JSON.parse(stdout)
+                const generationTime = (Date.now() - startTime) / 1000
+                console.log('[BLOG] Generated in', generationTime, 's')
+                
+                const responseData = batch_mode ? result : {
+                  title: result.headline || result.meta_title || keyword,
+                  content: result.html_content || '',
+                  metadata: {
+                    keyword: keyword,
+                    word_count: result.word_count || 0,
+                    generation_time: generationTime,
+                    company_name: company_name,
+                    company_url: company_url,
+                    aeo_score: result.aeo_score || 0,
+                    job_id: result.job_id,
+                    slug: result.slug,
+                    meta_title: result.meta_title,
+                    meta_description: result.meta_description,
+                    read_time: result.read_time,
+                  },
+                }
+                
+                resolve(NextResponse.json(responseData))
+              } catch (e) {
+                console.error('[BLOG] Failed to parse output:', e)
+                reject(new Error('Failed to parse output'))
+              }
             }
           })
-          
-          // Send input to Python via stdin (using BlogGenerationRequest schema)
-          const requestData = batch_mode ? {
-            primary_keyword: 'batch',
-            company_url: company_url,
-            language: language || 'en',
-            country: country || 'US',
-            company_name: company_name,
-            word_count: word_count,
-            tone: tone,
-            system_prompts: system_prompts || [],
-            content_generation_instruction: additional_instructions,
-            batch_mode: true,
-            batch_keywords: batch_keywords,
-            index: true,
-          } : {
-            primary_keyword: keyword,
-            company_url: company_url,
-            language: language || 'en',
-            country: country || 'US',
-            company_name: company_name,
-            word_count: word_count,
-            tone: tone,
-            system_prompts: system_prompts || [],
-            content_generation_instruction: additional_instructions,
-            index: true,
-          }
-          
-          python.stdin.write(JSON.stringify(requestData))
-          python.stdin.end()
         })
       }
       

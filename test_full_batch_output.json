@@ -1,0 +1,52 @@
+{
+  "success": true,
+  "batch_mode": true,
+  "results": [
+    {
+      "keyword": "AEO strategy 2025",
+      "success": false,
+      "error": "Circuit breaker open for _generate_content_with_retry",
+      "headline": "",
+      "slug": "aeo-strategy-2025",
+      "html_content": "",
+      "word_count": 0
+    },
+    {
+      "keyword": "AI content optimization",
+      "success": false,
+      "error": "Circuit breaker open for _generate_content_with_retry",
+      "headline": "",
+      "slug": "ai-content-optimization",
+      "html_content": "",
+      "word_count": 0
+    },
+    {
+      "keyword": "Voice search SEO",
+      "success": false,
+      "error": "Circuit breaker open for _generate_content_with_retry",
+      "headline": "",
+      "slug": "voice-search-seo",
+      "html_content": "",
+      "word_count": 0
+    },
+    {
+      "keyword": "ChatGPT optimization",
+      "success": false,
+      "error": "Circuit breaker open for _generate_content_with_retry",
+      "headline": "",
+      "slug": "chatgpt-optimization",
+      "html_content": "",
+      "word_count": 0
+    },
+    {
+      "keyword": "Perplexity SEO guide",
+      "success": false,
+      "error": "Circuit breaker open for _generate_content_with_retry",
+      "headline": "",
+      "slug": "perplexity-seo-guide",
+      "html_content": "",
+      "word_count": 0
+    }
+  ],
+  "total": 5
+}

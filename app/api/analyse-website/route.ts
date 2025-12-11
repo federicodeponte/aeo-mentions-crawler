@@ -65,13 +65,14 @@ export async function POST(request: NextRequest): Promise<Response> {
       )
     }
 
-    // Use client-provided API key, or fallback to server env
-    const apiKey = clientApiKey || process.env.GEMINI_API_KEY
+    // Use server environment variable first, fallback to client key if needed
+    const apiKey = process.env.GEMINI_API_KEY || clientApiKey
 
     if (!apiKey || typeof apiKey !== 'string') {
+      console.error('[ANALYZE] No GEMINI_API_KEY environment variable set')
       return NextResponse.json(
-        { error: 'Gemini API key is required. Please set it in Settings or GEMINI_API_KEY environment variable.' },
-        { status: 400 }
+        { error: 'Website analysis is temporarily unavailable. Please try again later.' },
+        { status: 503 }
       )
     }
 

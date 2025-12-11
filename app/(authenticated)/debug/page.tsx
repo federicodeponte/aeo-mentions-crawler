@@ -85,13 +85,13 @@ export default function DebugPage() {
             <h2 className={cn("font-semibold", textSizes.xs)}>Browser Info</h2>
             <div className="bg-muted p-3 sm:p-4 rounded-lg space-y-2">
               <p className={cn("break-all", textSizes.xs)}>
-                <strong>User Agent:</strong> <span className="text-muted-foreground">{navigator.userAgent}</span>
+                <strong>User Agent:</strong> <span className="text-muted-foreground">{typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A (Server-side)'}</span>
               </p>
               <p className={textSizes.xs}>
                 <strong>JavaScript:</strong> <span className="text-green-600">✅ Enabled (you can see this page)</span>
               </p>
               <p className={textSizes.xs}>
-                <strong>Cookies:</strong> <span className={navigator.cookieEnabled ? 'text-green-600' : 'text-red-600'}>{navigator.cookieEnabled ? '✅ Enabled' : '❌ Disabled'}</span>
+                <strong>Cookies:</strong> <span className={typeof navigator !== 'undefined' && navigator.cookieEnabled ? 'text-green-600' : 'text-red-600'}>{typeof navigator !== 'undefined' && navigator.cookieEnabled ? '✅ Enabled' : '❌ Disabled'}</span>
               </p>
               <p className={textSizes.xs}>
                 <strong>Local Storage:</strong> <span className={typeof Storage !== 'undefined' ? 'text-green-600' : 'text-red-600'}>{typeof Storage !== 'undefined' ? '✅ Available' : '❌ Not Available'}</span>

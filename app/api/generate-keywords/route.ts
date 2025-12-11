@@ -10,7 +10,6 @@ interface KeywordRequest {
   language: string
   country: string
   num_keywords: number
-  apiKey: string
   analyze_first?: boolean  // NEW: Trigger company analysis
   description?: string
   industry?: string
@@ -28,7 +27,7 @@ interface KeywordRequest {
 export async function POST(request: NextRequest): Promise<Response> {
   try {
     const body: KeywordRequest = await request.json()
-    const { company_name, company_url, apiKey } = body
+    const { company_name, company_url } = body
 
     if (!company_name) {
       return NextResponse.json(
@@ -37,13 +36,13 @@ export async function POST(request: NextRequest): Promise<Response> {
       )
     }
 
-    // Use client API key or fallback to server environment variable
-    const finalApiKey = apiKey || process.env.GEMINI_API_KEY
+    // Use server environment variable (no client-side API key required)
+    const finalApiKey = process.env.GEMINI_API_KEY
     
     if (!finalApiKey) {
       return NextResponse.json(
-        { error: 'Gemini API key is required. Please set it in Settings or configure GEMINI_API_KEY environment variable.' },
-        { status: 400 }
+        { error: 'Gemini API key not configured on server. Please contact administrator.' },
+        { status: 500 }
       )
     }
 
@@ -117,9 +116,9 @@ export async function POST(request: NextRequest): Promise<Response> {
         }
       })
 
-      // Pass the final API key to Python script
-      const bodyWithFinalApiKey = { ...body, apiKey: finalApiKey }
-      pythonProcess.stdin.write(JSON.stringify(bodyWithFinalApiKey))
+      // Pass the server API key to Python script
+      const bodyWithApiKey = { ...body, apiKey: finalApiKey }
+      pythonProcess.stdin.write(JSON.stringify(bodyWithApiKey))
       pythonProcess.stdin.end()
     })
     } else {

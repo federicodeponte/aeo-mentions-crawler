@@ -7,7 +7,10 @@ import json
 import subprocess
 from pathlib import Path
 
-os.environ['GEMINI_API_KEY'] = '[REMOVED_API_KEY]'
+# Get API key from environment variable (never hardcode!)
+if 'GEMINI_API_KEY' not in os.environ:
+    print("❌ GEMINI_API_KEY environment variable not set")
+    sys.exit(1)
 
 # Use same config as batch test
 test_input = {

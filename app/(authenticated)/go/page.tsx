@@ -5,15 +5,16 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { Skeleton } from '@/components/ui/skeleton'
 
-// Lazy load KeywordGenerator
 const KeywordGenerator = dynamic(
   () => import('@/components/keywords/KeywordGenerator').then(mod => ({ default: mod.KeywordGenerator })),
   {
     loading: () => (
       <div className="h-full flex items-center justify-center">
-        <Skeleton className="h-96 w-full max-w-4xl" />
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-bold">Loading Keyword Generator...</h1>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+        </div>
       </div>
     ),
     ssr: false,

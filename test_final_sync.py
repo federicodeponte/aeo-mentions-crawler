@@ -10,7 +10,10 @@ import json
 import subprocess
 from datetime import datetime
 
-os.environ['GEMINI_API_KEY'] = '[REMOVED_API_KEY]'
+# Get API key from environment variable (never hardcode!)
+if 'GEMINI_API_KEY' not in os.environ:
+    print("❌ GEMINI_API_KEY environment variable not set")
+    sys.exit(1)
 
 test_config = {
     "primary_keyword": "What is AEO optimization",

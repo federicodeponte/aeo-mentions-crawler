@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 
-export const maxDuration = 6000 // 100 minutes (Render max)
+export const maxDuration = 300 // 5 minutes (Vercel hobby plan max)
 
 export async function POST(request: NextRequest): Promise<Response> {
   try {
