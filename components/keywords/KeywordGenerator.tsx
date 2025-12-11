@@ -26,38 +26,39 @@ const LOADING_MESSAGES = [
 ]
 
 // Cursor-style subprocess steps with realistic timing (based on actual API test: 460s)
+// NOTE: Using faster timing for testing UI - will restore to real timing (460s total) after verification
 const CURSOR_SUBPROCESS_STEPS = [
   { 
     id: 'context',
     name: 'Analyzing Business Context', 
-    duration: 45, // seconds
+    duration: 5, // seconds (was 45)
     substeps: ['Loading company data', 'Parsing business context', 'Identifying market focus']
   },
   { 
     id: 'research',
     name: 'Market Intelligence Research', 
-    duration: 90,
+    duration: 8, // seconds (was 90)
     substeps: ['Competitor analysis', 'Forum & community research', 'Google trends analysis']
   },
   { 
     id: 'generate',
     name: 'AI Keyword Generation', 
-    duration: 120,
+    duration: 10, // seconds (was 120)
     substeps: ['Gemini AI processing', 'Intent classification', 'Semantic deduplication']
   },
   { 
     id: 'optimize',
     name: 'AEO & SERP Analysis', 
-    duration: 150,
+    duration: 12, // seconds (was 150)
     substeps: ['SERP analysis', 'Volume lookup', 'Answer engine optimization']
   },
   { 
     id: 'finalize',
     name: 'Content Brief Generation', 
-    duration: 55,
+    duration: 5, // seconds (was 55)
     substeps: ['Content briefs', 'Final validation', 'Export preparation']
   }
-] // Total: 460 seconds (7min 40sec) - matches actual API timing test
+] // Total: 40 seconds (for testing) - will restore to 460s after UI verification
 
 interface Keyword {
   keyword: string
@@ -254,7 +255,6 @@ export function KeywordGenerator() {
     sessionStorage.setItem(GENERATION_STATE_KEY, JSON.stringify(generationState))
 
     // Start progress bar
-    const totalDuration = CURSOR_SUBPROCESS_STEPS.reduce((sum, step) => sum + step.duration, 0)
     progressIntervalRef.current = setInterval(() => {
       setProgress(prev => {
         const newProgress = prev + (95 / totalDuration) // Reach 95% in total duration
