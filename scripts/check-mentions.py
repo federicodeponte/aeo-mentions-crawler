@@ -62,14 +62,23 @@ def convert_to_python_format(input_data: Dict[str, Any]) -> MentionsCheckRequest
     if not api_key:
         api_key = os.getenv('OPENROUTER_API_KEY', '')
     
+    # Determine number of queries - prioritize explicit num_queries over mode defaults
+    mode = input_data.get('mode', 'full')
+    if 'num_queries' in input_data and input_data['num_queries'] is not None:
+        num_queries = input_data['num_queries']
+    else:
+        # Only use mode-based defaults when num_queries is not specified
+        default_queries = 10 if mode == 'fast' else 50
+        num_queries = default_queries
+    
     return MentionsCheckRequest(
         companyName=input_data.get('company_name', ''),
         companyWebsite=input_data.get('company_website', ''),
         companyAnalysis=company_analysis,
         language=input_data.get('language', 'english'),
         country=input_data.get('country', 'US'),
-        numQueries=input_data.get('num_queries', 50),
-        mode=input_data.get('mode', 'full'),
+        numQueries=num_queries,
+        mode=mode,
         generateInsights=False,
         platforms=None,  # Use all platforms
     )

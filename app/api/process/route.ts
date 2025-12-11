@@ -109,7 +109,7 @@ export async function OPTIONS() {
 }
 
 export async function POST(request: NextRequest): Promise<Response> {
-  let userId: string | null = 'anonymous' // No auth required for batch processing
+  const userId: string | null = 'anonymous' // No auth required for batch processing
 
   try {
     const body = await request.json()

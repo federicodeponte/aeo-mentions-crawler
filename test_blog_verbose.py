@@ -23,7 +23,7 @@ proc = subprocess.Popen(
     stderr=subprocess.PIPE,
     text=True,
     bufsize=1,
-    env={**os.environ, "GEMINI_API_KEY": "[REMOVED_API_KEY]"}
+    env=os.environ  # Use environment variables only
 )
 
 # Send input

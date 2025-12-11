@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logError, logDebug } from '@/lib/utils/logger'
 
-export const maxDuration = 6000 // 100 minutes (Render max)
+export const maxDuration = 300 // 5 minutes (Vercel hobby plan max)
 
 interface TestRow {
   company: string

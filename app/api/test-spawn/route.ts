@@ -4,7 +4,7 @@ import { spawn } from 'child_process'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(): Promise<Response> {
   try {
     console.log('[TEST-SPAWN] Testing child_process.spawn...')
     

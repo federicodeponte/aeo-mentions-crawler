@@ -12,6 +12,9 @@ import { Play, AlertCircle, Sparkles, Bot, Activity, Target } from 'lucide-react
 import { HealthResults } from '@/components/aeo/HealthResults'
 import { MentionsResults } from '@/components/aeo/MentionsResults'
 import { useContextStorage } from '@/hooks/useContextStorage'
+import { CompanySelector } from '@/components/context/CompanySelector'
+import { SearchableSelect } from '@/components/ui/searchable-select'
+import { COUNTRIES, LANGUAGES } from '@/lib/constants/countries-languages'
 
 import { toast } from 'sonner'
 
@@ -28,6 +31,8 @@ export default function AnalyticsPage() {
   const { businessContext } = useContextStorage()
   const [url, setUrl] = useState('')
   const [companyName, setCompanyName] = useState('')
+  const [market, setMarket] = useState('DE') // Default to German market
+  const [language, setLanguage] = useState('de') // Default to German language
   
   const [loading, setLoading] = useState(false)
   const [healthProgress, setHealthProgress] = useState<'idle' | 'running' | 'done'>('idle')
@@ -98,7 +103,13 @@ export default function AnalyticsPage() {
     if (businessContext?.companyName && !companyName) {
       setCompanyName(businessContext.companyName)
     }
-  }, [businessContext, url, companyName])
+    
+    // Auto-populate market from context countries
+    if (businessContext?.countries?.length && market === 'DE') {
+      const contextCountry = businessContext.countries[0]
+      setMarket(contextCountry)
+    }
+  }, [businessContext, url, companyName, market])
 
   // Rotating messages effect
   useEffect(() => {
@@ -135,7 +146,7 @@ export default function AnalyticsPage() {
     
     // Start progress tracking
     // Health: ~10s, Mentions: ~40s (fast mode: 10 queries × 2 platforms) = total ~50s
-    setTimeRemaining(50)
+    setTimeRemaining(120)
     setOverallProgress(0)
     
     // Save analytics state to sessionStorage for persistence
@@ -148,7 +159,7 @@ export default function AnalyticsPage() {
     
     progressIntervalRef.current = setInterval(() => {
       setOverallProgress(prev => {
-        const newProgress = prev + (95 / 50) // 95% in 50 seconds
+        const newProgress = prev + (95 / 120) // 95% in 120 seconds
         return Math.min(newProgress, 95)
       })
       setTimeRemaining(prev => Math.max(0, prev - 1))
@@ -222,8 +233,8 @@ export default function AnalyticsPage() {
             company_name: finalCompanyName,
             company_website: finalUrl,
             company_analysis: companyAnalysis,
-            language: 'english',
-            country: businessContext?.countries?.[0] || 'US',
+            language: language === 'de' ? 'german' : language === 'en' ? 'english' : language,
+            country: market,
             mode: 'fast', // fast = 5 queries x 3 platforms
           }),
         }).then(async (res) => {
@@ -317,6 +328,9 @@ export default function AnalyticsPage() {
             </p>
           </div>
 
+          {/* Company Context Selector */}
+          <CompanySelector />
+
           {/* AEO Explanation */}
           <div className="bg-gradient-to-r from-purple-500/5 to-blue-500/5 border-l-4 border-purple-500 rounded-r-lg p-4 space-y-1">
             <p className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -328,33 +342,35 @@ export default function AnalyticsPage() {
             </p>
           </div>
 
-          {/* Company Context Display */}
-          {hasContextData ? (
-            <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 space-y-2">
-              <p className="text-xs font-medium text-primary/90">Using Company Context</p>
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Company:</span>
-                  <span className="text-xs font-medium">{companyName || businessContext?.companyName || 'Test Company'}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">URL:</span>
-                  <span className="text-xs font-medium truncate max-w-[200px]">{url || businessContext?.companyWebsite || 'https://example.com'}</span>
-                </div>
-              </div>
+
+          {/* Market and Language Selection */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="country" className="text-xs font-medium">
+                Country
+              </Label>
+              <SearchableSelect
+                options={COUNTRIES}
+                value={market}
+                onValueChange={setMarket}
+                placeholder="Type to search countries..."
+                disabled={loading}
+              />
             </div>
-          ) : (
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 space-y-1.5">
-              <p className="text-xs font-medium text-blue-500">No Company Context Set</p>
-              <p className="text-xs text-muted-foreground">
-                Go to{' '}
-                <a href="/context" className="text-primary hover:underline">
-                  CONTEXT
-                </a>{' '}
-                tab to analyze a company website first.
-              </p>
+            
+            <div className="space-y-2">
+              <Label htmlFor="language" className="text-xs font-medium">
+                Language
+              </Label>
+              <SearchableSelect
+                options={LANGUAGES}
+                value={language}
+                onValueChange={setLanguage}
+                placeholder="Type to search languages..."
+                disabled={loading}
+              />
             </div>
-          )}
+          </div>
 
           {/* Optional enhancement note */}
           {!hasProducts && (

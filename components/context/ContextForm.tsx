@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useContextStorage } from '@/hooks/useContextStorage'
-import { CompanySelector } from './CompanySelector'
 import { toast } from 'sonner'
 
 /**
@@ -21,24 +20,40 @@ export function ContextForm() {
   const [analyzedUrl, setAnalyzedUrl] = useState<string | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [showClearConfirmation, setShowClearConfirmation] = useState(false)
-  const [geminiApiKey, setGeminiApiKey] = useState<string | null>(null)
   const [analysisProgress, setAnalysisProgress] = useState(0)
   const [timeRemaining, setTimeRemaining] = useState(0)
+  const [savedCompanies, setSavedCompanies] = useState<any[]>([])
   
   const EXPECTED_ANALYSIS_TIME = 30 // seconds for Gemini 3 Pro Preview
   
-  // Load Gemini API key and analyzed URL from localStorage on mount
+  // Load analyzed URL and saved companies from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const storedKey = localStorage.getItem('gemini-api-key')
-      setGeminiApiKey(storedKey)
       
       const stored = localStorage.getItem('bulk-gpt-analyzed-url')
       if (stored && hasContext) {
         setAnalyzedUrl(stored)
       }
+
+      // Load saved companies
+      const COMPANIES_STORAGE_KEY = 'bulk-gpt-saved-companies'
+      const storedCompanies = localStorage.getItem(COMPANIES_STORAGE_KEY)
+      if (storedCompanies) {
+        try {
+          const companies = JSON.parse(storedCompanies)
+          setSavedCompanies(companies)
+        } catch (error) {
+          console.error('Failed to parse saved companies:', error)
+        }
+      }
+
+      // Set default analyzed URL if we have default SCAILE context and no stored URL
+      if (!stored && hasContext && businessContext?.companyWebsite) {
+        setAnalyzedUrl(businessContext.companyWebsite)
+        localStorage.setItem('bulk-gpt-analyzed-url', businessContext.companyWebsite)
+      }
     }
-  }, [hasContext])
+  }, [hasContext, businessContext])
 
   const handleAnalyzeWebsite = useCallback(async () => {
     if (!websiteUrl.trim()) {
@@ -46,11 +61,7 @@ export function ContextForm() {
       return
     }
 
-    // API key is optional if server has GEMINI_API_KEY env variable
-    // Show warning but allow request to proceed
-    if (!geminiApiKey) {
-      console.log('[ContextForm] No client API key, will try server env variable')
-    }
+    // Server will handle API key from GEMINI_API_KEY environment variable
 
     setIsAnalyzing(true)
     setAnalysisProgress(0)
@@ -68,7 +79,7 @@ export function ContextForm() {
     }, 100)
     
     try {
-      // Call local API endpoint with Gemini key
+      // Call local API endpoint (server will use GEMINI_API_KEY from environment)
       const response = await fetch('/api/analyse-website', {
         method: 'POST',
         headers: {
@@ -76,7 +87,7 @@ export function ContextForm() {
         },
         body: JSON.stringify({ 
           url: websiteUrl.trim(),
-          apiKey: geminiApiKey,
+          // Don't send API key - let server handle it from environment variables
         }),
       })
 
@@ -130,6 +141,42 @@ export function ContextForm() {
 
       updateContext(contextUpdates)
 
+      // Auto-save this as a new company profile
+      if (typeof window !== 'undefined' && contextUpdates.companyName) {
+        try {
+          const COMPANIES_STORAGE_KEY = 'bulk-gpt-saved-companies'
+          const storedCompanies = localStorage.getItem(COMPANIES_STORAGE_KEY)
+          let companies = storedCompanies ? JSON.parse(storedCompanies) : []
+          
+          // Check if company already exists (by name)
+          const existingCompanyIndex = companies.findIndex((c: any) => 
+            c.name?.toLowerCase() === contextUpdates.companyName?.toLowerCase()
+          )
+          
+          const newCompany = {
+            id: existingCompanyIndex >= 0 ? companies[existingCompanyIndex].id : 'company-' + Date.now(),
+            name: contextUpdates.companyName,
+            context: contextUpdates,
+            createdAt: existingCompanyIndex >= 0 ? companies[existingCompanyIndex].createdAt : new Date().toISOString()
+          }
+          
+          if (existingCompanyIndex >= 0) {
+            // Update existing company
+            companies[existingCompanyIndex] = newCompany
+            console.log('[ContextForm] Updated existing company profile:', contextUpdates.companyName)
+          } else {
+            // Add new company
+            companies.push(newCompany)
+            console.log('[ContextForm] Created new company profile:', contextUpdates.companyName)
+          }
+          
+          localStorage.setItem(COMPANIES_STORAGE_KEY, JSON.stringify(companies))
+          setSavedCompanies(companies) // Update local state
+        } catch (error) {
+          console.error('[ContextForm] Failed to save company profile:', error)
+        }
+      }
+
       // Store the analyzed URL
       const normalizedUrl = websiteUrl.trim().startsWith('http') ? websiteUrl.trim() : `https://${websiteUrl.trim()}`
       setAnalyzedUrl(normalizedUrl)
@@ -152,7 +199,7 @@ export function ContextForm() {
     } finally {
       setIsAnalyzing(false)
     }
-  }, [websiteUrl, updateContext, geminiApiKey])
+  }, [websiteUrl, updateContext])
 
   const handleClearAll = useCallback(() => {
     clearContext()
@@ -163,6 +210,7 @@ export function ContextForm() {
     }
     toast.success('Context cleared')
   }, [clearContext])
+
 
 
   if (isLoading) {
@@ -176,17 +224,55 @@ export function ContextForm() {
 
   return (
     <div className="space-y-4">
-      {/* Company Context Selector */}
-      <div className="border border-border rounded-lg p-4">
-        <CompanySelector className="w-full" />
-      </div>
+      {/* Saved Company Profiles - Show at top for easy switching */}
+      {savedCompanies.length > 1 && (
+        <div className="border border-border rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label className="text-sm font-semibold">Switch Company Profile ({savedCompanies.length} saved)</Label>
+              <p className="text-xs text-muted-foreground">Click any profile to switch to it</p>
+            </div>
+          </div>
+          <div className="grid gap-2 max-h-48 overflow-y-auto">
+            {savedCompanies.map((company: any) => (
+              <button
+                key={company.id}
+                onClick={() => {
+                  updateContext(company.context)
+                  toast.success(`Switched to ${company.name}`)
+                }}
+                className={`flex items-center justify-between p-3 rounded-lg border text-left transition-colors hover:bg-muted/50 ${
+                  businessContext?.companyName === company.name 
+                    ? 'bg-primary/10 border-primary/30' 
+                    : 'bg-muted/30 border-border'
+                }`}
+              >
+                <div className="flex-1">
+                  <div className="font-medium text-sm flex items-center gap-2">
+                    {company.name}
+                    {businessContext?.companyName === company.name && (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Current</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {company.context?.companyWebsite || 'No website'}
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {new Date(company.createdAt).toLocaleDateString()}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Website Analysis Section */}
       <div className="border border-border rounded-lg p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Globe className="h-4 w-4 text-primary" />
           <Label htmlFor="website-url" className="text-sm font-semibold text-foreground">
-            Analyze Website
+            Add Company
           </Label>
         </div>
         
@@ -210,7 +296,7 @@ export function ContextForm() {
           <Input
             id="website-url"
             type="text"
-            placeholder="yourcompany.com or https://yourcompany.com"
+            placeholder="Enter website to add new company (e.g., apple.com, microsoft.com)"
             value={websiteUrl}
             onChange={(e) => setWebsiteUrl(e.target.value)}
             onKeyDown={(e) => {
@@ -230,10 +316,10 @@ export function ContextForm() {
             {isAnalyzing ? (
               <>
                 <div className="h-3.5 w-3.5 mr-1.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                Analyzing...
+                Creating Profile...
               </>
             ) : (
-              'Analyze'
+              '+ Add Company'
             )}
           </Button>
         </div>
@@ -259,8 +345,19 @@ export function ContextForm() {
         )}
         
         <p className="text-xs text-muted-foreground">
-          Enter a website URL to extract company context for AEO optimization
+          Add as many companies as you want - each website becomes a new selectable profile
         </p>
+        
+        {/* Info about automatic company creation and multiple profiles */}
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 space-y-1">
+          <p className="text-xs font-medium text-blue-600 dark:text-blue-400">💡 How it works</p>
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p>• Each website you analyze creates a new company profile</p>
+            <p>• Go to Keywords/Blogs/Analytics pages to select which company to use</p>
+            <p>• Click the edit icon (✏️) to switch between your saved companies</p>
+          </div>
+        </div>
+
       </div>
 
       {/* Divider */}
@@ -476,6 +573,7 @@ export function ContextForm() {
           💡 These instructions will be automatically loaded in the Blog generator
         </p>
       </div>
+
 
       {/* Clear Confirmation Modal */}
       {showClearConfirmation && (

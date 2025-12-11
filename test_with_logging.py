@@ -24,7 +24,7 @@ proc = subprocess.Popen(
     stderr=subprocess.PIPE,
     text=True,
     bufsize=1,
-    env={**os.environ, "GEMINI_API_KEY": "[REMOVED_API_KEY]"}
+    env=os.environ  # Use environment variables only
 )
 
 # Send input and close
@@ -53,7 +53,7 @@ stdout_thread.start()
 
 # Wait with timeout
 start_time = time.time()
-timeout = 300  # 5 minutes
+timeout = 900  # 15 minutes for full pipeline
 
 while proc.poll() is None:
     elapsed = time.time() - start_time

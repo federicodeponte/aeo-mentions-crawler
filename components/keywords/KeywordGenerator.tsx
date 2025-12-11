@@ -240,8 +240,9 @@ export function KeywordGenerator() {
     setIsGenerating(true)
     setResults(null)
     setProgress(0)
-    setTimeRemaining(120) // Updated to 120 seconds for more realistic timing
-    console.log('[DEBUG] Setting time remaining to 120 seconds')
+    const totalDuration = CURSOR_SUBPROCESS_STEPS.reduce((sum, step) => sum + step.duration, 0)
+    setTimeRemaining(totalDuration) // Use actual total duration (460 seconds)
+    console.log('[DEBUG] Setting time remaining to', totalDuration, 'seconds')
 
     // Save generation state to sessionStorage for persistence
     const generationState = {
@@ -253,9 +254,10 @@ export function KeywordGenerator() {
     sessionStorage.setItem(GENERATION_STATE_KEY, JSON.stringify(generationState))
 
     // Start progress bar
+    const totalDuration = CURSOR_SUBPROCESS_STEPS.reduce((sum, step) => sum + step.duration, 0)
     progressIntervalRef.current = setInterval(() => {
       setProgress(prev => {
-        const newProgress = prev + (95 / 120) // Reach 95% in 120 seconds
+        const newProgress = prev + (95 / totalDuration) // Reach 95% in total duration
         return Math.min(newProgress, 95)
       })
       setTimeRemaining(prev => Math.max(0, prev - 1))

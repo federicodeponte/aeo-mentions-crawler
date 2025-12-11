@@ -1,0 +1,6 @@
+{
+  "batch_keywords": [
+    {"primary_keyword": "parallel test 1", "company": "TestA", "company_url": "https://testa.com", "target_market": "US", "language": "en", "enable_image_generation": false},
+    {"primary_keyword": "parallel test 2", "company": "TestB", "company_url": "https://testb.com", "target_market": "US", "language": "en", "enable_image_generation": false}
+  ]
+}

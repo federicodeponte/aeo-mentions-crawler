@@ -55,3 +55,19 @@ playwright/.auth/
 __pycache__/
 *.pyc
 modal-processor/modal_env_new/
+
+# API Keys and secrets - NEVER commit these!
+**/*AIzaSy*
+**/*sk-*
+**/*GEMINI_API_KEY*
+**/*SUPABASE_SERVICE_ROLE_KEY*
+**/*OPENAI_API_KEY*
+**/*secret*
+**/*credentials*
+*.key
+*.pem
+*.p12
+
+# Test files with hardcoded keys
+test_*_with_key.py
+*_secret_*.py
